@@ -1,0 +1,95 @@
+/*Dashboard
+===============================
+*/
+
+:root{
+    --top-bar-size: 50px;
+    --dash-side-menu-width: 20vw;
+    --dash-main-width: calc( 100vw -  var(--dash-side-menu-width));
+}
+
+/*Main Container*/
+.dash_mainContainer{
+    overflow: hidden;
+    background-color: hotpink;
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0px;
+    width: 100vw;
+    height: 100vh;
+}
+
+/*topBar*/
+.dash_topBar{
+height: var(--top-bar-size);
+background-color: blue;
+}
+
+/*body*/
+.dash_body{
+    background-color: aquamarine;
+    height: calc(100vh - var(--top-bar-size) );
+    display: flex;
+}
+
+/*SideMenu*/
+.dash_sideMenu
+{
+    background-color: RED;
+    width: var(--dash-side-menu-width);
+    padding: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+.dash_sideMenu button
+{
+    width: 100%!important;
+}
+
+/*PageContainer*/
+.dash_mainPageContainer{
+    background-color: rgb(85, 85, 37);
+    width: var(--dash-main-width)
+}
+
+
+/*Page*/
+.dash_page{
+    background-color: brown;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.dash_pageHeader{
+    background-color: blueviolet;
+    padding: var(--spacing-md);
+    text-align: center;
+}
+
+.dash_pageBody{
+    background-color: darksalmon;
+    padding: var(--spacing-md);
+    flex-grow: 1;
+    overflow-y:auto;
+}
+
+.dash_pageFooter{
+    background-color:darkgoldenrod;
+    padding: var(--spacing-md);
+}
+
+/*Dash list*/
+
+.dash_listContainer{
+    background-color:peru;
+}
+
+.dash_listContainer .listItem_container{
+    margin: var(--spacing-sm);
+    margin-left:0px;
+    margin-right:0px;
+}
