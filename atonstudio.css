@@ -6,6 +6,8 @@
     --top-bar-size: 50px;
     --dash-side-menu-width: 20vw;
     --dash-main-width: calc( 100vw -  var(--dash-side-menu-width));
+    
+    --editor-inspector-width: 20vw;
 }
 
 /*Main Container*/
@@ -34,7 +36,7 @@ background-color: blue;
 }
 
 /*SideMenu*/
-.dash_sideMenu
+.dash_sideMenu, .editor_inspector
 {
     background-color: RED;
     width: var(--dash-side-menu-width);
@@ -43,6 +45,7 @@ background-color: blue;
     flex-direction: column;
     gap: var(--spacing-sm);
 }
+
 .dash_sideMenu button
 {
     width: 100%!important;
@@ -92,4 +95,36 @@ background-color: blue;
     margin: var(--spacing-sm);
     margin-left:0px;
     margin-right:0px;
+}
+
+
+/*3D Editor*/
+.editorContainer_dash_topBar{
+    position:absolute;
+    top: 0px;
+    width: 100%;
+}
+
+.editorContainer_dash_sideMenu{
+    top: var(--top-bar-size);
+    position:absolute;
+    left:0px;
+}
+
+.editorContainer_inspector{
+    top: var(--top-bar-size);
+    position:absolute;
+    right:0px;
+}
+
+.editor_inspector{
+    width: var(--editor-inspector-width);
+    background-color: purple;
+    padding: 10px;
+}
+
+
+.editor_inspector button
+{
+    width: 100%!important;
 }

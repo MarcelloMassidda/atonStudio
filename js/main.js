@@ -6,8 +6,9 @@ let APP = ATON.App.realize();
 
 APP.setup = async()=>{
 
-		ATON.FE.realize(false);
-	
+		ATON.FE.realize();
+		ATON.FE.addBasicLoaderEvents();
+
 		APP.UI = UI;
 		APP.dashboard = dashboard;
 		window.APP = APP;
