@@ -3,8 +3,8 @@
 */
 
 :root{
-    --top-bar-size: 50px;
-    --dash-side-menu-width: 20vw;
+    --top-bar-size: 60px;
+    --dash-side-menu-width: 30vw;
     --dash-main-width: calc( 100vw -  var(--dash-side-menu-width));
     
     --editor-inspector-width: 20vw;
@@ -44,6 +44,7 @@ background-color: blue;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
+    overflow-y: hidden;
 }
 
 .dash_sideMenu button
@@ -118,9 +119,10 @@ background-color: blue;
 }
 
 .editor_inspector{
-    width: var(--editor-inspector-width);
+    /*width: var(--editor-inspector-width);*/
     background-color: purple;
     padding: 10px;
+    overflow-y:hidden;
 }
 
 

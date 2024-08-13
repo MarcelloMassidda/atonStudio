@@ -2,8 +2,10 @@ let APP;
 let UI; //uitoolkit
 
 let db = {data:{}};
+
 let ui = {
-    IDdash_mainContainer: "IDdash_mainContainer"
+    IDdash_mainContainer: "IDdash_mainContainer",
+    IDeditor_Inpsector: "IDeditor_Inpsector"
 };
 let utils = {};
 
@@ -126,6 +128,8 @@ ui.dash_topBar = ()=>{
 
 
 ui.openSceneIn3DEditor=(sid)=>{
+    console.log(sid);
+    dashboard.db.data.currSID = sid;
     dashboard.utils.loadScene(sid,()=>{
         dashboard.db.data.currScene = ATON.SceneHub.currData;
         ui.removeDashboard();
@@ -262,79 +266,126 @@ ui.editor_sideMenu=()=>{
 };
 
 
+//WITH HATHOR SCENES CREATION objects inside the layers are not loaded as ATON-nodes: I can't edit transform properties.
+
+
+ui.editor_btn_atonNode=(nid)=>{
+     
+    const _onclick=()=>{
+        let node = ATON.getSceneNode(nid);
+        //use Gizmo
+        ATON.Nav.requestPOVbyNode(node,0.3)
+        UI.attachGizmoBynid(nid);
+        //collect data:
+       
+        let infoNode = [
+            UI.vector3({title:"position", v:node.position }),
+            UI.vector3({title:"rotation", v:node.rotation }),
+            UI.vector3({title:"scale", v:node.scale }),
+        ]
+        ui.editor_sideInspector_update(infoNode);
+    }
+
+    return UI.button({text:nid,onClick:_onclick})
+}
+
+ui.objNameFromPath=(path)=> {return path.substring(path.lastIndexOf('/') + 1);}
+
+ui.editor_btnUrlModel=(url)=>{ 
+
+    return UI.listItem({
+        content: ui.objNameFromPath(url),
+        icon: UI.image("collection-item","xs"),
+        links: [UI.image("lock","xs")]
+    })
+
+    /*return UI.button({
+        icon:"collection-item",
+        text: url.substring(url.lastIndexOf('/') + 1),//the title is the object name
+        //attr:{disabled:true},
+        tooltip:url})
+        */
+}
+
 ui.editor_scenehierarchy=()=>{
 
-    //return "daje the cazzo"
+    var hierarchyContent = [];
+   for (const [key, graph] of Object.entries(ATON.SceneHub.currData.scenegraph.nodes)){
+        console.log(key)
+        console.log(graph);
+        let _graph = "0 objects";
 
-    //summarize scene:
-    //main graph:
+        if(graph.urls){ 
+            _graph = `${graph.urls.length} objects: `;
+            _graph+= graph.urls.map(url=>{ return ui.objNameFromPath(url)+" "});
+        }
+            hierarchyContent.push( UI.createEl({content:[ui.editor_btn_atonNode(key),_graph]}))
+        }
+        return hierarchyContent;
+    }
+      
+
+
+ui.editor_widgets_layers=()=>{
 
     let _summary = [];
 
     for (const [key, graph] of Object.entries(ATON.SceneHub.currData.scenegraph.nodes)){
-        let _graph = graph.urls.map(url=>
-            {
-                return UI.button({text:url})
-            });
+        console.log(key)
+        console.log(graph);
+        let _graph = "No objects in this layer";
+        if(graph.urls){ _graph = graph.urls.map(url=>{ return ui.editor_btnUrlModel(url)});}
         _summary.push({header:key,content:_graph})
     }
-    console.log(_summary)
+      
     return UI.summarize( _summary);
-
-
-    var sceneGraphNode_main = ATON.SceneHub.currData.scenegraph.nodes.main;
-    let _main = [];
-    
-    sceneGraphNode_main.urls.forEach(url => {
-        _main.push(url);
-    });
-    return UI.summarize(
-        [
-            {
-        header:"main",
-        content:_main
-    }])
-//    utils.printData(sceneGraphNode_main);
-
-
-
 
 }
 
 ui.editor_widgetsMenu=()=>{
-return "daje the punta"
+return "widgets panel"
 }
 
+ui.editor_sideInspector=(content=null)=>{
 
-ui.editor_sideInspector=()=>{
-    return UI.createEl({className:"editor_inspector", content:[
-        dashboard.ui.avatarItem(),
-        UI.button({icon:"add",text:"Btn1"}),
-        UI.button({icon:"add",text:"Btn1"}),
-        UI.button({icon:"add",text:"Btn1"}),
-        UI.button({icon:"add",text:"Btn1"}),
-    ]});
+    let InpsectorContent = content? content :"My default Inpsector content";
+    return UI.createEl({id:ui.IDeditor_Inpsector,className:"editor_inspector", content:InpsectorContent});
 };
 
+ui.editor_sideInspector_update=(content)=>{
+    let _inspector = document.getElementById(ui.IDeditor_Inpsector);
+    if(_inspector){ _inspector.innerHTML = ""; UI.addContent(_inspector,content)}
+    else  document.body.appendChild(ui.editor_sideInspector(content));
+}
+
 ui.editor_topBar = (s=null)=>{
-    console.log("oh editor sidebar");
-    console.log(s)
-   let topBarContent = "Title of the tobparb";
-   if(s){
-    topBarContent = s.title? `s.title / ${s.sid}` : s.sid;
-   }
-   return UI.createEl({id:"IDeditor_topBar",className:"dash_topBar",content:topBarContent})
+
+    let titleTopBar = "ATON STUDIO";
+    if(s){
+        let _sid = dashboard.db.data.currSID;
+        titleTopBar += s.title? `${s.title} / ${_sid}` : _sid;
+    }
+
+    let backBtn = UI.button({icon:"back",onClick:()=>window.location.reload()});
+    
+    let topBarContent = UI.flexBox({dir:"row",content:[backBtn,titleTopBar]})
+
+   return UI.createEl({id:"IDeditor_topBar",className:"dash_topBar",content: topBarContent})
 }
 
 
 /* dashboard.utils
 =====================*/
 
-utils.printData=(data)=>{
+utils.beautifyData=(data)=>{ return `<b></b><br><br><pre><code>${JSON.stringify(data,null,1)}</code></pre>`}
+
+utils.showData=(data)=>{
+    const stringedData = utils.beautifyData(data);
+
     document.body.appendChild(UI.popup({
         isModal:false,
         isCentered:true,
-		content: `<b></b><br><br><pre><code>${JSON.stringify(data,null,1)}</code></pre>`
+		content: stringedData 
 	}));
 }
 
