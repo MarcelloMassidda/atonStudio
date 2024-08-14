@@ -125,8 +125,14 @@ background-color: blue;
     overflow-y:hidden;
 }
 
-
 .editor_inspector button
 {
-    width: 100%!important;
+/*    width: 100%!important;*/
+}
+
+.editorContainer_centerToolbox{
+    position: absolute;
+    top: var(--top-bar-size);
+    left: 50%;
+    transform: translate(-50%,0%);
 }
