@@ -8,6 +8,8 @@
     --dash-main-width: calc( 100vw -  var(--dash-side-menu-width));
     
     --editor-inspector-width: 20vw;
+
+    --editor-panelMargin: var(--spacing-sm);
 }
 
 /*Main Container*/
@@ -38,7 +40,9 @@ background-color: blue;
 /*SideMenu*/
 .dash_sideMenu, .editor_inspector
 {
-    background-color: RED;
+    /*background-color: RED;*/
+  
+
     width: var(--dash-side-menu-width);
     padding: var(--spacing-sm);
     display: flex;
@@ -47,10 +51,31 @@ background-color: blue;
     overflow-y: hidden;
 }
 
-.dash_sideMenu button
+.dash_sideMenu_Content
+{
+    background-color: var( --color-backgroundPanel);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+    border-radius: var( --border-radius-md);
+    color: var(--color-textPrimary);
+}
+
+.dash_sideMenu_Content button
 {
     width: 100%!important;
+    background-color: var(--color-white);
+    color: var(--color-textPrimary);
 }
+
+.dash_sideMenu_Content button img{
+    background-color: var(--color-primary-dark);
+    padding: var(--spacing-sm);
+    border-radius: var( --border-radius-sm);
+}
+
+
 
 /*PageContainer*/
 .dash_mainPageContainer{
@@ -107,28 +132,55 @@ background-color: blue;
 }
 
 .editorContainer_dash_sideMenu{
-    top: var(--top-bar-size);
+    top: calc( var(--top-bar-size) + var(--editor-panelMargin));
     position:absolute;
-    left:0px;
+    left: var(--editor-panelMargin)
 }
 
 .editorContainer_inspector{
-    top: var(--top-bar-size);
+    top: calc( var(--top-bar-size) + var(--editor-panelMargin));
     position:absolute;
-    right:0px;
+    right: var(--editor-panelMargin);
 }
 
 .editor_inspector{
     /*width: var(--editor-inspector-width);*/
-    background-color: purple;
-    padding: 10px;
+    /*background-color: purple;*/
+
+   padding: var(--spacing-sm);
     overflow-y:hidden;
+    background-color: var(--color-backgroundPanel);
+    color: var(--color-textPrimary);
+    border-radius: var( --border-radius-lg);
+    box-shadow: var(--shadow-md);
 }
 
 .editor_inspector button
 {
 /*    width: 100%!important;*/
 }
+
+.editor_inspector input[type="number"]
+{
+   border-color:transparent;
+}
+
+fieldset{
+
+    border: none;
+    background-color: var(--color-gray-light);
+    border-radius: var( --border-radius-md);
+    padding: var(--spacing-sm);   
+}
+  
+legend{
+padding-left: var(--spacing-sm);
+padding-right: var(--spacing-sm);
+margin-top: 0.3rem;
+}
+
+
+
 
 .editorContainer_centerToolbox{
     position: absolute;

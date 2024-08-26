@@ -31,8 +31,7 @@ let dashboard = { db , ui , utils, editor };
 dashboard.init = () => {
     APP = window.APP;
     UI = window.APP.UI;
-    dashboard.db = db;
-
+   
     //init ui:
     //document.body.addEventListener('DOMContentLoaded', ui.initMediaQueries(), false);
 
@@ -60,27 +59,6 @@ dashboard.init = () => {
 =====================*/
 
 
-ui.initMediaQueries=()=>{ //not used
-
-    /* for dynamic purpose
-    const mediaqueries = { 
-        '(max-width: 576px)':handle_max_xs
-    }
-    */
-    const handle_max_xs = (e)=>{
-        console.log("is still max widht 576 " + e.matches);
-        const linksContainers = document.querySelectorAll('.dash_item_links_container');
-        linksContainers.forEach(container => {
-          console.log(container)
-        });
-    }
-  
-    ui.mediaQuery_max_XS = window.matchMedia('(max-width: 576px)');
-    if(ui.mediaQuery_max_XS.matches) handle_max_xs({matches:true})
-    ui.mediaQuery_max_XS.addListener(handle_max_xs);
-
-   
-}
 
 ui.createDashboard=()=>{
 
@@ -130,11 +108,16 @@ ui.scenesPage = ()=>{
 
 ui.dash_sideMenu=()=>{
     return UI.createEl({className:"dash_sideMenu", content:[
-        dashboard.ui.avatarItem(),
-        UI.button({icon:"add",text:"Btn1"}),
-        UI.button({icon:"add",text:"Btn1"}),
-        UI.button({icon:"add",text:"Btn1"}),
-        UI.button({icon:"add",text:"Btn1"}),
+        UI.createEl({
+            className:"dash_sideMenu_Content",
+            content:[
+                dashboard.ui.avatarItem(),
+                UI.button({icon:"add",text:"Btn1"}),
+                UI.button({icon:"add",text:"Btn1"}),
+                UI.button({icon:"add",text:"Btn1"}),
+                UI.button({icon:"add",text:"Btn1"}),
+            ]            
+        })
     ]});
 }
 
@@ -234,7 +217,7 @@ ui.editor_sideMenu=()=>{
             text: "Scene",
             tab: UI.createEl({
                 id:ui.ID_editorSideMenu_Scene,
-                className:"dash_sideMenu",
+                className:"dash_sideMenu_Content",
                 content: ui.editor_scenehierarchy()
             }),
             isActive:true
@@ -244,7 +227,7 @@ ui.editor_sideMenu=()=>{
             text:"Widgets",
             tab: UI.createEl({
                 id: ui.ID_editorSideMenu_Widget,
-                className:"dash_sideMenu",
+                className:"dash_sideMenu_Content",
                 content:ui.editor_widgetsMenu()
             })
         }
@@ -359,54 +342,43 @@ ui.editor_btnUrlModel=(url)=>{
 ui.editor_onAdd3DModelBtnClicked =  ()=>{
 
     var onModelItemClicked= async (e)=>{
-        const url = e.target.parentNode.dataset.path;
-
+        const url = e.target.parentNode.dataset.path; //TO change
         UI.removePopup();
         
         //Prompt node Name:
         const promptResponse = await UI.promptDialog({inputs:[{name:"newNodeName",labelText:"Node Name",type:"text"}]});
         console.log("nodeName");
         if(!promptResponse) {UI.removePopup(); return;}
-
         const nodeName = promptResponse.newNodeName;
 
         //Add in scene:
         var newAtonNode = ATON.createSceneNode(nodeName).load(url, ()=>{
 
-            console.log("DAje?")
+            //Realtime add node to scene and focus on it
             newAtonNode.attachToRoot().setPosition(0,0,0);
-
             ATON.Nav.requestPOVbyNode(newAtonNode, 0.3);
             editor.setGizmoByNID(newAtonNode.nid);
-
-             //Set Focus on new model
             editor.setFocusOnNode(newAtonNode.nid);
-           
-            console.log("DAje   1  ?")
-           
-           
-            //Update local scenegraph:
+             
+
+            //Update currentScene locally:
+            //scenegraph
             let newSceneGraphNode = {urls:[url]}
             editor.currScene.scenegraph.nodes[nodeName] = newSceneGraphNode;
-            //Update local edges:
+            //edges
             let _edges = editor.currScene.scenegraph.edges;
             if(!_edges) { _edges = {".":[nodeName]}}
             else{_edges["."].push(nodeName)}
             editor.currScene.scenegraph.edges = _edges;
-           
-            console.log("DAje   2 ?")
-           
-            //Update global Patch
-            let _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
-            _patch.scenegraph.nodes[nodeName] = newSceneGraphNode;
-            _patch.scenegraph.edges = _edges;
 
-            editor.patch = _patch;
-            editor.OnPatchChanged();
-            
-            console.log("DAje   3 ?")
+           
+            //Compose Patch:
+            editor.composePatch({
+                type:"addNode",
+                nid: nodeName,
+                nodeBody: newSceneGraphNode
+            });
 
-            
             //Update hierarchy:
             ui.editor_updateHierarchy();
         });
@@ -526,7 +498,6 @@ ui.editor_gizmoControlToolbox = ()=>{
         const onGizmoModeBtnClicked=(mode)=>
             {
                 ATON._gizmo.setMode(mode);
-              
                 //change selected Style:
                 var _container = document.getElementById(ui.IDeditor_gizmoToolbox);
                 Array.from(_container.children).forEach(c => {
@@ -578,107 +549,107 @@ utils.goToScene=(sid,blank=true)=>{
     }
 
 utils.createNewScene=async()=>{
-    
-//0 Wizard for prompt info Scene
-var formSceneInfo = await UI.promptDialog({
+        
+    //0 Wizard for prompt info Scene
+    var formSceneInfo = await UI.promptDialog({
 
-    title:"<div>New Scene</div>",
-    inputs:[
-        {
-            id:"sceneTitle",
-            type:"text",
-            name:"title",
-            legendText: "Title of the scene",
-            labelText: "verrà creato un titolo",
-            value: `New Scene n°${db.data.userScenes.length+1}`
-        },
-        {
-            id:"sceneVisibility",
-            type:"checkbox",
-            name:"visibility",
-            legendText:"Scene status",
-            labelText: "If the scene is public it will be shown in the main gallery.",
-            checked:"checked",
+        title:"<div>New Scene</div>",
+        inputs:[
+            {
+                id:"sceneTitle",
+                type:"text",
+                name:"title",
+                legendText: "Title of the scene",
+                labelText: "verrà creato un titolo",
+                value: `New Scene n°${db.data.userScenes.length+1}`
+            },
+            {
+                id:"sceneVisibility",
+                type:"checkbox",
+                name:"visibility",
+                legendText:"Scene status",
+                labelText: "If the scene is public it will be shown in the main gallery.",
+                checked:"checked",
+            }
+        ]
+    });
+
+    console.log(formSceneInfo)
+
+    if(!formSceneInfo) return;
+
+    //1 Create new scene
+    //Base Scene Object
+    let baseScene = utils.createBaseScene();
+    let o = {};
+    o.sid =  db.data.user.username+"/"+utils.generateUserSID();
+    if(Object.hasOwn(formSceneInfo, 'visibility')) {o.pub = "1";}
+
+    o.data = baseScene;
+    db.data.currentSceneObj = o;
+
+    //2 Collect and send edit
+    let collectEdits =()=>{
+
+        var edits = {};
+        edits.title = formSceneInfo.title;
+        if(db.data.currentSceneObj.pub){edits.visibility = "1"}
+        //console.log(edits);
+        
+        //others...todo 
+
+        /* //dynamic approach, but wizard is dirty: visibility.
+
+        for (const [key, value] of Object.entries(formSceneInfo)) {
+            console.log(`${key}: ${value}`);
+            sceneObj[key] = value;
         }
-    ]
-});
-
-console.log(formSceneInfo)
-
-if(!formSceneInfo) return;
-
-//1 Create new scene
-//Base Scene Object
-let baseScene = utils.createBaseScene();
-let o = {};
-o.sid =  db.data.user.username+"/"+utils.generateUserSID();
-if(Object.hasOwn(formSceneInfo, 'visibility')) {o.pub = "1";}
-
-o.data = baseScene;
-db.data.currentSceneObj = o;
-
-//2 Collect and send edit
-let collectEdits =()=>{
-
-    var edits = {};
-    edits.title = formSceneInfo.title;
-    if(db.data.currentSceneObj.pub){edits.visibility = "1"}
-    //console.log(edits);
-    
-    //others...todo 
-
-    /* //dynamic approach, but wizard is dirty: visibility.
-
-    for (const [key, value] of Object.entries(formSceneInfo)) {
-        console.log(`${key}: ${value}`);
-        sceneObj[key] = value;
-    }
-    */
-   return edits;
-}
-
-
-let handleServerResponse = (r)=>{
-    if (r){
-        console.log("Server has responded:");
-        console.log(r);
-    }
- 
-    //load scene:
-   // dashboard.utils.loadScene( db.data.currentSceneObj.sid ,()=>{
-    
-        //Collect edits:
-        let _edits = collectEdits();
-        let _sid  = db.data.currentSceneObj.sid;
-        console.log("edits");
-        console.log(_edits);
-
-        // sid, patch, mode, onComplete=null
-    dashboard.db.sendSceneEdit( _sid, _edits, ATON.SceneHub.MODE_ADD, ()=>{
-        
-        console.log("Scene Created!");
-        
-        //You may stay and reload list of Scenes:
-        /*
-        db.getScenes((s) => {
-            console.log(s);
-            db.data.userScenes = s;
-            dashboard.ui.createDashboard();
-        });
         */
+    return edits;
+    }
+
+
+    let handleServerResponse = (r)=>{
+        if (r){
+            console.log("Server has responded:");
+            console.log(r);
+        }
+    
+        //load scene:
+    // dashboard.utils.loadScene( db.data.currentSceneObj.sid ,()=>{
         
-        //or open in atonStudio:
-        ui.openSceneIn3DEditor(_sid);
-    })
+            //Collect edits:
+            let _edits = collectEdits();
+            let _sid  = db.data.currentSceneObj.sid;
+            console.log("edits");
+            console.log(_edits);
 
-//})
+            // sid, patch, mode, onComplete=null
+        dashboard.db.sendSceneEdit( _sid, _edits, ATON.SceneHub.MODE_ADD, ()=>{
+            
+            console.log("Scene Created!");
+            
+            //You may stay and reload list of Scenes:
+            /*
+            db.getScenes((s) => {
+                console.log(s);
+                db.data.userScenes = s;
+                dashboard.ui.createDashboard();
+            });
+            */
+            
+            //or open in atonStudio:
+            ui.openSceneIn3DEditor(_sid);
+        })
 
-  
+    //})
+
+    
 
 
-};
+    };
 
-ATON.Utils.postJSON( ATON.PATH_RESTAPI+"new/scene", db.data.currentSceneObj, handleServerResponse);
+    ATON.Utils.postJSON( ATON.PATH_RESTAPI+"new/scene", db.data.currentSceneObj, handleServerResponse);
 
 }
 
@@ -719,6 +690,7 @@ utils.generateID = (prefix)=>{
 };
 /*END SHU
 ===================*/
+
 
 /* dashboard.db
 =====================*/
@@ -811,18 +783,13 @@ db.setSceneVisibility=(sid,vis,callback=null)=>{
 EDITOR 3D Management
 =============*/
 
-editor.onTransformVector3Changed=(evt)=>{
-    const vector3Indexes = { x:0, y:1, z:2 };
-    const defaultTransform ={
-        "position": [0,0,0],
-        "rotation": [0,0,0],
-        "scale": [1,1,1]
-    }
 
+editor.onTransformVector3Changed=(evt)=>{
+  
     window.e = evt;
     let property = evt.target.dataset.property; //can be position / rotation / scale
     let dimension = evt.target.name; //can be x/y/z
-    let value = parseFloat(evt.target.value.replaceAll(",",".")); //float value TO VALIDADE!!!!!
+    let value = parseFloat(evt.target.value.replaceAll(",",".")); //float value TO VALIDATE and CLAMP !!!!!
     
     // console.log("Vector 3 changed: " + property + ": " + dimension + ": " + value);
     
@@ -830,37 +797,21 @@ editor.onTransformVector3Changed=(evt)=>{
     editor.activeNode[property][dimension] = value;
 
     //Compose Patch:
-    let _patch = editor.patch? editor.patch : {};
-    let nid = editor.activeNode.nid;
-    if(!_patch.scenegraph) _patch.scenegraph = {};
-    if(!_patch.scenegraph.nodes) _patch.scenegraph.nodes = {};
-    if(!_patch.scenegraph.nodes[nid]) _patch.scenegraph.nodes[nid] = {};
-    if(!_patch.scenegraph.nodes[nid].transform) _patch.scenegraph.nodes[nid].transform = {};
-    if(!_patch.scenegraph.nodes[nid].transform[property]) {
+    const bodyPatch = {
+        type:"transformNode",
+        nid:editor.activeNode.nid,
+        property,
+        dimension,
+        value
+    };
 
-        let _t = defaultTransform[property];
-        try {
-            let prevT = editor.currScene.scenegraph.nodes[nid].transform[property];
-            if(prevT) _t = prevT;}
-        catch (e) { console.error("jesus"); console.log(_t); console.error(e.message); }
-        _patch.scenegraph.nodes[nid].transform[property] = _t;
-        console.log("prev or fresh t: "); console.log(_t)
-    }
+    editor.composePatch(bodyPatch);
 
-    _patch.scenegraph.nodes[nid].transform[property][vector3Indexes[dimension]] = value;
-    
-    console.log("edited t: "); console.log(_patch.scenegraph.nodes[nid].transform[property])
-    console.log(_patch);
-    
-    editor.patch = _patch;
-    editor.OnPatchChanged();
-    
 }
 
 editor.OnPatchChanged=()=>{
     if(editor.autoSaveMode){
         console.log("path changed: autosave");
-
         editor.sendGlobalScenePatch();
     }
     else{
@@ -894,25 +845,119 @@ editor.onGizmoMouseUp=(evt)=>{
     console.log("editor handler: "); console.log(evt); window.gizmoEVT = evt;
     if(ATON._gizmo.object.uuid != APP.dashboard.editor.activeNode.uuid) return;
 
-    const gizmoUpdaters = {
+    const gizmoHandler = {
         translate: {
+            propertyName:"position",
             idVector3UIContainer: ui.IDeditor_inspectorTransform_pos,
-            nodePropertyToCopy: "position"
+            getProperty:(n)=> {return n.position}
         },
         rotate: {
+            propertyName:"rotation",
             idVector3UIContainer: ui.IDeditor_inspectorTransform_rot,
-            nodePropertyToCopy: "rotation"
-        } ,
+            getProperty:(n)=> { let rot = n.rotation;  return {x:rot._x, y:rot._y, z: rot._z} }
+        },
         scale: {
+            propertyName:"scale",
             idVector3UIContainer: ui.IDeditor_inspectorTransform_scale,
-            nodePropertyToCopy: "scale"
+            getProperty:(n)=> {return n.scale}
         } 
     }
     
     let _mode = evt.mode; console.log(_mode);
-    let _v = ATON._gizmo.object[gizmoUpdaters[_mode].nodePropertyToCopy];
+    let _v = gizmoHandler[_mode].getProperty(ATON._gizmo.object);
+    //let _v = ATON._gizmo.object[gizmoHandler[_mode].nodePropertyToCopy];
 
-    editor.updateVector3UI(gizmoUpdaters[_mode].idVector3UIContainer,_v);
+    editor.updateVector3UI(gizmoHandler[_mode].idVector3UIContainer,_v);
+
+    console.log("GIMZING");
+    console.log(_v);
+    window.v = _v;
+
+    //compose Patch for x/y/z
+    for (const [key, value] of Object.entries(_v)) {
+        console.log(`${key}: ${value}`);
+
+        var _dimension = key;
+        var _value = value;
+
+        var bodyPatch = {
+            nid: ATON._gizmo.object.nid,
+            type: "transformNode",
+            property: gizmoHandler[_mode].propertyName,
+            dimension: _dimension,
+            value: _value
+        };
+       
+        editor.composePatch(bodyPatch);
+        
+      }
+}
+
+
+editor.composePatch=(o)=>{
+
+    if(!o.type) return;
+    
+    let _patch = null;
+    
+    if(o.type=="transformNode"){
+        console.log("type of action is: " + o.type + ": dimension: " + o.dimension);
+        console.log(o)
+        /*
+        type:"transform"
+        nid  ....maybe not?
+        property: "scale" | "rotation" | "position"
+        dimension: x | y | z
+        value: float
+        */
+
+        const property= o.property;
+        const dimension = o.dimension;
+        const value = o.value;
+
+        const vector3Indexes = { x:0, y:1, z:2 };
+        const defaultTransform ={
+            "position": [0,0,0],
+            "rotation": [0,0,0],
+            "scale": [1,1,1]
+        }
+
+        let nid = editor.activeNode.nid;
+        _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
+        if(!_patch.scenegraph.nodes[nid]) _patch.scenegraph.nodes[nid] = {};
+        if(!_patch.scenegraph.nodes[nid].transform) _patch.scenegraph.nodes[nid].transform = {};
+        if(!_patch.scenegraph.nodes[nid].transform[property]) {
+    
+            let _t = defaultTransform[property];
+            try {
+                let prevT = editor.currScene.scenegraph.nodes[nid].transform[property];
+                if(prevT) _t = prevT;
+                console.log("SETTED PREV T AS: "); console.log(prevT)
+            }
+            catch (e) { console.log(_t); console.error(e.message); }
+            _patch.scenegraph.nodes[nid].transform[property] = _t;
+            console.log("prev or fresh t: "); console.log(_t)
+        }
+    
+        _patch.scenegraph.nodes[nid].transform[property][vector3Indexes[dimension]] = value;
+        
+        console.log("edited t: "); console.log(_patch.scenegraph.nodes[nid].transform[property])
+        console.log(_patch);      
+    }
+
+    if(o.type=="addNode"){
+        
+        const nid = o.nid;
+        const nodeBody = o.nodeBody;
+
+        _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
+        if(_patch.scenegraph.nodes[nid]) {throw(nid + " node ID is already used."); }
+        
+        _patch.scenegraph.nodes[nid] = nodeBody;
+        _patch.scenegraph.edges = editor.currScene.scenegraph.edges;
+    }
+
+    editor.patch = _patch;
     editor.OnPatchChanged();
 }
 
@@ -922,7 +967,11 @@ editor.updateVector3UI =(idContainer,_v)=>{
      document.querySelector(`#${idContainer} [name="z"]`).value = _v.z;
 }
 
-editor.setGizmoByNID=(nid,mode="translate")=>{
+editor.setGizmoByNID=(nid,mode=null)=>{
+    if(mode==null){
+        if(ATON._gizmo) mode = ATON._gizmo.mode;
+        else{mode="translate"}
+    }
     console.log("setting GIMZO in editor")
     UI.attachGizmoBynid(nid,mode);
     if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
@@ -937,6 +986,28 @@ editor.onCloseInspectorBtnClicked=()=>{
 }
 
 
+
+ui.initMediaQueries=()=>{ //NOT USED
+
+    /* for dynamic purpose
+    const mediaqueries = { 
+        '(max-width: 576px)':handle_max_xs
+    }
+    */
+    const handle_max_xs = (e)=>{
+        console.log("is still max widht 576 " + e.matches);
+        const linksContainers = document.querySelectorAll('.dash_item_links_container');
+        linksContainers.forEach(container => {
+          console.log(container)
+        });
+    }
+  
+    ui.mediaQuery_max_XS = window.matchMedia('(max-width: 576px)');
+    if(ui.mediaQuery_max_XS.matches) handle_max_xs({matches:true})
+    ui.mediaQuery_max_XS.addListener(handle_max_xs);
+
+   
+}
 
 
 export {dashboard};
