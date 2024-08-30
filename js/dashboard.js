@@ -1,4 +1,4 @@
-import {Widget} from './widget.js';
+import {widgetsHub} from './widgets.js';
 
 let APP;
 let UI; //uitoolkit
@@ -191,9 +191,11 @@ ui.create3DEditor=(s=null)=>{
 
     editor.currScene = dashboard.db.data.currScene;
     editor.currSID = dashboard.db.data.currSID;
-    editor.autoSaveMode = false;
-    //editor.patch = {};
+    editor.widgetsHub = widgetsHub;
+    editor.widgetsHub.init(APP);
 
+    editor.autoSaveMode = false;
+    
 
     if(!s) {alert("S = null, void Editor isn't implemented yet."); return}
 
@@ -205,8 +207,7 @@ ui.create3DEditor=(s=null)=>{
             document.body.appendChild(UI.createEl({id:ui.ID_editorSideMainContainer, className:"editorContainer_dash_sideMenu", content: sidemenu}));
             document.body.appendChild(UI.createEl({className:"editorContainer_dash_topBar", content: topBar}));
             document.body.appendChild(UI.createEl({className:"editorContainer_inspector", content: inspector}));
-            document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));           
-
+            document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));
 }
 
 ui.editor_updateHierarchy=()=>{
@@ -511,10 +512,11 @@ ui.headerPanel=(title, btn=null)=>{
 }
 
 
+//OLD
 ui.editor_widgets_viewpoints=()=>{
 
     const onClickViewPointItem=(id)=>{
-        //In
+        
         let vp = editor.currScene.viewpoints[id];
         console.log(vp);
         let _nid = id;
@@ -546,8 +548,6 @@ ui.editor_widgets_viewpoints=()=>{
             ui.headerPanel("Viewpoints",UI.button({ icon:"cancel", className:"small", onClick:()=>ui.closeSecondSideMenu(IDPanel)})),
             viewpointList]
     });
-
-    //To add title... todo
 }
 
 
@@ -575,25 +575,63 @@ ui.closeSecondSideMenu=(id=null)=>{
 }
 
 ui.openSecondSideMenu=(target,content, isCentered=false)=>{
-    
+    console.log("isCentered is: " + isCentered )
     //Close existing panel
     ui.closeSecondSideMenu(); 
 
     //Set position near to target clicked:
+    console.log(target);
+    if(!isCentered) target = document.getElementById(ui.ID_editorSideMainContainer);
+    console.log(target);
     const rect = target.getBoundingClientRect();
     var marginRight = rect.right;
-    var marginTop = isCentered? (rect.bottom-rect.top) : rect.top;
+    var marginTop = isCentered? (rect.bottom-((rect.bottom-rect.top)/2)) : rect.top;
+    var transform = isCentered? "transform: translateY(-50%)" : "";
+
     
     const panel = UI.createEl({
         classList:["secondSideMenu"],
         content,
-        cssText:`left:${marginRight}px; margin-left:var(--spacing-xs); top: ${marginTop}px;`});
+        cssText:`left:${marginRight}px; margin-left:var(--spacing-xs); top: ${marginTop}px; ${transform}`});
     document.body.appendChild(panel);
 }
 
 
+
+
+
+
+
 ui.editor_widgetsMenu=()=>{
 
+    let widgets = editor.widgetsHub.widgets;
+    
+    let widgetsBtnList = [];
+
+    const onWidgetMainButtonClicked=(target)=>{
+        console.log(target)
+        let w = widgetsHub.widgets[target.dataset.id];
+        if(w.onClickMainButton) w.onClickMainButton();
+        //To manage overriding default editor behaviour
+
+        console.log("Im properly wrapping: " + w.id );
+        //reset previews SideBarContent TODO
+        //set some styles and global state for "current Active Stuff"
+        //wrap widget SecondSideBarPanelContent and display it properly
+       
+        //Compose widget Panel:
+        let widgetPanel = UI.createEl({className:"dash_sideMenu_Content",content:w.panel()});
+        ui.openSecondSideMenu(target, widgetPanel, w.items(editor.currScene)==undefined)
+    }
+
+    for (const [wId, w] of Object.entries(widgets)) {
+        if(w.mainBtn){
+            let widgetButton = w.mainBtn();
+            widgetButton.addEventListener("click",function(){onWidgetMainButtonClicked(this)});
+            widgetsBtnList.push(widgetButton)
+        }
+    }
+    /*
     const onViewPointWidgetBtnClicked=(target)=>
         {
             var isCentered = editor.currScene.viewpoints? false : true;
@@ -613,10 +651,8 @@ ui.editor_widgetsMenu=()=>{
             UI.button({id:"measurementsBtn", icon:"measure",className:"fillContainer", text:"Measurements", attr:{disabled:true}})
         ]            
     });
-
+    */
     return widgetsBtnList;
-//    return ui.editor_widgets_layers();
-// "widgets panel"
 }
 
 ui.editor_sideInspector=(content=null)=>{
@@ -1235,7 +1271,8 @@ ui.initMediaQueries=()=>{ //NOT USED
 }
 
 
-const widget = {
+
+const widget = { //DRAFT
 
     init:()=>{}, //? 3D instances, UI additional setup, relations, delegates? Must be ordered?
     mainButton:()=>{}, //The button that will be displayed in accord with current UI Template: Sidebar
@@ -1248,7 +1285,10 @@ const widget = {
     events:{}
 }
 
-
+editor.InspectorPropertyMapper=
+{
+    "vector3":(v)=>{return}
+}
 
 
 
