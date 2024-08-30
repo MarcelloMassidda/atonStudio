@@ -4,10 +4,10 @@
 
 :root{
     --top-bar-size: 60px;
-    --dash-side-menu-width: 30vw;
+    --dash-side-menu-width: 15vw;
     --dash-main-width: calc( 100vw -  var(--dash-side-menu-width));
     
-    --editor-inspector-width: 20vw;
+    --editor-inspector-width: 15vw;
 
     --editor-panelMargin: var(--spacing-sm);
 }
@@ -64,9 +64,13 @@ background-color: blue;
 
 .dash_sideMenu_Content button
 {
-    width: 100%!important;
     background-color: var(--color-white);
     color: var(--color-textPrimary);
+}
+
+.fillContainer
+{
+    width: 100%!important;
 }
 
 .dash_sideMenu_Content button img{
@@ -75,7 +79,10 @@ background-color: blue;
     border-radius: var( --border-radius-sm);
 }
 
-
+.secondSideMenu{
+    position: absolute;
+    background-color: blue;
+}
 
 /*PageContainer*/
 .dash_mainPageContainer{
@@ -134,8 +141,10 @@ background-color: blue;
 .editorContainer_dash_sideMenu{
     top: calc( var(--top-bar-size) + var(--editor-panelMargin));
     position:absolute;
-    left: var(--editor-panelMargin)
+    left: var(--editor-panelMargin);
+    width: var(--dash-side-menu-width);
 }
+
 
 .editorContainer_inspector{
     top: calc( var(--top-bar-size) + var(--editor-panelMargin));
@@ -147,7 +156,7 @@ background-color: blue;
     /*width: var(--editor-inspector-width);*/
     /*background-color: purple;*/
 
-   padding: var(--spacing-sm);
+    padding: var(--spacing-sm);
     overflow-y:hidden;
     background-color: var(--color-backgroundPanel);
     color: var(--color-textPrimary);
@@ -163,23 +172,23 @@ background-color: blue;
 .editor_inspector input[type="number"]
 {
    border-color:transparent;
+   height: auto;
 }
 
-fieldset{
 
+fieldset{
     border: none;
     background-color: var(--color-gray-light);
     border-radius: var( --border-radius-md);
     padding: var(--spacing-sm);   
 }
   
+
 legend{
 padding-left: var(--spacing-sm);
 padding-right: var(--spacing-sm);
 margin-top: 0.3rem;
 }
-
-
 
 
 .editorContainer_centerToolbox{

@@ -1,3 +1,4 @@
+import {Widget} from './widget.js';
 
 let APP;
 let UI; //uitoolkit
@@ -5,21 +6,30 @@ let UI; //uitoolkit
 let db = {data:{}};
 
 let ui = {
+
     //Dashboard
     IDdash_mainContainer: "IDdash_mainContainer",
     //Editor
     IDeditor_saveSceneBtn: "IDeditor_saveSceneBtn",
     //Editor - SideMenu
+    ID_editorSideMainContainer: "ID_editorSideMainContainer",
     ID_editorSideMenu_Scene: "ID_editorSideMenu_Scene",
     ID_editorSideMenu_Widget: "ID_editorSideMenu_Widget",
+    //EDitor- Widget Panels
+    ID_widget_viewPoints:"ID_widget_viewPoints",
+
     //Editor - Inspector components:
     IDeditor_Inspector: "IDeditor_Inspector",
+
     IDeditor_inspectorTransform_pos: "IDeditor_inspectorTransform_pos",
     IDeditor_inspectorTransform_rot: "IDeditor_inspectorTransform_rot",
     IDeditor_inspectorTransform_scale: "IDeditor_inspectorTransform_scale",
+    
+    IDeditor_inspectorTransform_target:"IDeditor_inspectorTransform_target",
+
     //Editor - center Toolbox Container:
     IDeditor_centralToolBoxContainer: "IDeditor_centralToolBoxContainer",
-    //Gizmo
+    //Editor - Gizmo
     IDeditor_gizmoToolbox: "IDeditor_gizmoToolbox"
 };
 let utils = {};
@@ -192,7 +202,7 @@ ui.create3DEditor=(s=null)=>{
             let inspector = ui.editor_sideInspector();
             let gizmoToolBox =  ui.editor_gizmoControlToolbox();
             
-            document.body.appendChild(UI.createEl({className:"editorContainer_dash_sideMenu", content: sidemenu}));
+            document.body.appendChild(UI.createEl({id:ui.ID_editorSideMainContainer, className:"editorContainer_dash_sideMenu", content: sidemenu}));
             document.body.appendChild(UI.createEl({className:"editorContainer_dash_topBar", content: topBar}));
             document.body.appendChild(UI.createEl({className:"editorContainer_inspector", content: inspector}));
             document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));           
@@ -282,20 +292,20 @@ ui.editor_sideMenu=()=>{
 
 //WITH HATHOR SCENES CREATION objects inside the layers are not loaded as ATON-nodes: I can't edit transform properties.
 
-editor.setFocusOnNode=(nid)=>{
-    let node = ATON.getSceneNode(nid);
-    //Set Gloabal focused Object:
-    editor.activeNode = node;
-    
-    //configure and attach Gizmo
-    ATON.Nav.requestPOVbyNode(node,0.3);
-    editor.setGizmoByNID(nid);
-    document.getElementById(ui.IDeditor_centralToolBoxContainer).classList.remove("hidden");
+//To manage different objects and behaviours.
 
-    //compose Inspector
-    let infoNode = [
-        /*HEADER*/
-        UI.flexBox({
+editor.setFocusOnNode=(nid,type="node")=>{
+
+    let node = ATON.getSceneNode(nid);
+    let infoNode = null;
+
+    //Set Gloabal focused Object:
+    editor.activeNode = node;    
+    editor.activeNodeType = type;
+    
+    let inspectorHeader=(node)=>{
+
+       return UI.flexBox({
             dir:"row",
             justifyContent:"space-between",
             wrap:"nowrap",
@@ -303,21 +313,77 @@ editor.setFocusOnNode=(nid)=>{
                 UI.createEl({content:`Node ID: ${nid}<br> <small>uuid: ${node.uuid}</small>`}),
                 UI.button({icon:"cancel", onClick:editor.onCloseInspectorBtnClicked})
             ]
-        }),
-        /*PANEL - TRANSFORM*/
-        UI.vector3({id:ui.IDeditor_inspectorTransform_pos, property:"position", title:"position", v:node.position, onChange:editor.onTransformVector3Changed}),
-        UI.vector3({id:ui.IDeditor_inspectorTransform_rot ,property:"rotation", title:"rotation", v:node.rotation, onChange:editor.onTransformVector3Changed}),
-        UI.vector3({id:ui.IDeditor_inspectorTransform_scale, property:"scale", title:"scale", v:node.scale, onChange:editor.onTransformVector3Changed}),
-    ]
+        })
+    }
+
+    if(type=="node"){
+        
+        //MoveToNode
+        ATON.Nav.requestPOVbyNode(node,0.3);
+        //configure and attach Gizmo
+        editor.setGizmoByNID(nid);
+        document.getElementById(ui.IDeditor_centralToolBoxContainer).classList.remove("hidden");
+
+        //Compose Inspector
+        infoNode = [
+            /*HEADER*/
+            inspectorHeader(node),
+            /*PANEL*/
+
+            /*TRANSFORM*/
+            UI.vector3({id:ui.IDeditor_inspectorTransform_pos, property:"position", title:"position", v:node.position, onChange: editor.onTransformVector3Changed}),
+            UI.vector3({id:ui.IDeditor_inspectorTransform_rot ,property:"rotation", title:"rotation", v:node.rotation, onChange:editor.onTransformVector3Changed}),
+            UI.vector3({id:ui.IDeditor_inspectorTransform_scale, property:"scale", title:"scale", v:node.scale, onChange:editor.onTransformVector3Changed}),
+            
+            /*REMOVE NODE*/
+            UI.button({icon:"trash", text:"Remove Node", onClick:editor.onRemoveModelBtnClicked})
+        ]
+    }
+
+    if(type=="pov") {
+
+        //Move to POS of POV
+        let pos = node.children[0].children[0];
+        let target =  node.children[0].children[2];
+        ATON.Nav.requestPOVbyNode(node,0.3);
+        editor.setGizmoToPOV(pos); //Set gizmo to POS
+        
+        //COMPOSE Inspector:
+        infoNode= [
+
+            /*HEADER*/
+            inspectorHeader(node),
+            /*PANEL*/
+
+            /*TRANSFORM*/
+            UI.vector3({id:ui.IDeditor_inspectorPOV_pos, property:"position", title:"position", v: pos.position, onChange: editor.onPOVVector3Changed}),
+            UI.vector3({id:ui.IDeditor_inspectorPOV_target ,property:"target", title:"target", v: target.position, onChange:editor.onPOVVector3Changed}),
+            UI.input({type:"number", id:ui.IDeditor_inspectorPOV_fov,property:"fov", title:"fov", labelText:"fov", v:editor.currScene.viewpoints[node.nid].fov ,onChange:editor.onPOVfovChanged}),
+            
+            /*REMOVE NODE*/
+            UI.button({icon:"trash", text:"Remove Node", onClick:editor.onRemoveModelBtnClicked})
+        ]
+    }
+   
     ui.editor_sideInspector_update(infoNode);
+  
    // APP.UI.openDrawer(ui.IDeditor_Inspector+"_drawer");
 }
+
+editor.onPOVVector3Changed=(e)=>{
+    console.log("Vector 3 changed")
+    console.log(e);
+}
+editor.onPOVfovChanged=(e)=>{
+    console.log("fov changed")
+    console.log(e);
+}
+
 
 ui.editor_btn_atonNode=(nid)=>{
      
     const _onclick=()=>{ editor.setFocusOnNode(nid);}
-
-    return UI.button({text:nid,onClick:_onclick})
+    return UI.button({text:nid,className:"fillContainer", onClick:_onclick});
 }
 
 ui.objNameFromPath=(path)=> {return path.substring(path.lastIndexOf('/') + 1);}
@@ -339,7 +405,7 @@ ui.editor_btnUrlModel=(url)=>{
 }
 
 
-ui.editor_onAdd3DModelBtnClicked =  ()=>{
+ui.editor_onAdd3DModelBtnClicked =  ()=>{ //Added as HATHOR LAYER
 
     var onModelItemClicked= async (e)=>{
         const url = e.target.parentNode.dataset.path; //TO change
@@ -403,7 +469,13 @@ ui.editor_onAdd3DModelBtnClicked =  ()=>{
 
 
 
-ui.editor_btnAdd3DModel=()=>{return UI.button({icon:"add",onClick:ui.editor_onAdd3DModelBtnClicked,text:"Add a 3D Model</br><small>As HATHOR Layer</small>"})}
+ui.editor_btnAdd3DModel=()=>{
+    return UI.button({
+        icon:"add",
+        className:"fillContainer",
+        onClick:ui.editor_onAdd3DModelBtnClicked,
+        text:"Add a 3D Model</br><small>As HATHOR Layer</small>"}
+    )}
 
 ui.editor_scenehierarchy=()=>{
 
@@ -421,17 +493,65 @@ ui.editor_scenehierarchy=()=>{
 
         if(graph.urls){ 
             _graph = `${graph.urls.length} objects: `;
-            _graph+= graph.urls.map(url=>{ return ui.objNameFromPath(url)+" "});
+            _graph += graph.urls.map(url=>{ return ui.objNameFromPath(url)+" "});
         }
             hierarchyContent.push( UI.createEl({content:[ui.editor_btn_atonNode(key), _graph]}))
     }
         hierarchyContent.push(ui.editor_btnAdd3DModel())
         return hierarchyContent;
 }
-      
 
 
-ui.editor_widgets_layers=()=>{
+ui.headerPanel=(title, btn=null)=>{
+    return UI.flexBox({
+        dir: "row",
+        content:[title,btn],
+        justifyContent:"space-between"
+    })
+}
+
+
+ui.editor_widgets_viewpoints=()=>{
+
+    const onClickViewPointItem=(id)=>{
+        //In
+        let vp = editor.currScene.viewpoints[id];
+        console.log(vp);
+        let _nid = id;
+        let POV_Icon_Node = ATON.createSceneNode(_nid); 
+        POV_Icon_Node.attachToRoot();
+        const IconPOV = UI.POV_3Dicon(vp.position, vp.target);
+        editor.POV_Icon_Node = POV_Icon_Node;
+        POV_Icon_Node.add(IconPOV);
+        
+        editor.setFocusOnNode(_nid,"pov");
+    }
+
+    const IDPanel = ui.ID_widget_viewPoints; 
+    let viewpoints = editor.currScene.viewpoints;
+    let AddNewViewPointBtn = UI.button({icon:"add",text:"Add new ViewPoint"});
+    
+    if(!viewpoints) return AddNewViewPointBtn;
+    
+    let viewpointList  = [];
+    for (const [id, viewpoint] of Object.entries(viewpoints)){
+        viewpointList.push(UI.button({icon:"pov",text:id,onClick:()=>onClickViewPointItem(id),className:"fillContainer"}));
+    }
+    viewpointList.push(AddNewViewPointBtn);
+    
+    return UI.createEl({
+        id: IDPanel,
+        classList:["dash_sideMenu_Content"],
+        content: [
+            ui.headerPanel("Viewpoints",UI.button({ icon:"cancel", className:"small", onClick:()=>ui.closeSecondSideMenu(IDPanel)})),
+            viewpointList]
+    });
+
+    //To add title... todo
+}
+
+
+ui.editor_widgets_layers=()=>{ //TEMPORARY ADDED AS SUMMARIZED WIDGET
 
     let _summary = [];
 
@@ -441,14 +561,62 @@ ui.editor_widgets_layers=()=>{
         let _graph = "No objects in this layer";
         if(graph.urls){ _graph = graph.urls.map(url=>{ return ui.editor_btnUrlModel(url)});}
         _summary.push({header:key,content:_graph})
-    }
-      
+    }  
     return UI.summarize( _summary);
-
 }
 
+
+
+ui.closeSecondSideMenu=(id=null)=>{
+    var _id = id? id : editor.ID_SecondSideMenuCurrentlyActive;
+    if(!_id) return;
+    var secondSidePanel = document.getElementById(_id);
+    if(secondSidePanel) secondSidePanel.remove();
+}
+
+ui.openSecondSideMenu=(target,content, isCentered=false)=>{
+    
+    //Close existing panel
+    ui.closeSecondSideMenu(); 
+
+    //Set position near to target clicked:
+    const rect = target.getBoundingClientRect();
+    var marginRight = rect.right;
+    var marginTop = isCentered? (rect.bottom-rect.top) : rect.top;
+    
+    const panel = UI.createEl({
+        classList:["secondSideMenu"],
+        content,
+        cssText:`left:${marginRight}px; margin-left:var(--spacing-xs); top: ${marginTop}px;`});
+    document.body.appendChild(panel);
+}
+
+
 ui.editor_widgetsMenu=()=>{
-return "widgets panel"
+
+    const onViewPointWidgetBtnClicked=(target)=>
+        {
+            var isCentered = editor.currScene.viewpoints? false : true;
+            if(!isCentered) target = document.getElementById(ui.ID_editorSideMainContainer);
+
+            ui.openSecondSideMenu(target, ui.editor_widgets_viewpoints(), isCentered);
+            editor.ID_SecondSideMenuCurrentlyActive = ui.ID_widget_viewPoints;
+        }
+
+   const widgetsBtnList = UI.createEl({
+        id:ui.ID_editorSideMainContainer,
+        className:"dash_sideMenu_Content",
+        content:[
+            UI.button({id:"layersBtn", icon:"layers", text:"Layers", className:"fillContainer", attr:{disabled:true}}),
+            UI.button({id:"viewpointsBtn", icon:"pov", text:"ViewPoint",className:"fillContainer", onClick:function(){onViewPointWidgetBtnClicked(this)}}),
+            UI.button({id:"annotationsBtn", icon:"ann-sphere",className:"fillContainer", text:"Annotations", attr:{disabled:true}}),
+            UI.button({id:"measurementsBtn", icon:"measure",className:"fillContainer", text:"Measurements", attr:{disabled:true}})
+        ]            
+    });
+
+    return widgetsBtnList;
+//    return ui.editor_widgets_layers();
+// "widgets panel"
 }
 
 ui.editor_sideInspector=(content=null)=>{
@@ -783,13 +951,48 @@ db.setSceneVisibility=(sid,vis,callback=null)=>{
 EDITOR 3D Management
 =============*/
 
+editor.onRemoveModelBtnClicked=async()=>{
+    if(!editor.activeNode) return;
+    let nid = APP.dashboard.editor.activeNode.nid;
+    
+    //prompt conferm todo
+    var conferm = await UI.promptConfermDialog({body:"Vuoi eliminare questo oggetto?", confermText:"ELIMINA", resumeText:"ANNULLA"});
+    if(!conferm) return;
+
+     const onRemoveConfermed = ()=>{
+        console.log("CANCELING: " + nid);
+ 
+        //Realtime Changes:
+        UI.detachGizmo();
+        APP.dashboard.editor.activeNode.delete();
+        delete APP.dashboard.editor.currScene.scenegraph.nodes[nid];
+        
+        //Local SceneGraph changes:
+        var _edges = APP.dashboard.editor.currScene.scenegraph.edges["."];
+        const i = _edges.indexOf(nid);
+        if(i <= -1) window.alert("error removing node");
+        APP.dashboard.editor.currScene.scenegraph.edges["."] = _edges.splice(i, 1);
+        
+        //Patch
+        const bodyPatch = {
+            type:"removeNode",
+            nid
+        };
+
+        editor.composePatch(bodyPatch);
+        ui.editor_updateHierarchy();
+        editor.onCloseInspectorBtnClicked();
+    }
+
+    onRemoveConfermed();
+}
 
 editor.onTransformVector3Changed=(evt)=>{
   
     window.e = evt;
     let property = evt.target.dataset.property; //can be position / rotation / scale
     let dimension = evt.target.name; //can be x/y/z
-    let value = parseFloat(evt.target.value.replaceAll(",",".")); //float value TO VALIDATE and CLAMP !!!!!
+    let value = parseFloat(evt.target.value.replaceAll(",",".")); //float value TO VALIDATE and CLAMP !!!!! avoid 001
     
     // console.log("Vector 3 changed: " + property + ": " + dimension + ": " + value);
     
@@ -832,11 +1035,12 @@ editor.sendGlobalScenePatch=()=>{
     if( !editor.patch || editor.patch=={} ){console.log("SCENE PATCH NOT EXIST");  return}
     let _sid = editor.currSID;
     let _patch = editor.patch;
-    let _mode = ATON.SceneHub.MODE_ADD;
+    let _mode =  editor.modePatch;
+    editor.modePatch=null;
+   
     let _onComplete = ()=>{
         console.log("SAVED");
     }
-    
     db.sendSceneEdit( _sid, _patch, _mode, _onComplete);
 }
 
@@ -889,7 +1093,6 @@ editor.onGizmoMouseUp=(evt)=>{
         };
        
         editor.composePatch(bodyPatch);
-        
       }
 }
 
@@ -901,8 +1104,11 @@ editor.composePatch=(o)=>{
     let _patch = null;
     
     if(o.type=="transformNode"){
+        
+        editor.modePatch = ATON.SceneHub.MODE_ADD;
+        
         console.log("type of action is: " + o.type + ": dimension: " + o.dimension);
-        console.log(o)
+        console.log(o);
         /*
         type:"transform"
         nid  ....maybe not?
@@ -947,6 +1153,8 @@ editor.composePatch=(o)=>{
 
     if(o.type=="addNode"){
         
+        editor.modePatch = ATON.SceneHub.MODE_ADD;
+
         const nid = o.nid;
         const nodeBody = o.nodeBody;
 
@@ -955,6 +1163,12 @@ editor.composePatch=(o)=>{
         
         _patch.scenegraph.nodes[nid] = nodeBody;
         _patch.scenegraph.edges = editor.currScene.scenegraph.edges;
+    }
+    
+    if(o.type=="removeNode"){
+        editor.modePatch = ATON.SceneHub.MODE_DEL;
+        let nodes={};  nodes[o.nid]= {};
+        _patch = editor.patch? editor.patch : {scenegraph:{nodes, edges:{".":[o.nid]}}};
     }
 
     editor.patch = _patch;
@@ -967,11 +1181,25 @@ editor.updateVector3UI =(idContainer,_v)=>{
      document.querySelector(`#${idContainer} [name="z"]`).value = _v.z;
 }
 
+editor.setGizmoToPOV=(povNode)=>{
+    
+    function onGizmoMovePOV(){
+        var obj = ATON._gizmo.object;
+        console.log(obj)
+    }
+    
+    UI.attachGizmoByNode(povNode);
+    ATON._gizmo.addEventListener("dragging-changed",onGizmoMovePOV);
+
+}
+
 editor.setGizmoByNID=(nid,mode=null)=>{
+
     if(mode==null){
         if(ATON._gizmo) mode = ATON._gizmo.mode;
         else{mode="translate"}
     }
+
     console.log("setting GIMZO in editor")
     UI.attachGizmoBynid(nid,mode);
     if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
@@ -984,7 +1212,6 @@ editor.onCloseInspectorBtnClicked=()=>{
     /*detach Gizmo*/ UI.detachGizmo();
     editor.activeNode = null;
 }
-
 
 
 ui.initMediaQueries=()=>{ //NOT USED
@@ -1005,9 +1232,24 @@ ui.initMediaQueries=()=>{ //NOT USED
     ui.mediaQuery_max_XS = window.matchMedia('(max-width: 576px)');
     if(ui.mediaQuery_max_XS.matches) handle_max_xs({matches:true})
     ui.mediaQuery_max_XS.addListener(handle_max_xs);
-
-   
 }
+
+
+const widget = {
+
+    init:()=>{}, //? 3D instances, UI additional setup, relations, delegates? Must be ordered?
+    mainButton:()=>{}, //The button that will be displayed in accord with current UI Template: Sidebar
+    mainPanel:()=>{}, //The Panel that will be displayed in accord with current UI Template: SecondSidebar
+    create:()=>{}, //Wizards to create a widgetInstance
+    onCreate:()=>{}, //What happends on end Creation
+    patch:()=>{}, //Compose patch according with CRUD operations
+    inspector:()=>{}, //Compose inspector panels, according with components of widgetInstance
+    /*????*/
+    events:{}
+}
+
+
+
 
 
 export {dashboard};
