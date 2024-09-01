@@ -15,6 +15,7 @@ let ui = {
     ID_editorSideMainContainer: "ID_editorSideMainContainer",
     ID_editorSideMenu_Scene: "ID_editorSideMenu_Scene",
     ID_editorSideMenu_Widget: "ID_editorSideMenu_Widget",
+    ID_SecondSideMenuCurrentlyActive:"ID_SecondSideMenuCurrentlyActive",
     //EDitor- Widget Panels
     ID_widget_viewPoints:"ID_widget_viewPoints",
 
@@ -568,14 +569,14 @@ ui.editor_widgets_layers=()=>{ //TEMPORARY ADDED AS SUMMARIZED WIDGET
 
 
 ui.closeSecondSideMenu=(id=null)=>{
-    var _id = id? id : editor.ID_SecondSideMenuCurrentlyActive;
+    var _id = id? id : ui.ID_SecondSideMenuCurrentlyActive;
     if(!_id) return;
     var secondSidePanel = document.getElementById(_id);
     if(secondSidePanel) secondSidePanel.remove();
 }
 
 ui.openSecondSideMenu=(target,content, isCentered=false)=>{
-    console.log("isCentered is: " + isCentered )
+    console.log("isCentered is: " + isCentered );
     //Close existing panel
     ui.closeSecondSideMenu(); 
 
@@ -590,6 +591,7 @@ ui.openSecondSideMenu=(target,content, isCentered=false)=>{
 
     
     const panel = UI.createEl({
+        id:ui.ID_SecondSideMenuCurrentlyActive,
         classList:["secondSideMenu"],
         content,
         cssText:`left:${marginRight}px; margin-left:var(--spacing-xs); top: ${marginTop}px; ${transform}`});
@@ -609,18 +611,14 @@ ui.editor_widgetsMenu=()=>{
     let widgetsBtnList = [];
 
     const onWidgetMainButtonClicked=(target)=>{
-        console.log(target)
-        let w = widgetsHub.widgets[target.dataset.id];
-        if(w.onClickMainButton) w.onClickMainButton();
-        //To manage overriding default editor behaviour
-
+        console.log(target);
+        if(!target.dataset.id) throw("Issues with: " + target);
+        let w = widgets[target.dataset.id];
         console.log("Im properly wrapping: " + w.id );
-        //reset previews SideBarContent TODO
-        //set some styles and global state for "current Active Stuff"
-        //wrap widget SecondSideBarPanelContent and display it properly
-       
+        
         //Compose widget Panel:
-        let widgetPanel = UI.createEl({className:"dash_sideMenu_Content",content:w.panel()});
+         let widgetPanel = w.mainPanel? UI.createEl({className:"dash_sideMenu_Content",content:w.mainPanel()}) : "";
+        
         ui.openSecondSideMenu(target, widgetPanel, w.items(editor.currScene)==undefined)
     }
 

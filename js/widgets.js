@@ -11,6 +11,8 @@ widgetsHub.init=(_APP)=>{
 
     /*Builtin Widgets:*/
     widgetsHub.registerWidget(viewpoints_widget);
+    widgetsHub.registerWidget(measurements_widget);
+    
     //to add others...
 
     /*Init Widgets:*/
@@ -22,14 +24,18 @@ widgetsHub.init=(_APP)=>{
 }
 
 /*DEFAULT UI FOR EDITOR*/
-widgetsHub.simpleWidgetBtn=(id,text,icon,attr=null)=>{
-    return UI.button({id,icon,text,attr,className:"fillContainer"})
+widgetsHub.mainBtnBase=(o)=>{
+    //id,text,icon,attr=null,onClick
+    let b = UI.button(o);
+    b.classList.add("fillContainer");
+    return b;
+    //return UI.button({id,icon,text,attr,className:"fillContainer"})
 }
 
-widgetsHub.simpleWidgetInstanceBtn=(text,icon,id)=>{
-    let b = widgetsHub.simpleWidgetBtn(text,icon);
-    b.setAttribute("data-id",id);
-    b.addEventListener("click",widgets.onClickInFocus)
+widgetsHub.itemBtnBase=(o)=>{
+    let b = widgetsHub.mainBtnBase(o);
+   // b.setAttribute("data-id",id);
+   // b.addEventListener("click",widgets.onClickInFocus)
     return b;
 }
 
@@ -67,15 +73,107 @@ widgetsHub.simpleWidgetPanel=(w)=>{
 widgetsHub.currScene = ()=> {return APP.dashboard.db.data.currScene}
 
 
+widgetsHub.widget = (o)=>{
+    
+    if(!o.id){throw("ID is required for widget")}
+    
+    if(!o.mainBtn) {
+        if(!o.mainBtnOptions) throw(o.id+": mainBtn or mainBtnOptions is required");
+
+        let _mainBtnOptions = o.mainBtnOptions;
+        _mainBtnOptions.attr={"data-id":o.id};
+        
+        o.mainBtn=()=>{return widgetsHub.mainBtnBase(o.mainBtnOptions)}
+    }
+
+    if(!o.itemBtn){
+        if(!o.itemBtnOptions) throw(o.id+" :itemBtn or itemBtnOptions is required");
+        o.itemBtn=(id,item)=>{return widgetsHub.itemBtnBase({icon:o.itemBtnOptions.icon,id,text:id,attr:{"data-id":id}})}
+    }
+
+    if(!o.createBtn){
+        if(!o.createBtnOptions) throw(o.id+" :createBtn or createBtnOptions is required");
+        let _createBtnOptions = o.createBtnOptions;
+        _createBtnOptions.attr={"data-id":o.id};
+        
+        o.createBtn=()=>{
+            console.log(_createBtnOptions);
+            return widgetsHub.itemBtnBase(_createBtnOptions)}
+    }
+
+    if(!o.items){o.items=()=>{console.log("getting: " + o.id); return widgetsHub.currScene()[o.id]}}
+
+    
+    if(!o.mainPanel){
+        o.mainPanel=()=>{
+            let _mainPanel = [];
+            if(o.items && o.itemBtn){
+            console.log("MAIN PANEL CREATION OF " + o.id);
+                let _items = o.items();
+                console.log(_items);
+                if(_items){ //To check if != undefined and Object.entries(_items).length>0
+                    for (const [_id, _item] of Object.entries(_items)){
+                        let i = o.itemBtn(_id,_item); console.log(i)
+                        _mainPanel.push(i);
+                    }
+                }
+            }
+            console.log("1")
+            _mainPanel.push(o.createBtn());
+            console.log("2")
+            return _mainPanel;
+        }
+    } 
+
+    if(!o.init){
+        if(o.items && o.addItemToScene){
+            o.init=()=>{
+                let _items = o.items(widgetsHub.currScene());
+                if(!_items) {console.log("NO " +o.id+" IN SCENE"); return;}
+                
+                for (const [_id, _item] of Object.entries(_items)){
+                    o.addItemToScene(_id,_item)
+                }
+            }   
+        }
+    }
+    //if(!o.itemBtn)
+    return o;
+}
 
 
 widgetsHub.registerWidget=(widget)=>{
     widgets[widget.id]= widget;
 }
 
-let viewpoints_widget = {
+let viewpoints_widget = widgetsHub.widget({
+    id:"viewpoints",
+    mainBtnOptions:{id:"viewpoints_mainBtn",text:"View Points",icon:"pov"},
+    itemBtnOptions:{icon:"pov"},
+    createBtnOptions:{text:"Add new viewpoint",icon:"add"},
+    addItemToScene:(vId,vp)=>{
+        let _nid = vId;
+        let POV_Icon_Node = ATON.createSceneNode(_nid); 
+        POV_Icon_Node.attachToRoot();
+        const IconPOV = UI.POV_3Dicon(vp.position, vp.target);
+        POV_Icon_Node.add(IconPOV);
+    }
+});
+
+
+let measurements_widget = widgetsHub.widget({
+    id:"measurements",
+    mainBtnOptions:{id:"measurements_mainBtn",text:"Measurements",icon:"measure"},
+    itemBtnOptions:{icon:"measure"},
+    createBtnOptions:{text:"Add new measurement",icon:"add"}
+});
+
+
+
+let OLD_viewpoints_widget = {
 
     id:"viewpoints",
+    /**/
     init:function(){
         console.log('%c viewPoints widget Init', 'color: yellow;');
         let items = this.items(widgetsHub.currScene());
@@ -88,12 +186,12 @@ let viewpoints_widget = {
 
     //Main Btn
     onClickMainButton:function(){console.log(`${this.id} main Button Clicked`)},
-    mainBtn:function(){return widgetsHub.simpleWidgetBtn(`${this.id}_mainBtn`,"View Points","pov",{"data-id":this.id})},
+    mainBtn:function(){return widgetsHub.mainBtnBase(`${this.id}_mainBtn`,"View Points","pov",{"data-id":this.id})},
     //Panel
     titlePanel: "View Points",
     items:(s)=>{console.log("truying");console.log(s);return s.viewpoints},
-    itemBtn: (v_id,v)=>{return widgetsHub.simpleWidgetBtn(`${v_id}_itemBtn`,`POV: ${v_id}`,"pov",{"data-id":v_id})},
-    createBtn:function(){return widgetsHub.simpleWidgetBtn(`${this.id}_createBtn`,"Create new View Point","add")},
+    itemBtn: (v_id,v)=>{return widgetsHub.mainBtnBase(`${v_id}_itemBtn`,`POV: ${v_id}`,"pov",{"data-id":v_id})},
+    createBtn:function(){return widgetsHub.mainBtnBase(`${this.id}_createBtn`,"Create new View Point","add")},
     panel:function(){return widgetsHub.simpleWidgetPanel(this)},
     
     onClickItem:(btn)=>{
