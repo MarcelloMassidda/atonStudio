@@ -202,7 +202,7 @@ ui.create3DEditor=(s=null)=>{
 
             let sidemenu = ui.editor_sideMenu();
             let topBar = ui.editor_topBar(s);
-            let inspector = ui.editor_sideInspector();
+            let inspector = ui.editor_createInspector();
             let gizmoToolBox =  ui.editor_gizmoControlToolbox();
             
             document.body.appendChild(UI.createEl({id:ui.ID_editorSideMainContainer, className:"editorContainer_dash_sideMenu", content: sidemenu}));
@@ -240,13 +240,13 @@ ui.editor_sideMenu=()=>{
             tab: UI.createEl({
                 id: ui.ID_editorSideMenu_Widget,
                 className:"dash_sideMenu_Content",
-                content:ui.editor_widgetsMenu()
+                content:ui.editor_widgetsListPanel()
             })
         }
     ]
 
     const onClickTabLink=(evt, id)=>{
-
+        ui.closeSecondSideMenu();
         tabs.forEach(t => {
             //toggle content
             var isActive = t.tab.id == id;
@@ -296,6 +296,7 @@ ui.editor_sideMenu=()=>{
 
 //To manage different objects and behaviours.
 
+
 editor.setFocusOnNode=(nid,type="node")=>{
 
     let node = ATON.getSceneNode(nid);
@@ -305,18 +306,7 @@ editor.setFocusOnNode=(nid,type="node")=>{
     editor.activeNode = node;    
     editor.activeNodeType = type;
     
-    let inspectorHeader=(node)=>{
-
-       return UI.flexBox({
-            dir:"row",
-            justifyContent:"space-between",
-            wrap:"nowrap",
-            content:[
-                UI.createEl({content:`Node ID: ${nid}<br> <small>uuid: ${node.uuid}</small>`}),
-                UI.button({icon:"cancel", onClick:editor.onCloseInspectorBtnClicked})
-            ]
-        })
-    }
+   
 
     if(type=="node"){
         
@@ -327,9 +317,11 @@ editor.setFocusOnNode=(nid,type="node")=>{
         document.getElementById(ui.IDeditor_centralToolBoxContainer).classList.remove("hidden");
 
         //Compose Inspector
+        let header =`Node ID: ${nid}<br> <small>uuid: ${node.uuid}</small>`;
         infoNode = [
             /*HEADER*/
-            inspectorHeader(node),
+           
+            ui.inspectorHeader(header),
             /*PANEL*/
 
             /*TRANSFORM*/
@@ -351,10 +343,11 @@ editor.setFocusOnNode=(nid,type="node")=>{
         editor.setGizmoToPOV(pos); //Set gizmo to POS
         
         //COMPOSE Inspector:
+        let header =`Node ID: ${nid}<br> <small>uuid: ${node.uuid}</small>`;
         infoNode= [
 
             /*HEADER*/
-            inspectorHeader(node),
+            inspectorHeader(header),
             /*PANEL*/
 
             /*TRANSFORM*/
@@ -367,7 +360,7 @@ editor.setFocusOnNode=(nid,type="node")=>{
         ]
     }
    
-    ui.editor_sideInspector_update(infoNode);
+    ui.editor_createInspector(infoNode);
   
    // APP.UI.openDrawer(ui.IDeditor_Inspector+"_drawer");
 }
@@ -601,10 +594,69 @@ ui.openSecondSideMenu=(target,content, isCentered=false)=>{
 
 
 
+ui.editor_widgetMainPanel_Title=(t)=> {return `${t}<br>---------------<br>`;}
+
+ui.editor_widgetMainPanel=(w)=>{
+    
+    let _mainPanelContent = [];
+    //Title:
+    if(w.mainPanelOptions){
+        if(w.mainPanelOptions.title) _mainPanelContent.push(ui.editor_widgetMainPanel_Title(w.mainPanelOptions.title))
+    }
+
+    const onItemBtnClicked=(target)=>{
+        let id = target.dataset.id;
+        let wid = target.dataset.wid;
+        
+        let widgets = editor.widgetsHub.widgets;
+        let w = widgets[wid];
+        let item = w.returnItem(id);
+
+        editor.activeNode = item;
+        editor.activeWidget = editor.widgetsHub.widgets[wid];
+
+        //3d focus
+        if(w.focusHandler) w.focusHandler(id);
+        
+        //inspector:
+        let _inspectorContent = [];
+
+        //-header
+        let headerContent = w.item_inspector_header(id)
+        if(w.item_inspector_header) _inspectorContent.push( ui.inspectorHeader( headerContent ));
+        if(w.props){
+            for (const [prop, parser] of Object.entries(w.props)){
+                _inspectorContent.push(parser(item))
+            }
+        }
+        //-blocks
+        ui.editor_createInspector(_inspectorContent);
+    }
+
+    //Items:
+    if(w.items && w.itemBtn){
+    console.log("MAIN PANEL CREATION OF " + w.id);
+        let _items = w.items();
+        w._items = _items;
+        console.log(_items);
+        if(_items){
+            for (const [_id, _item] of Object.entries(_items)){
+                let itemBtn = w.itemBtn(_id,_item);
+                itemBtn.addEventListener("click",function(){onItemBtnClicked(this)});
+                _mainPanelContent.push(itemBtn);
+            }
+        }
+    }
+    //Add New Item BTN:
+    _mainPanelContent.push(w.createBtn());
+   
+    let _panel = UI.createEl({className:"dash_sideMenu_Content",content:_mainPanelContent});
+    console.log(_panel)
+    return _panel;
+}
 
 
-
-ui.editor_widgetsMenu=()=>{
+ui.editor_widgetsListPanel=()=>{
 
     let widgets = editor.widgetsHub.widgets;
     
@@ -617,9 +669,8 @@ ui.editor_widgetsMenu=()=>{
         console.log("Im properly wrapping: " + w.id );
         
         //Compose widget Panel:
-         let widgetPanel = w.mainPanel? UI.createEl({className:"dash_sideMenu_Content",content:w.mainPanel()}) : "";
-        
-        ui.openSecondSideMenu(target, widgetPanel, w.items(editor.currScene)==undefined)
+        let widgetMainPanel = ui.editor_widgetMainPanel(w);
+        ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null)
     }
 
     for (const [wId, w] of Object.entries(widgets)) {
@@ -629,30 +680,35 @@ ui.editor_widgetsMenu=()=>{
             widgetsBtnList.push(widgetButton)
         }
     }
-    /*
-    const onViewPointWidgetBtnClicked=(target)=>
-        {
-            var isCentered = editor.currScene.viewpoints? false : true;
-            if(!isCentered) target = document.getElementById(ui.ID_editorSideMainContainer);
-
-            ui.openSecondSideMenu(target, ui.editor_widgets_viewpoints(), isCentered);
-            editor.ID_SecondSideMenuCurrentlyActive = ui.ID_widget_viewPoints;
-        }
-
-   const widgetsBtnList = UI.createEl({
-        id:ui.ID_editorSideMainContainer,
-        className:"dash_sideMenu_Content",
-        content:[
-            UI.button({id:"layersBtn", icon:"layers", text:"Layers", className:"fillContainer", attr:{disabled:true}}),
-            UI.button({id:"viewpointsBtn", icon:"pov", text:"ViewPoint",className:"fillContainer", onClick:function(){onViewPointWidgetBtnClicked(this)}}),
-            UI.button({id:"annotationsBtn", icon:"ann-sphere",className:"fillContainer", text:"Annotations", attr:{disabled:true}}),
-            UI.button({id:"measurementsBtn", icon:"measure",className:"fillContainer", text:"Measurements", attr:{disabled:true}})
-        ]            
-    });
-    */
+    
     return widgetsBtnList;
 }
 
+ui.inspectorHeader=(headContent)=>{
+
+       return UI.flexBox({
+            dir:"row",
+            justifyContent:"space-between",
+            wrap:"nowrap",
+            content:[
+                UI.createEl({content:headContent}),
+                UI.button({icon:"cancel", onClick:editor.onCloseInspectorBtnClicked})
+            ]
+        })
+}
+
+ui.editor_createInspector=(content=null)=>{
+    let contentInspector = content? content :"My default Inpsector content";
+    let objInspector = UI.createEl({id:ui.IDeditor_Inspector,className:"editor_inspector", content:contentInspector});
+
+    var container = document.querySelector(".editorContainer_inspector");
+    if(!container){ container = UI.createEl({className:"editorContainer_inspector"});}
+    container.innerHTML = "";
+   
+    UI.addContent(container,objInspector); 
+}
+
+/*
 ui.editor_sideInspector=(content=null)=>{
 
     let InspectorContent = content? content :"My default Inpsector content";
@@ -664,9 +720,10 @@ ui.editor_sideInspector=(content=null)=>{
         position:"right"
     })
     */ 
-};
+//};
 
-ui.editor_sideInspector_update=(content)=>{
+/*
+ui.editor_sideInspector_update=(content)=>{ //??
     let _inspector = document.getElementById(ui.IDeditor_Inspector);
     if(_inspector){ _inspector.innerHTML = ""; UI.addContent(_inspector,content)}
     else {
@@ -676,6 +733,7 @@ ui.editor_sideInspector_update=(content)=>{
        
     }
 }
+*/
 
 ui.editor_topBar = (s=null)=>{
 
@@ -1225,6 +1283,16 @@ editor.setGizmoToPOV=(povNode)=>{
     UI.attachGizmoByNode(povNode);
     ATON._gizmo.addEventListener("dragging-changed",onGizmoMovePOV);
 
+}
+
+editor.setGizmoByNode=(node,mode=null)=>{
+    if(mode==null){
+        if(ATON._gizmo) mode = ATON._gizmo.mode;
+        else{mode="translate"}
+    }
+
+    UI.attachGizmoByNode(node,mode);
+    if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
 }
 
 editor.setGizmoByNID=(nid,mode=null)=>{
