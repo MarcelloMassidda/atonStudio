@@ -604,6 +604,7 @@ ui.editor_widgetMainPanel=(w)=>{
         if(w.mainPanelOptions.title) _mainPanelContent.push(ui.editor_widgetMainPanel_Title(w.mainPanelOptions.title))
     }
 
+    /*
     const onItemBtnClicked=(target)=>{
         let id = target.dataset.id;
         let wid = target.dataset.wid;
@@ -611,11 +612,12 @@ ui.editor_widgetMainPanel=(w)=>{
         let widgets = editor.widgetsHub.widgets;
         let w = widgets[wid];
         let item = w.returnItem(id);
+        console.log(item)
 
         editor.activeNode = item;
         editor.activeWidget = editor.widgetsHub.widgets[wid];
 
-        //3d focus
+        //widget-based3d focus
         if(w.focusHandler) w.focusHandler(id);
         
         //inspector:
@@ -632,6 +634,7 @@ ui.editor_widgetMainPanel=(w)=>{
         //-blocks
         ui.editor_createInspector(_inspectorContent);
     }
+    */
 
     //Items:
     if(w.items && w.itemBtn){
@@ -642,7 +645,7 @@ ui.editor_widgetMainPanel=(w)=>{
         if(_items){
             for (const [_id, _item] of Object.entries(_items)){
                 let itemBtn = w.itemBtn(_id,_item);
-                itemBtn.addEventListener("click",function(){onItemBtnClicked(this)});
+               // itemBtn.addEventListener("click",function(){onItemBtnClicked(this)});
                 _mainPanelContent.push(itemBtn);
             }
         }
@@ -663,6 +666,8 @@ ui.editor_widgetsListPanel=()=>{
     let widgetsBtnList = [];
 
     const onWidgetMainButtonClicked=(target)=>{
+        //TODO: RESET PREVIEWS ACTIVE NODE WITH WIDGET DEACTIVE ITEM CALLBACK
+
         console.log(target);
         if(!target.dataset.id) throw("Issues with: " + target);
         let w = widgets[target.dataset.id];
@@ -1137,7 +1142,9 @@ editor.sendGlobalScenePatch=()=>{
 }
 
 
+
 editor.onGizmoMouseUp=(evt)=>{
+    
     console.log("editor handler: "); console.log(evt); window.gizmoEVT = evt;
     if(ATON._gizmo.object.uuid != APP.dashboard.editor.activeNode.uuid) return;
 
@@ -1273,26 +1280,15 @@ editor.updateVector3UI =(idContainer,_v)=>{
      document.querySelector(`#${idContainer} [name="z"]`).value = _v.z;
 }
 
-editor.setGizmoToPOV=(povNode)=>{
-    
-    function onGizmoMovePOV(){
-        var obj = ATON._gizmo.object;
-        console.log(obj)
-    }
-    
-    UI.attachGizmoByNode(povNode);
-    ATON._gizmo.addEventListener("dragging-changed",onGizmoMovePOV);
-
-}
-
+//GIZMO CONTROLLER:
 editor.setGizmoByNode=(node,mode=null)=>{
+    
     if(mode==null){
-        if(ATON._gizmo) mode = ATON._gizmo.mode;
+        if(ATON._gizmo){ mode = ATON._gizmo.mode;}
         else{mode="translate"}
     }
-
     UI.attachGizmoByNode(node,mode);
-    if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
+    //if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
 }
 
 editor.setGizmoByNID=(nid,mode=null)=>{
@@ -1304,7 +1300,7 @@ editor.setGizmoByNID=(nid,mode=null)=>{
 
     console.log("setting GIMZO in editor")
     UI.attachGizmoBynid(nid,mode);
-    if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
+    //if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
 }
 
 
