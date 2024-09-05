@@ -1,4 +1,4 @@
-import {widgetsHub} from './widgets.js';
+import {widgetsHub} from './widgetHub.js';
 
 let APP;
 let UI; //uitoolkit
@@ -68,7 +68,6 @@ dashboard.init = () => {
 
 /* dashboard.ui
 =====================*/
-
 
 
 ui.createDashboard=()=>{
@@ -210,6 +209,8 @@ ui.create3DEditor=(s=null)=>{
             document.body.appendChild(UI.createEl({className:"editorContainer_inspector", content: inspector}));
             document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));
 }
+
+
 
 ui.editor_updateHierarchy=()=>{
     var HierarchyContainer = document.getElementById(ui.ID_editorSideMenu_Scene);
@@ -474,8 +475,9 @@ ui.editor_btnAdd3DModel=()=>{
 
 ui.editor_scenehierarchy=()=>{
 
-    var hierarchyContent = [];
+    return ui.editor_widgetMainPanel(editor.widgetsHub.widgets.layers);
 
+    var hierarchyContent = [];
     //If it's an empty scene with no HATHOR Layers
     /*if(Object.keys(editor.currScene.scenegraph.nodes).length == 0){
         hierarchyContent.push(ui.editor_btnAdd3DModel())
@@ -504,61 +506,6 @@ ui.headerPanel=(title, btn=null)=>{
         justifyContent:"space-between"
     })
 }
-
-
-//OLD
-ui.editor_widgets_viewpoints=()=>{
-
-    const onClickViewPointItem=(id)=>{
-        
-        let vp = editor.currScene.viewpoints[id];
-        console.log(vp);
-        let _nid = id;
-        let POV_Icon_Node = ATON.createSceneNode(_nid); 
-        POV_Icon_Node.attachToRoot();
-        const IconPOV = UI.POV_3Dicon(vp.position, vp.target);
-        editor.POV_Icon_Node = POV_Icon_Node;
-        POV_Icon_Node.add(IconPOV);
-        
-        editor.setFocusOnNode(_nid,"pov");
-    }
-
-    const IDPanel = ui.ID_widget_viewPoints; 
-    let viewpoints = editor.currScene.viewpoints;
-    let AddNewViewPointBtn = UI.button({icon:"add",text:"Add new ViewPoint"});
-    
-    if(!viewpoints) return AddNewViewPointBtn;
-    
-    let viewpointList  = [];
-    for (const [id, viewpoint] of Object.entries(viewpoints)){
-        viewpointList.push(UI.button({icon:"pov",text:id,onClick:()=>onClickViewPointItem(id),className:"fillContainer"}));
-    }
-    viewpointList.push(AddNewViewPointBtn);
-    
-    return UI.createEl({
-        id: IDPanel,
-        classList:["dash_sideMenu_Content"],
-        content: [
-            ui.headerPanel("Viewpoints",UI.button({ icon:"cancel", className:"small", onClick:()=>ui.closeSecondSideMenu(IDPanel)})),
-            viewpointList]
-    });
-}
-
-
-ui.editor_widgets_layers=()=>{ //TEMPORARY ADDED AS SUMMARIZED WIDGET
-
-    let _summary = [];
-
-    for (const [key, graph] of Object.entries(editor.currScene.scenegraph.nodes/*ATON.SceneHub.currData.scenegraph.nodes*/)){
-        console.log(key)
-        console.log(graph);
-        let _graph = "No objects in this layer";
-        if(graph.urls){ _graph = graph.urls.map(url=>{ return ui.editor_btnUrlModel(url)});}
-        _summary.push({header:key,content:_graph})
-    }  
-    return UI.summarize( _summary);
-}
-
 
 
 ui.closeSecondSideMenu=(id=null)=>{
@@ -603,39 +550,6 @@ ui.editor_widgetMainPanel=(w)=>{
     if(w.mainPanelOptions){
         if(w.mainPanelOptions.title) _mainPanelContent.push(ui.editor_widgetMainPanel_Title(w.mainPanelOptions.title))
     }
-
-    /*
-    const onItemBtnClicked=(target)=>{
-        let id = target.dataset.id;
-        let wid = target.dataset.wid;
-        
-        let widgets = editor.widgetsHub.widgets;
-        let w = widgets[wid];
-        let item = w.returnItem(id);
-        console.log(item)
-
-        editor.activeNode = item;
-        editor.activeWidget = editor.widgetsHub.widgets[wid];
-
-        //widget-based3d focus
-        if(w.focusHandler) w.focusHandler(id);
-        
-        //inspector:
-        let _inspectorContent = [];
-
-        //-header
-        let headerContent = w.item_inspector_header(id)
-        if(w.item_inspector_header) _inspectorContent.push( ui.inspectorHeader( headerContent ));
-        if(w.props){
-            for (const [prop, parser] of Object.entries(w.props)){
-                _inspectorContent.push(parser(item))
-            }
-        }
-        //-blocks
-        ui.editor_createInspector(_inspectorContent);
-    }
-    */
-
     //Items:
     if(w.items && w.itemBtn){
     console.log("MAIN PANEL CREATION OF " + w.id);
@@ -651,7 +565,7 @@ ui.editor_widgetMainPanel=(w)=>{
         }
     }
     //Add New Item BTN:
-    _mainPanelContent.push(w.createBtn());
+    if(w.createBtn) _mainPanelContent.push(w.createBtn());
    
     let _panel = UI.createEl({className:"dash_sideMenu_Content",content:_mainPanelContent});
     console.log(_panel)
@@ -666,7 +580,10 @@ ui.editor_widgetsListPanel=()=>{
     let widgetsBtnList = [];
 
     const onWidgetMainButtonClicked=(target)=>{
-        //TODO: RESET PREVIEWS ACTIVE NODE WITH WIDGET DEACTIVE ITEM CALLBACK
+
+        //Reset preview opened tools and panels:
+        editor.onCloseInspectorBtnClicked();
+        ui.editor_removeGizmoToolBox();
 
         console.log(target);
         if(!target.dataset.id) throw("Issues with: " + target);
@@ -757,11 +674,25 @@ ui.editor_topBar = (s=null)=>{
    return UI.createEl({id:"IDeditor_topBar",className:"dash_topBar",content: topBarContent})
 }
 
+//GIZMO UI:
 
-ui.editor_gizmoControlToolbox = ()=>{
+ui.editor_setGizmoToolbox=(modes = null )=>{
+    let actualEl = document.getElementById( ui.IDeditor_centralToolBoxContainer); if(actualEl) actualEl.remove();
+    let gizmoToolBox = ui.editor_gizmoControlToolbox(modes);
+    document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox"]}));
+}
 
-        const onGizmoModeBtnClicked=(mode)=>
-            {
+ui.editor_gizmoControlToolbox = (modes=null)=>{
+
+        if(!modes) modes=["translate","rotate","scale"];
+
+        const gizmotoolboxBtns={
+            "translate": ()=>  UI.button({id:"translateGizmoBtn", icon:"icons/translate.svg",tooltip:"translate", onClick:()=>onGizmoModeBtnClicked("translate"), attr:{"data-gizmomode":"translate"}, classList:"selected"}),
+            "rotate": ()=>  UI.button({icon:"icons/rotate.svg",tooltip:"rotate",onClick:()=>onGizmoModeBtnClicked("rotate"), attr:{"data-gizmomode":"rotate"}}),
+            "scale": ()=> UI.button({icon:"icons/scale.svg",tooltip:"scale",onClick:()=>onGizmoModeBtnClicked("scale"), attr:{"data-gizmomode":"scale"}})
+        }
+
+        const onGizmoModeBtnClicked=(mode)=>{
                 ATON._gizmo.setMode(mode);
                 //change selected Style:
                 var _container = document.getElementById(ui.IDeditor_gizmoToolbox);
@@ -771,18 +702,16 @@ ui.editor_gizmoControlToolbox = ()=>{
                     if(c.dataset.gizmomode==mode){ c.classList.add("selected");}
                     else{c.classList.remove("selected");}
                 });
-            }
+        }
 
-        let gizmoToolBox = 
-                UI.flexBox({id:ui.IDeditor_gizmoToolbox, content:[
-                UI.button({id:"translateGizmoBtn", icon:"icons/translate.svg",tooltip:"translate", onClick:()=>onGizmoModeBtnClicked("translate"), attr:{"data-gizmomode":"translate"}, classList:"selected"}),
-                UI.button({icon:"icons/rotate.svg",tooltip:"rotate",onClick:()=>onGizmoModeBtnClicked("rotate"), attr:{"data-gizmomode":"rotate"}}),
-                UI.button({icon:"icons/scale.svg",tooltip:"scale",onClick:()=>onGizmoModeBtnClicked("scale"), attr:{"data-gizmomode":"scale"}})
-            ]});
-
-        return gizmoToolBox;
+        return UI.flexBox({id:ui.IDeditor_gizmoToolbox, content: modes.map( m => gizmotoolboxBtns[m]() )})
 }
 
+ui.editor_removeGizmoToolBox=()=>{
+    
+    let gizmoToolbox = document.getElementById(ui.IDeditor_centralToolBoxContainer);
+    if(gizmoToolbox) gizmoToolbox.remove();
+}
 /* dashboard.utils
 =====================*/
 utils.goToHathorScene = (_sid)=>dashboard.utils.goToScene(_sid);
@@ -1141,7 +1070,38 @@ editor.sendGlobalScenePatch=()=>{
     db.sendSceneEdit( _sid, _patch, _mode, _onComplete);
 }
 
+editor.udpateGizmoOnMouseUpListener=(handler)=>{
 
+    if(!ATON._gizmo) return;
+    ATON._gizmo._listeners.mouseUp=undefined;
+    ATON._gizmo.addEventListener("mouseUp", handler );
+}
+
+editor.gizmoToInspectorMapper=(o)=>{
+    //example for viewpoints position:
+    const _o  = {
+        translate:{
+            propertyName:"position",
+            idVector3UIContainer:"viepoints_position_V3",
+            getProperty:(n)=> {return n.position}
+        },
+        rotate:null,
+        scale:null
+    }
+
+    const gizmoHandler = (evt)=>{
+        const gizmoOptions = o;
+        console.log(gizmoOptions)
+        //get current gizmo mode
+        let _mode = evt.mode; console.log(_mode);
+        //get relevant property of ATON Node according with gizmoMode
+        let _v = gizmoOptions[_mode].getProperty(ATON._gizmo.object);
+        //Update Inspector
+        editor.updateVector3UI(gizmoOptions[_mode].idVector3UIContainer,_v);
+    }
+
+    return gizmoHandler;
+}
 
 editor.onGizmoMouseUp=(evt)=>{
     
@@ -1221,7 +1181,7 @@ editor.composePatch=(o)=>{
         const value = o.value;
 
         const vector3Indexes = { x:0, y:1, z:2 };
-        const defaultTransform ={
+        const defaultTransform = {
             "position": [0,0,0],
             "rotation": [0,0,0],
             "scale": [1,1,1]
@@ -1274,7 +1234,10 @@ editor.composePatch=(o)=>{
     editor.OnPatchChanged();
 }
 
+
 editor.updateVector3UI =(idContainer,_v)=>{
+    console.log(idContainer);
+    console.log(_v)
      document.querySelector(`#${idContainer} [name="x"]`).value = _v.x;
      document.querySelector(`#${idContainer} [name="y"]`).value = _v.y;
      document.querySelector(`#${idContainer} [name="z"]`).value = _v.z;
@@ -1305,10 +1268,26 @@ editor.setGizmoByNID=(nid,mode=null)=>{
 
 
 editor.onCloseInspectorBtnClicked=()=>{
-    /*hide GizmoToolbox*/ document.getElementById(ui.IDeditor_centralToolBoxContainer).classList.add("hidden");
-    /*remove inspector*/ document.getElementById(ui.IDeditor_Inspector).remove();
-    /*detach Gizmo*/ UI.detachGizmo();
+    
+    /*hide GizmoToolbox*/
+    let gizmoBox = document.getElementById(ui.IDeditor_centralToolBoxContainer)
+    if(gizmoBox) gizmoBox.classList.add("hidden");
+
+    /*remove inspector*/
+    let inspector = document.getElementById(ui.IDeditor_Inspector);
+    if(inspector) inspector.remove();
+
+    /*detach Gizmo*/
+    UI.detachGizmo();
+
+    /*deactive previews widget-item*/
+    if(editor.activeWidget){
+        if(editor.activeWidget.deactiveItem) editor.activeWidget.deactiveItem(editor.activeNode.nid);
+    }
+
+    /*reset editor globals*/
     editor.activeNode = null;
+    editor.activeWidget = null;
 }
 
 
