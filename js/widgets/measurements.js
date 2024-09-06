@@ -48,19 +48,31 @@ const measurementsOnChangeProp=(evt)=>{
     measurements_composePatch();
 }
 
-const measurementsGizmoHandlers={ //THIS IS BAD
+const measurementsGizmoHandlers={
     pointA:(evt)=>{
-        //Realtime scene Manipulation:
+        //Adjust measurement 3D icon in realtime
         measurementsOnChangeProp(evt);
-        //Inspector Update:
-        const inpsectorUpdater = editor.gizmoToInspectorMapper({translate:{propertyName:"position", idVector3UIContainer:"measure_pointA_v3", getProperty:(n)=> {return n.position}}})
+       //Update inpsector
+        const inpsectorUpdater = editor.gizmoToInspectorMapper(
+            {
+                translate:{
+                    idVector3UIContainer:"measure_pointA_v3",
+                    getProperty:(n)=> {return n.position}}
+                }
+        );
         inpsectorUpdater(evt);
     },
     pointB:(evt)=>{
-        //Realtime scene Manipulation:
+        //Adjust measurement 3D icon in realtime
         measurementsOnChangeProp(evt);
-        //Inspector Update:
-        const inpsectorUpdater = editor.gizmoToInspectorMapper({translate:{propertyName:"position", idVector3UIContainer:"measure_pointB_v3", getProperty:(n)=> {return n.position}}})
+        //Update inpsector
+        const inpsectorUpdater = editor.gizmoToInspectorMapper(
+            {
+                translate:{
+                    idVector3UIContainer:"measure_pointB_v3",
+                    getProperty:(n)=> {return n.position}}
+                }
+        );
         inpsectorUpdater(evt);
     }
 }

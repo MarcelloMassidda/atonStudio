@@ -16,11 +16,11 @@ widgetsHub.init=(_APP)=>{
     editor = APP.dashboard.editor;
     
     /*Builtin Widgets:*/
+    widgetsHub.registerWidget(layers_widget.create(_APP));
     widgetsHub.registerWidget(viewpoints_widget.create(_APP));
     widgetsHub.registerWidget(measurements_widget.create(_APP));
     widgetsHub.registerWidget(semantics_widget.create(_APP));
     
-    widgetsHub.registerWidget(layers_widget.create(_APP));
     
 
     /*Init Widgets:*/
@@ -216,10 +216,21 @@ widgetsHub.parsers={
             labelText:o.title,
             events: evt
         });
+    },
+    checkbox:(o)=>{
+        let evt = null;
+        if(o.onChange){ evt = {"change":o.onChange}}
+
+        return UI.input({
+            type:"checkbox",
+            id: o.id,
+            labelText:o.title,
+            name:o.name,
+            checked:o.checked,
+            events: evt
+        });
     }
-
 }
-
 
 export {widgetsHub};
 
@@ -227,10 +238,19 @@ export {widgetsHub};
 /* TODO:
 
 -Reuse these handlers for hierarchy, creating a "virtual" widget:
--- to fix toolbox Gizmo which button is selected?
+-- to fix toolbox Gizmo which button is selected? OK
 
--Refactor gizmoMappersHandlers in  viewpoints, layers and measurements
--Manage CRUD workflows for layers, viewpoints, measures.
+-Refactor gizmoMappersHandlers in  viewpoints, layers and measurements.... Per ora rimane così OK
+-Manage CRUD workflows for layers, viewpoints, measures. TO DO TODAY:
+
+EDIT:
+-add other field (es. start from "set as home" for viewpoint), to see if fits
+CANCEL:
+--Widgets.Hub.
+CREATE:
+--WidgetHub.baseCreateBtn()=> return btn
+--WidgetHub.baseCreateItem()=> wizard system management
+
 -Annotations? No convex form, or not drawable.
 
 */

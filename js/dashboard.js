@@ -676,8 +676,9 @@ ui.editor_topBar = (s=null)=>{
 
 //GIZMO UI:
 
-ui.editor_setGizmoToolbox=(modes = null )=>{
+ui.editor_setGizmoToolbox = ( modes = null ) => {
     let actualEl = document.getElementById( ui.IDeditor_centralToolBoxContainer); if(actualEl) actualEl.remove();
+
     let gizmoToolBox = ui.editor_gizmoControlToolbox(modes);
     document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox"]}));
 }
@@ -686,10 +687,15 @@ ui.editor_gizmoControlToolbox = (modes=null)=>{
 
         if(!modes) modes=["translate","rotate","scale"];
 
+        const isSelected=(mode)=>{
+            if (!ATON._gizmo )return "";
+            if(ATON._gizmo.mode == mode) return "selected"
+        }
+
         const gizmotoolboxBtns={
-            "translate": ()=>  UI.button({id:"translateGizmoBtn", icon:"icons/translate.svg",tooltip:"translate", onClick:()=>onGizmoModeBtnClicked("translate"), attr:{"data-gizmomode":"translate"}, classList:"selected"}),
-            "rotate": ()=>  UI.button({icon:"icons/rotate.svg",tooltip:"rotate",onClick:()=>onGizmoModeBtnClicked("rotate"), attr:{"data-gizmomode":"rotate"}}),
-            "scale": ()=> UI.button({icon:"icons/scale.svg",tooltip:"scale",onClick:()=>onGizmoModeBtnClicked("scale"), attr:{"data-gizmomode":"scale"}})
+            "translate": ()=>  UI.button({id:"translateGizmoBtn", icon:"icons/translate.svg",tooltip:"translate", onClick:()=>onGizmoModeBtnClicked("translate"), attr:{"data-gizmomode":"translate"}, classList:isSelected("translate")}),
+            "rotate": ()=>  UI.button({icon:"icons/rotate.svg",tooltip:"rotate",onClick:()=>onGizmoModeBtnClicked("rotate"), attr:{"data-gizmomode":"rotate"}, classList:isSelected("rotate")}),
+            "scale": ()=> UI.button({icon:"icons/scale.svg",tooltip:"scale",onClick:()=>onGizmoModeBtnClicked("scale"), attr:{"data-gizmomode":"scale"}, classList:isSelected("scale")}),
         }
 
         const onGizmoModeBtnClicked=(mode)=>{
@@ -1069,6 +1075,7 @@ editor.sendGlobalScenePatch=()=>{
     }
     db.sendSceneEdit( _sid, _patch, _mode, _onComplete);
 }
+
 
 editor.udpateGizmoOnMouseUpListener=(handler)=>{
 

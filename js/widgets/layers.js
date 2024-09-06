@@ -15,38 +15,33 @@ const layers_OnChangePropFromInspector=(evt)=>{
     layers_composePatch(propName,v);
 }
 
-
-const layers_GizmoHandler=(evt)=>{ //THIS IS BAD
+const layers_GizmoHandler=(evt)=>{
 
     const layersGizmoOptions = {
 
         translate:{
-            propertyName:"position", //is it necessary?
             idVector3UIContainer:"layer_position_V3",
             getProperty:(n)=> {return n.position}},
 
         rotate:{
-            propertyName:"rotation", //is it necessary?
             idVector3UIContainer:"layer_rotation_V3",
             getProperty:(n)=> {return n.rotation}},
 
         scale:{
-            propertyName:"scale", //is it necessary?
             idVector3UIContainer:"layer_scale_V3",
             getProperty:(n)=> {return n.scale}}
-        }
+    }
 
-        //Update inspector:
-        const inpsectorUpdater = editor.gizmoToInspectorMapper(layersGizmoOptions);
-        inpsectorUpdater(evt);
+    //Update inspector:
+    const inpsectorUpdater = editor.gizmoToInspectorMapper(layersGizmoOptions);
+    inpsectorUpdater(evt);
 
-        //Compose patch:
-        let propName = layersGizmoOptions[ATON._gizmo.mode].propertyName; //THIS IS WHAT
-        let v = layersGizmoOptions[ATON._gizmo.mode].getProperty(APP.dashboard.editor.activeNode);
-        layers_composePatch(propName,v)          
+    //Compose patch:
+    let propName = layersGizmoOptions[ATON._gizmo.mode].propertyName; //THIS IS WHAT
+    let v = layersGizmoOptions[ATON._gizmo.mode].getProperty(APP.dashboard.editor.activeNode);
+    layers_composePatch(propName,v)          
 
 }
-
 
 const layers_composePatch=(propName,v)=>{
 
@@ -75,7 +70,7 @@ const layers_composePatch=(propName,v)=>{
     editor.OnPatchChanged();
 }
 
-let _layers_widget = () =>widgetsHub.widget({
+let _layers_widget = () => widgetsHub.widget({
     id:"layers",
     hierarchy:true,
     itemBtn:(id,item)=>{
