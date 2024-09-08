@@ -48,32 +48,183 @@ const viewpointGizmoHandlers={
     }
 }
 
-const viewpointSetAsHome=(evt)=>{
-    
-    let currScene = widgetHub.currScene();
+
+const viewpointSetAsHome=(evt)=>{ ///ABORTED
+    let currScene = widgetsHub.currScene();
+    let w = editor.activeWidget;
+
+    //get CurrentPatch
+    let _patch = editor.patch? editor.patch : {};
+    if(!_patch.viewpoints) _patch.viewpoints = {};
 
     let node = editor.activeNode;
-    let id = node.nid;
+    let _id = node.id;
     let bHome = evt.target.checked;
-  
-    //Se c'è già un home, savarlo con un altro nome.
-    if(currScene.viewpoints){
-        let prevHomePOV = currScene.viewpoints.home
-        if(prevHomePOV){
-        
-            
+
+    let currPov = {
+        fov: w.props.fov.get(node.nid),
+        position: w.props.position.get(node.nid),
+        target: w.props.target.get(node.nid),
     }
 
+    let id_pov_NOTHOME = ()=>{
+        // Find the first key that is not "home"
+        let noHomePov;
+        let _items = w.items();
+        
+        for (let idpov in _items) {
+            if (idpov !== "home") {
+                noHomePov = { id:idpov, pov: _items[idpov]};
+                break;
+            }
+        }
+        return noHomePov
     }
-    let _id = bHome? "home" : id;
-    if(!bHome && id=="home") { _id = ATON.Utils.generateID("pov"); }
-    editor.activeNode.nid = _id;
-    
-    console.log("is Home: " + bHome);
-    console.log("id is: " + _id)
+
+    let currHome = currScene.viewpoints.home;
+    //Cambiare la current Scene obj
+    //Organizzare la patch
+    //Realtime change of 3dScene
+    //Update inpsectors and lists
+
+    if(bHome){
+        node.nid = "home";
+        //CurrScene:
+        currScene.viewpoints.home = currPov;
+        currScene.viewpoints[_id] = currHome;
+        //patch:
+        _patch.viewpoints.home = currPov;
+        _patch.viewpoints[_id] = currHome;
+    }
+    else{
+        let noHomePov = id_pov_NOTHOME();
+        //CurrScene:
+        currScene.viewpoints.home = noHomePov.pov;
+        currScene.viewpoints[noHomePov.id] = currPov;
+        node.nid = noHomePov.id;
+        //patch:
+        _patch.viewpoints.home = noHomePov.pov;
+        _patch.viewpoints[noHomePov.id] = currPov;
+    }
 
     viewpoints_composePatch();
-    //UPDATE 3DEDitor info
+    
+     //Ricompose widget Panel:
+     let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
+     let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
+     APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
+     
+     //Focus on currentNode:
+     let _target = {dataset:{}};
+     _target.dataset.id = editor.activeNode.nid;
+     _target.dataset.wid = editor.activeWidget.id;
+     widgetsHub.onClicked_itemBtn_base(_target);
+}
+
+const _viewpointSetAsHome=(evt)=>{ ///ABORTED
+
+    let currScene = widgetsHub.currScene();
+    let w = editor.activeWidget;
+    
+    //get CurrentPatch
+    let _patch = editor.patch? editor.patch : {};
+    if(!_patch.viewpoints) _patch.viewpoints = {};
+    
+    //set possible Queue
+    let patches = editor.patchReqList;
+    let nextPatch = patches? patches[1].patch : {viewpoints:{}};
+    
+    const prevHomePOV = ()=>{
+        if(!currScene.viewpoints) return null;
+        let home = currScene.viewpoints.home;
+        return home? home : null;
+    }
+
+    let node = editor.activeNode;
+    let bHome = evt.target.checked;
+
+    let pv = {
+        fov: w.props.fov.get(node.nid),
+        position: w.props.position.get(node.nid),
+        target: w.props.target.get(node.nid),
+    }
+
+    
+    if(bHome){
+        console.log("SETTING AS HOME")
+        //Set currentNode as home
+        const oldId = node.nid;
+
+        //Se c'è già un homePOV, conserva il pov, ma con un nuovo id
+        let homep = prevHomePOV();
+        if(homep){
+            const _id = ATON.Utils.generateID("pov");
+            _patch.viewpoints[_id] = homep;
+            console.log("previews homepov changed as: " + _id);
+            editor.currScene.viewpoints[_id] = homep;
+        }
+
+        //Patch:
+        //Elimina il pov salvato con il vecchio id
+        nextPatch.viewpoints[oldId] = {};
+        //Prepara activeNode per composePatc()
+        let _n = ATON.createSceneNode("home"); _n.children.push(editor.activeNode.children[0]);
+        _n.attachToRoot();
+        editor.activeNode = _n;
+        UI.detachGizmo();
+        ATON.getSceneNode(oldId).delete();
+        
+        //CurrScene:
+        //let prevNode = editor.currScene.viewpoints[oldId];
+        console.log("PREV ID: "+ oldId) 
+        delete editor.currScene.viewpoints[oldId];
+        editor.currScene.viewpoints["home"] = pv; //currScene !TODO: To find the ACTUAL NODE instead.
+       
+    }
+    else{
+        console.log("SETTING AS NORMAL")
+        let _id = ATON.Utils.generateID("pov");
+        //Patch:
+        //Assicurarsi che non abbia più l'id "home"
+        let _n = ATON.createSceneNode(_id); _n.children.push(editor.activeNode.children[0]);
+        _n.attachToRoot();
+        editor.activeNode = _n;
+        UI.detachGizmo();
+        ATON.getSceneNode("home").delete();
+
+        nextPatch.viewpoints["home"] = {};
+        //CurrScene
+
+        editor.currScene.viewpoints[_id] = pv;
+        delete editor.currScene.viewpoints["home"];
+    }
+    console.log("NEW SCENE CURRENT VIEWPOINTS ARE:");
+    console.log(editor.currScene.viewpoints)
+    
+    //Ricompose widget Panel:
+    let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
+    let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
+    APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null)
+
+    //To manage messingup with editor 
+    console.log("is Home: " + bHome);
+    console.log("current node has id: " + node.nid);
+    
+    editor.patch = _patch;
+
+    if(Object.keys(nextPatch.viewpoints).length > 0){
+        editor.patchReqList = [
+            {modePatch:ATON.SceneHub.MODE_ADD, patch: editor.patch},
+            {modePatch:ATON.SceneHub.MODE_DEL, patch: nextPatch}
+        ]
+    }
+
+    viewpoints_composePatch();
+
+    let _target = {dataset:{}};
+    _target.dataset.id = editor.activeNode.nid;
+    _target.dataset.wid = editor.activeWidget.id;
+    widgetsHub.onClicked_itemBtn_base(_target);
 }
 
 const viewpoints_composePatch=()=>{
@@ -89,12 +240,13 @@ const viewpoints_composePatch=()=>{
     let _patch = editor.patch? editor.patch : {};
     if(!_patch.viewpoints)_patch.viewpoints={};
    
-    _patch.viewpoints[_nid]={
+    _patch.viewpoints[_nid]= {
         position: w.props.position.get(),
         target:  w.props.target.get(),
         fov: w.props.fov.get()
     }
     editor.patch = _patch;
+    if(editor.patchReqList){ editor.patchReqList[0].patch = editor.patch;}
     editor.OnPatchChanged();
 }
 
@@ -114,6 +266,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
     //returnItem default
     //focusItem defautl
     setupGizmo:(id)=>{
+        console.log("SEARCHING: " + id)
         let node = ATON.getSceneNode(id);
         let pos = node.children[0].children[0];
         editor.setGizmoByNode(pos,"translate");
@@ -145,6 +298,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
             get:()=>{
                     //get pos:
                     let node = APP.dashboard.editor.activeNode;
+                    console.log(node)
                     const pos = node.children[0].children[0];
                     const p_pos = pos.position;
                     return [p_pos.x,p_pos.y,p_pos.z];}
@@ -191,7 +345,8 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
             })
         },
         get:()=>{return parseFloat(document.getElementById("viewpoints_fov").value)}
-        },
+        }
+        /*, ABORTED
         "home":{
             inspectorBlock:(node)=>{
             let checked = node.nid =="home";
@@ -204,7 +359,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
             })
         },
         get:()=>{return parseFloat(document.getElementById("viewpoints_home").checked)}
-        }
+        }*/
     }
     }
 );

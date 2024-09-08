@@ -160,7 +160,7 @@ widgetsHub.widget = (o)=>{
 
     if(!o.focusItem){
         o.focusItem=(node)=>{
-        if(!node){ console.error(id + " ATON NODE NOT FOUND"); return; }
+        if(!node){ console.error(" ATON NODE NOT FOUND"); return; }
         ATON.Nav.requestPOVbyNode(node,0.3);
     }}
 

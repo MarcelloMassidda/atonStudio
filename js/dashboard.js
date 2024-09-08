@@ -1041,13 +1041,12 @@ editor.onTransformVector3Changed=(evt)=>{
     };
 
     editor.composePatch(bodyPatch);
-
 }
 
 editor.OnPatchChanged=()=>{
     if(editor.autoSaveMode){
         console.log("path changed: autosave");
-        editor.sendGlobalScenePatch();
+        editor.managePatches();
     }
     else{
         console.log("path changed: autosave FALSE");
@@ -1055,25 +1054,31 @@ editor.OnPatchChanged=()=>{
     }
 }
 
-
 editor.onSaveSceneBtnIsClicked=()=>{
         console.log("SaveSceneBtn Clicked");
 
         document.getElementById(ui.IDeditor_saveSceneBtn).classList.add("hidden");
-        editor.sendGlobalScenePatch();
+        editor.managePatches();
 }
 
-editor.sendGlobalScenePatch=()=>{
+
+editor.managePatches=()=>{
+    if(editor.patchReqList) { editor.sendPatchQueue(editor.patchReqList) }
+    else{editor.sendGlobalScenePatch()}
+}
+
+editor.sendGlobalScenePatch=(onComplete=null)=>{
     if( !editor.patch || editor.patch=={} ){console.log("SCENE PATCH NOT EXIST");  return}
+    console.log("SENDING PATCH:");
     let _sid = editor.currSID;
     let _patch = editor.patch;
     let _mode =  editor.modePatch;
-    editor.modePatch=null;
+    console.log(_patch)
+    console.log(_mode)
+    editor.modePatch = null;
+    editor.patch = null;
    
-    let _onComplete = ()=>{
-        console.log("SAVED");
-    }
-    db.sendSceneEdit( _sid, _patch, _mode, _onComplete);
+    db.sendSceneEdit( _sid, _patch, _mode, onComplete);
 }
 
 
@@ -1088,7 +1093,6 @@ editor.gizmoToInspectorMapper=(o)=>{
     //example for viewpoints position:
     const _o  = {
         translate:{
-            propertyName:"position",
             idVector3UIContainer:"viepoints_position_V3",
             getProperty:(n)=> {return n.position}
         },
@@ -1163,7 +1167,33 @@ editor.onGizmoMouseUp=(evt)=>{
 }
 
 
-editor.composePatch=(o)=>{
+editor.sendPatchQueue=(patchReqList)=>{
+    if(!patchReqList) return;    
+    console.log(patchReqList)
+    var index = 0;
+    
+    const sendPatchQueued = (req)=>{
+        console.log(req)
+        
+        var _onComplete = null;
+
+        editor.patch = req.patch;
+        editor.modePatch = req.modePatch;
+        
+        index++;
+        console.log("index is: " + index);
+        const nextReq = patchReqList[index];
+        console.log(nextReq)
+        if(nextReq){ _onComplete = ()=>sendPatchQueued(nextReq); }
+        else { _onComplete = ()=> { console.log("queue finished" ); } }
+
+        editor.sendGlobalScenePatch(_onComplete);
+    }
+
+    sendPatchQueued(patchReqList[index]);
+}
+
+editor._composePatch=(o)=>{
 
     if(!o.type) return;
     
@@ -1240,6 +1270,7 @@ editor.composePatch=(o)=>{
     editor.patch = _patch;
     editor.OnPatchChanged();
 }
+
 
 
 editor.updateVector3UI =(idContainer,_v)=>{

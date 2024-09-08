@@ -20,14 +20,17 @@ const layers_GizmoHandler=(evt)=>{
     const layersGizmoOptions = {
 
         translate:{
+            propertyName:"position",
             idVector3UIContainer:"layer_position_V3",
             getProperty:(n)=> {return n.position}},
 
         rotate:{
+            propertyName:"rotation",
             idVector3UIContainer:"layer_rotation_V3",
             getProperty:(n)=> {return n.rotation}},
 
         scale:{
+            propertyName:"scale",
             idVector3UIContainer:"layer_scale_V3",
             getProperty:(n)=> {return n.scale}}
     }
@@ -37,7 +40,8 @@ const layers_GizmoHandler=(evt)=>{
     inpsectorUpdater(evt);
 
     //Compose patch:
-    let propName = layersGizmoOptions[ATON._gizmo.mode].propertyName; //THIS IS WHAT
+    let propName = layersGizmoOptions[ATON._gizmo.mode].propertyName;
+    if(!propName) throw("no property name in gizmo handler");
     let v = layersGizmoOptions[ATON._gizmo.mode].getProperty(APP.dashboard.editor.activeNode);
     layers_composePatch(propName,v)          
 
@@ -80,6 +84,8 @@ let _layers_widget = () => widgetsHub.widget({
             `contains: ${objNum} objects`]
         })
     },
+    createBtnOptions:{text:"Add new layer",icon:"add"},
+    //createBtn:()=>{return widgetsHub.mainBtn_base({id:"layers_createBtn",icon:"add", text:"Add new Layer"})},
     mainBtnOptions:{id:"layers_mainBtn",text:"Layers",icon:"collection-item"},
     items:()=>{
         let s = widgetsHub.currScene();
@@ -143,7 +149,8 @@ let _layers_widget = () => widgetsHub.widget({
             }
         }
 
-    }
+    },
+
 })
 
 let layers_widget = {
