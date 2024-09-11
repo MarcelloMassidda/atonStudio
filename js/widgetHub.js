@@ -53,7 +53,7 @@ widgetsHub.itemBtn_base=(o)=>{
 
 widgetsHub.onClicked_itemBtn_base=(btnClicked)=>{
     let target = btnClicked;
-    console.log(target)
+    console.log("CLICKED ITEMBTN")
     //0 get item id and widget id
     let id = target.dataset.id;
     let wid = target.dataset.wid;
@@ -93,6 +93,8 @@ widgetsHub.onClicked_itemBtn_base=(btnClicked)=>{
     }
     
     APP.dashboard.ui.editor_createInspector(_inspectorContent);
+
+    console.log(editor.patch)
 }
 
 /*Widget Factory*/

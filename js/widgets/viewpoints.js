@@ -246,6 +246,8 @@ const viewpoints_composePatch=()=>{
         fov: w.props.fov.get()
     }
     editor.patch = _patch;
+    editor.modePatch = ATON.SceneHub.MODE_ADD;
+    
     if(editor.patchReqList){ editor.patchReqList[0].patch = editor.patch;}
     editor.OnPatchChanged();
 }

@@ -97,6 +97,8 @@ const measurements_composePatch=()=>{
         points:[ a.x, a.y, a.z, b.x, b.y, b.z ]
     }
     editor.patch = _patch;
+    editor.modePatch = ATON.SceneHub.MODE_ADD;
+    
     editor.OnPatchChanged();
 }
 

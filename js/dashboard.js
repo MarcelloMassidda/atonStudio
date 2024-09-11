@@ -298,7 +298,7 @@ ui.editor_sideMenu=()=>{
 //To manage different objects and behaviours.
 
 
-editor.setFocusOnNode=(nid,type="node")=>{
+editor.setFocusOnNode=(nid,type="node")=>{ //OLD
 
     let node = ATON.getSceneNode(nid);
     let infoNode = null;
@@ -403,64 +403,7 @@ ui.editor_btnUrlModel=(url)=>{
 
 ui.editor_onAdd3DModelBtnClicked =  ()=>{ //Added as HATHOR LAYER
 
-    var onModelItemClicked= async (e)=>{
-        const url = e.target.parentNode.dataset.path; //TO change
-        UI.removePopup();
-        
-        //Prompt node Name:
-        const promptResponse = await UI.promptDialog({inputs:[{name:"newNodeName",labelText:"Node Name",type:"text"}]});
-        console.log("nodeName");
-        if(!promptResponse) {UI.removePopup(); return;}
-        const nodeName = promptResponse.newNodeName;
 
-        //Add in scene:
-        var newAtonNode = ATON.createSceneNode(nodeName).load(url, ()=>{
-
-            //Realtime add node to scene and focus on it
-            newAtonNode.attachToRoot().setPosition(0,0,0);
-            ATON.Nav.requestPOVbyNode(newAtonNode, 0.3);
-            editor.setGizmoByNID(newAtonNode.nid);
-            editor.setFocusOnNode(newAtonNode.nid);
-             
-
-            //Update currentScene locally:
-            //scenegraph
-            let newSceneGraphNode = {urls:[url]}
-            editor.currScene.scenegraph.nodes[nodeName] = newSceneGraphNode;
-            //edges
-            let _edges = editor.currScene.scenegraph.edges;
-            if(!_edges) { _edges = {".":[nodeName]}}
-            else{_edges["."].push(nodeName)}
-            editor.currScene.scenegraph.edges = _edges;
-
-           
-            //Compose Patch:
-            editor.composePatch({
-                type:"addNode",
-                nid: nodeName,
-                nodeBody: newSceneGraphNode
-            });
-
-            //Update hierarchy:
-            ui.editor_updateHierarchy();
-        });
-
-    }
-
-    //1 get models:
-    db.getModels((models)=>{
-    //2 create SummaryDialog:
-        
-        let _summary = UI.summarize(UI.parseInFolders(models,onModelItemClicked));
-        _summary.cssText+="text-align:left";
-
-        document.body.appendChild(UI.dialog({
-            content:[
-                UI.button({icon:"cancel", onClick:()=>UI.removePopup()}),
-                _summary
-            ]
-        }));
-    })
 }
 
 
@@ -844,9 +787,6 @@ utils.createNewScene=async()=>{
 
     //})
 
-    
-
-
     };
 
     ATON.Utils.postJSON( ATON.PATH_RESTAPI+"new/scene", db.data.currentSceneObj, handleServerResponse);
@@ -1046,7 +986,8 @@ editor.onTransformVector3Changed=(evt)=>{
 editor.OnPatchChanged=()=>{
     if(editor.autoSaveMode){
         console.log("path changed: autosave");
-        editor.managePatches();
+       // editor.managePatches();
+       editor.sendGlobalScenePatch();
     }
     else{
         console.log("path changed: autosave FALSE");
@@ -1058,13 +999,18 @@ editor.onSaveSceneBtnIsClicked=()=>{
         console.log("SaveSceneBtn Clicked");
 
         document.getElementById(ui.IDeditor_saveSceneBtn).classList.add("hidden");
-        editor.managePatches();
+       // editor.managePatches();
+       editor.sendGlobalScenePatch();
 }
 
 
 editor.managePatches=()=>{
-    if(editor.patchReqList) { editor.sendPatchQueue(editor.patchReqList) }
-    else{editor.sendGlobalScenePatch()}
+    if(editor.patchReqList){
+        editor.sendPatchQueue(editor.patchReqList)
+    } //editor.patchReqList NOT USED.
+    else{
+        editor.sendGlobalScenePatch();
+    }
 }
 
 editor.sendGlobalScenePatch=(onComplete=null)=>{
