@@ -57,7 +57,7 @@ widgetsHub.onClicked_itemBtn_base=(btnClicked)=>{
     //0 get item id and widget id
     let id = target.dataset.id;
     let wid = target.dataset.wid;
-    
+
     widgetsHub.focusOnItem_base({id,wid});
 }
 
@@ -196,7 +196,7 @@ widgetsHub.parsers={
             let dimension = evt.target.name; //can be x/y/z
             let value = parseFloat(evt.target.value.replaceAll(",","."));
             //Real time change:
-            o.target[property][dimension] = value;
+            if(o.target) o.target[property][dimension] = value;
         }
 
         let _handler = (evt)=>{

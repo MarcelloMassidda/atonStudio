@@ -232,7 +232,7 @@ ui.getSideActiveTab=()=>{
 
 ui.editor_sideMenu=()=>{
     
-    //TODO: "_tabLink" suffix is garbage (it's because otherwise tab and content have same id) 
+    //TODO: "_tabLink" suffix is garbage (it's because otherwise tab and content have same id)  
 
     //Init with scene tab active:
     if(!dashboard.editor.activeTab) dashboard.editor.activeTab = ui.ID_editorSideMenu_Scene;
@@ -530,6 +530,13 @@ ui.editor_widgetMainPanel=(w)=>{
     return _panel;
 }
 
+ui.editor_updateWidgetMainPanel=()=>{
+     //Update widgetMainPanel:
+     var w = APP.dashboard.editor.activeWidget;
+     let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
+     let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
+     APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel, w.items()==null);
+}
 
 ui.editor_widgetsListPanel=()=>{
 

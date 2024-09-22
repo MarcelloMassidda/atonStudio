@@ -22,6 +22,66 @@ const viewpointsOnChangeProp=(evt)=>{
     viewpoints_composePatch();
 }
 
+const viewpoints_createBtnClicked = async() => {
+    
+    console.log("CREATING A VIEWPOINT");
+    let newGeneratedId = ATON.Utils.generateID("pov");
+    let currPOV = ATON.Nav._currPOV;
+
+    let basePov = {
+        id:newGeneratedId,
+        target:currPOV.target,
+        pos:currPOV.pos
+    };
+    
+    //TODO: Manage dynamically changing of elements inside the dialog
+    //TODO: Make flexible promptDialog to include not only inputsOptions, but more abstract blocks.
+    const bodyPovInputs = [ //Paused for now
+        //POSITION INPUT
+        widgetsHub.parsers.vector3({
+            id:"viepoints_position_V3",
+            title:"Position",
+            property:"position",
+            v: basePov.pos,
+        }),
+        //TARGET INPUT
+        widgetsHub.parsers.vector3({
+            id:"viepoints_position_V3",
+            title:"Position",
+            property:"position",
+            v: basePov.target
+        }),
+    ]
+
+    let dataPOV = await UI.promptDialog({inputs:[
+        {type:"text", name:"id", legendText:"pov ID", value:newGeneratedId},
+        {type:"checkbox", name:"fromCurrView", legendText:"Set from Current View"}],
+        title:"Add new ViewPoint"
+    });
+    if(!dataPOV) return;
+    
+    //Compose pov:
+    let p = dataPOV.fromCurrView? [currPOV.pos.x,currPOV.pos.y,currPOV.pos.z] : [0,0,0];
+    let t = dataPOV.fromCurrView? [currPOV.target.x,currPOV.target.y,currPOV.target.z] : [1,1,1];   
+    let bodyPov = {fov:currPOV.fov, position:p, target:t};
+    console.log(bodyPov)
+    //Realtime Add to Scene:
+    widgetsHub.widgets.viewpoints.addItemToScene(dataPOV.id, bodyPov);
+
+    //Edit local graph scene:
+    let vp = editor.currScene.viewpoints;
+    if(!vp) vp = {};
+    vp[dataPOV.id] = bodyPov;
+    editor.currScene.viewpoints = vp;
+    //Update WidgetMainPanel
+    editor.activeWidget = widgetsHub.widgets.viewpoints; //TODO:FIX THIS
+    APP.dashboard.ui.editor_updateWidgetMainPanel();
+    //focus:
+    widgetsHub.focusOnItem_base({ id:dataPOV.id , wid:editor.widgetsHub.widgets.viewpoints.id });
+    //Patch:
+    //TODOPATCH
+}
+
 const viewpointGizmoHandlers={
 
     position:(evt)=>{
@@ -256,7 +316,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
     id:"viewpoints",
     mainBtnOptions:{id:"viewpoints_mainBtn",text:"View Points",icon:"pov"},
     itemBtnOptions:{icon:"pov"},
-    createBtnOptions:{text:"Add new viewpoint",icon:"add"},
+    createBtnOptions:{text:"Add new viewpoint",icon:"add", onClick: ()=>viewpoints_createBtnClicked()},
     addItemToScene:(vId,vp)=>{
         let _nid = vId;
         let POV_Icon_Node = ATON.createSceneNode(_nid); 

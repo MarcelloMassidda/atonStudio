@@ -53,11 +53,14 @@ const layers_createBtnClicked=()=>{
                 APP.dashboard.ui.editor_updateHierarchy();
             }
             if(activeSideMenuTab=="widgets"){
+
                 //Update widgetMainPanel:
-                var w = editor.widgetsHub.widgets.layers;
-                let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
-                let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
-                APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
+                APP.dashboard.ui.editor_updateWidgetMainPanel();
+                //CLOSED IN FUNCTION IN dashboard.ui
+                //var w = editor.widgetsHub.widgets.layers;
+                //let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
+                //let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
+                //APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
             }
         }
         
