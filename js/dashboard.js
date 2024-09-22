@@ -222,7 +222,20 @@ ui.editor_updateHierarchy=()=>{
 }
 
 
+ui.getSideActiveTab=()=>{
+    let activeTab = dashboard.editor.activeTab;
+    let aTab = ""; 
+    if(activeTab==ui.ID_editorSideMenu_Scene) aTab="scene";
+    if(activeTab==ui.ID_editorSideMenu_Widget) aTab="widgets";
+    return aTab;
+}
+
 ui.editor_sideMenu=()=>{
+    
+    //TODO: "_tabLink" suffix is garbage (it's because otherwise tab and content have same id) 
+
+    //Init with scene tab active:
+    if(!dashboard.editor.activeTab) dashboard.editor.activeTab = ui.ID_editorSideMenu_Scene;
 
     const tabs=[
         {
@@ -248,6 +261,8 @@ ui.editor_sideMenu=()=>{
 
     const onClickTabLink=(evt, id)=>{
         ui.closeSecondSideMenu();
+        dashboard.editor.activeTab = id;
+        
         tabs.forEach(t => {
             //toggle content
             var isActive = t.tab.id == id;

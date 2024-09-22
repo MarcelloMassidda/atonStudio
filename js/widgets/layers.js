@@ -17,33 +17,24 @@ const layers_OnChangePropFromInspector=(evt)=>{
 
 const layers_createBtnClicked=()=>{
 
-
+    console.log("BUTTON CREATE IS CLICKED")
     var onModelItemClicked= async (e)=>{
-        
-
+        console.log("BUTTON MODEL IS CLICKED")
         const url = e.target.parentNode.dataset.path; //TO change
         UI.removePopup();
         
         //Prompt node Name:
         const promptResponse = await UI.promptDialog({inputs:[{name:"newNodeName",labelText:"Node Name",type:"text"}]});
-       // console.log("nodeName");
-        if(!promptResponse) {UI.removePopup(); return;}
+        // console.log("nodeName");
+        if(!promptResponse) {UI.removePopup(); console.log("NO PROMPT"); return;}
         const nodeName = promptResponse.newNodeName;
 
-        //Add in scene:
-        var newAtonNode = ATON.createSceneNode(nodeName).load(url, ()=>{
-           // console.log("LOADED");
-          //  console.log(editor.patch);
+       
 
-            //Realtime add node to scene and focus on it
-            newAtonNode.attachToRoot().setPosition(0,0,0);
+        const updateEditorOnModelAdded=()=>{
+            //Focus on currentNode
+            widgetsHub.focusOnItem_base({ id:nodeName, wid:editor.widgetsHub.widgets.layers.id});
             
-            //Focus on currentNode:
-            let _target = {dataset:{}};
-            _target.dataset.id = nodeName;
-            _target.dataset.wid = editor.widgetsHub.widgets.layers.id
-            widgetsHub.onClicked_itemBtn_base(_target);
-
             //Update currentScene locally:
             //scenegraph
             let newSceneGraphNode = {urls:[url]}
@@ -53,21 +44,36 @@ const layers_createBtnClicked=()=>{
             if(!_edges) { _edges = {".":[nodeName]}}
             else{_edges["."].push(nodeName)}
             editor.currScene.scenegraph.edges = _edges;
-
-        
             layers_composePatch_add(nodeName,newSceneGraphNode);
-
-            //Update hierarchy
-            APP.dashboard.ui.editor_updateHierarchy();
-
-            //Update widgetMainPanel:
-            let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
-            let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
-            APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
             
-            APP.dashboard.ui.editor_widgetMainPanel(editor.widgetsHub.widgets.layers);
-        });
+            let activeSideMenuTab = APP.dashboard.ui.getSideActiveTab();
+            console.log(activeSideMenuTab)
+            if(activeSideMenuTab=="scene"){
+                //Update hierarchy
+                APP.dashboard.ui.editor_updateHierarchy();
+            }
+            if(activeSideMenuTab=="widgets"){
+                //Update widgetMainPanel:
+                var w = editor.widgetsHub.widgets.layers;
+                let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
+                let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
+                APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
+            }
+        }
+        
+        //Add in scene:
+        var newAtonNode = ATON.createSceneNode(nodeName).load(url,()=> {newAtonNode.attachToRoot().setPosition(0,0,0); updateEditorOnModelAdded();});
+ 
+        /*
+        var newAtonNode = ATON.createSceneNode(nodeName).load(url, ()=>{
+            
+          //  console.log(editor.patch);
 
+            //Realtime add node to scene and focus on it
+            newAtonNode.attachToRoot().setPosition(0,0,0);
+            updateEditorOnModelAdded();
+        });
+        */
     }
 
     //1 get models:

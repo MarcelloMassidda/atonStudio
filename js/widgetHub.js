@@ -57,6 +57,12 @@ widgetsHub.onClicked_itemBtn_base=(btnClicked)=>{
     //0 get item id and widget id
     let id = target.dataset.id;
     let wid = target.dataset.wid;
+    
+    widgetsHub.focusOnItem_base({id,wid});
+}
+
+widgetsHub.focusOnItem_base=({id,wid})=>{
+
     let widgets = editor.widgetsHub.widgets;
     let w = widgets[wid];
 
