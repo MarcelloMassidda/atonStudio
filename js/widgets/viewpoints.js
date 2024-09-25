@@ -62,7 +62,7 @@ const viewpoints_createBtnClicked = async() => {
     
     //Compose pov:
     let p = dataPOV.fromCurrView? [currPOV.pos.x,currPOV.pos.y,currPOV.pos.z] : [0,0,0];
-    let t = dataPOV.fromCurrView? [currPOV.target.x,currPOV.target.y,currPOV.target.z] : [1,1,1];   
+    let t = dataPOV.fromCurrView? [currPOV.target.x,currPOV.target.y,currPOV.target.z] : [0,0,1];   
     let bodyPov = {fov:currPOV.fov, position:p, target:t};
     console.log(bodyPov)
     //Realtime Add to Scene:
@@ -80,6 +80,7 @@ const viewpoints_createBtnClicked = async() => {
     widgetsHub.focusOnItem_base({ id:dataPOV.id , wid:editor.widgetsHub.widgets.viewpoints.id });
     //Patch:
     //TODOPATCH
+    viewpoints_composePatch_add(dataPOV.id,bodyPov);
 }
 
 const viewpointGizmoHandlers={
@@ -309,6 +310,15 @@ const viewpoints_composePatch=()=>{
     editor.modePatch = ATON.SceneHub.MODE_ADD;
     
     if(editor.patchReqList){ editor.patchReqList[0].patch = editor.patch;}
+    editor.OnPatchChanged();
+}
+
+const viewpoints_composePatch_add=(id,body)=>{
+    
+    let _patch = editor.patch;
+    if (!_patch) _patch = {viewpoints:{}};
+    _patch.viewpoints[id] = body;
+    editor.patch = _patch;
     editor.OnPatchChanged();
 }
 

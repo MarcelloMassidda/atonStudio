@@ -1272,7 +1272,6 @@ editor.setGizmoByNID=(nid,mode=null)=>{
     //if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
 }
 
-
 editor.onCloseInspectorBtnClicked=()=>{
     
     /*hide GizmoToolbox*/
