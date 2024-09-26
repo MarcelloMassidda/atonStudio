@@ -79,7 +79,6 @@ const viewpoints_createBtnClicked = async() => {
     //focus:
     widgetsHub.focusOnItem_base({ id:dataPOV.id , wid:editor.widgetsHub.widgets.viewpoints.id });
     //Patch:
-    //TODOPATCH
     viewpoints_composePatch_add(dataPOV.id,bodyPov);
 }
 

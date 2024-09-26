@@ -20,7 +20,7 @@ const layers_createBtnClicked=()=>{
     console.log("BUTTON CREATE IS CLICKED")
     var onModelItemClicked= async (e)=>{
         console.log("BUTTON MODEL IS CLICKED")
-        const url = e.target.parentNode.dataset.path; //TO change
+        const url = e.target.parentNode.dataset.path; //TODO: to change
         UI.removePopup();
         
         //Prompt node Name:
@@ -56,27 +56,11 @@ const layers_createBtnClicked=()=>{
 
                 //Update widgetMainPanel:
                 APP.dashboard.ui.editor_updateWidgetMainPanel();
-                //CLOSED IN FUNCTION IN dashboard.ui
-                //var w = editor.widgetsHub.widgets.layers;
-                //let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
-                //let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
-                //APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
             }
         }
         
         //Add in scene:
         var newAtonNode = ATON.createSceneNode(nodeName).load(url,()=> {newAtonNode.attachToRoot().setPosition(0,0,0); updateEditorOnModelAdded();});
- 
-        /*
-        var newAtonNode = ATON.createSceneNode(nodeName).load(url, ()=>{
-            
-          //  console.log(editor.patch);
-
-            //Realtime add node to scene and focus on it
-            newAtonNode.attachToRoot().setPosition(0,0,0);
-            updateEditorOnModelAdded();
-        });
-        */
     }
 
     //1 get models:
