@@ -91,10 +91,10 @@ const measurements_composePatch=()=>{
     if(!_patch.measurements)_patch.measurements={};
     
     let a = w.props.PointA.get();
-    let b =w.props.PointB.get();
+    let b = w.props.PointB.get();
 
     _patch.measurements[_nid]={
-        points:[ a.x, a.y, a.z, b.x, b.y, b.z ]
+        points:[a.x, a.y, a.z, b.x, b.y, b.z]
     }
     editor.patch = _patch;
     editor.modePatch = ATON.SceneHub.MODE_ADD;

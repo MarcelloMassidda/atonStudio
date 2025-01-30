@@ -157,7 +157,7 @@ widgetsHub.widget = (o)=>{
         if(o.items && o.addItemToScene){
             o.init=()=>{
                 let _items = o.items(widgetsHub.currScene());
-                if(!_items) {console.log("NO " +o.id+" IN SCENE"); return;}
+                if(!_items) { console.log("NO " +o.id+" IN SCENE"); return; }
                 
                 for (const [_id, _item] of Object.entries(_items)){
                     o.addItemToScene(_id,_item)
@@ -218,7 +218,8 @@ widgetsHub.parsers={
 
         return UI.input({
             id: o.id, //("myInput",
-            name: o.name, //"myName",
+            attr:{"data-property": o.property},
+            name: o.name, //Not used yet.
             type:"number",
             value:o.v,
             labelText:o.title,

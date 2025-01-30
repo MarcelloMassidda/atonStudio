@@ -1,7 +1,7 @@
 var APP = null;
 var widgetsHub = null;
 var editor = null;
-
+var gizmoManager = null;
 
 const layers_OnChangePropFromInspector=(evt)=>{
 
@@ -29,7 +29,6 @@ const layers_createBtnClicked=()=>{
         if(!promptResponse) {UI.removePopup(); console.log("NO PROMPT"); return;}
         const nodeName = promptResponse.newNodeName;
 
-       
 
         const updateEditorOnModelAdded=()=>{
             //Focus on currentNode
@@ -105,11 +104,11 @@ const layers_GizmoHandler=(evt)=>{
     inpsectorUpdater(evt);
 
     //Compose patch:
-    let propName = layersGizmoOptions[ATON._gizmo.mode].propertyName;
+    let propName = layersGizmoOptions[gizmoManager.control.mode].propertyName;
     if(!propName) throw("no property name in gizmo handler");
-    let v = layersGizmoOptions[ATON._gizmo.mode].getProperty(APP.dashboard.editor.activeNode);
-    layers_composePatch_transform(propName,v)          
-
+    const _activeNode = APP.dashboard.editor.activeNode;
+    let v = layersGizmoOptions[gizmoManager.control.mode].getProperty(_activeNode);
+    layers_composePatch_transform(propName,v);
 }
 
 const layers_composePatch_transform=(propName,v)=>{
@@ -143,7 +142,7 @@ const layers_composePatch_transform=(propName,v)=>{
 
 const layers_composePatch_add=( nid , nodeBody )=>{
 
-    console.log("CALLLLLLLLLL")
+
     var _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
     if(_patch.scenegraph.nodes[nid]) {throw(nid + " node ID is already used."); }
     _patch.scenegraph.nodes[nid] = nodeBody;
@@ -180,7 +179,7 @@ let _layers_widget = () => widgetsHub.widget({
         let node = ATON.getSceneNode(id);
         editor.setGizmoByNode(node);
         APP.dashboard.ui.editor_setGizmoToolbox();
-        editor.udpateGizmoOnMouseUpListener(layers_GizmoHandler)
+        editor.udpateGizmoOnMouseUpListener(layers_GizmoHandler);
     },
     props:{
         "position":{
@@ -241,6 +240,7 @@ let layers_widget = {
         APP = _APP;
         widgetsHub = _APP.dashboard.editor.widgetsHub;
         editor = _APP.dashboard.editor;
+        gizmoManager = _APP.dashboard.gizmoManager;
         return _layers_widget()
     }
 }

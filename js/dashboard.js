@@ -1,4 +1,5 @@
 import {widgetsHub} from './widgetHub.js';
+import {gizmoManager} from './gizmo.js';
 
 let APP;
 let UI; //uitoolkit
@@ -36,13 +37,12 @@ let ui = {
 let utils = {};
 let editor = {};
 
-let dashboard = { db , ui , utils, editor };
+let dashboard = { db , ui , utils, editor, gizmoManager};
 
 
 dashboard.init = () => {
     APP = window.APP;
     UI = window.APP.UI;
-   
     //init ui:
     //document.body.addEventListener('DOMContentLoaded', ui.initMediaQueries(), false);
 
@@ -356,7 +356,7 @@ editor.setFocusOnNode=(nid,type="node")=>{ //OLD
         let pos = node.children[0].children[0];
         let target =  node.children[0].children[2];
         ATON.Nav.requestPOVbyNode(node,0.3);
-        editor.setGizmoToPOV(pos); //Set gizmo to POS
+        editor.setGizmoToPOV(pos); //Set gizmo to POS ???? NOT IMPLEMENTED YET
         
         //COMPOSE Inspector:
         let header =`Node ID: ${nid}<br> <small>uuid: ${node.uuid}</small>`;
@@ -634,7 +634,8 @@ ui.editor_topBar = (s=null)=>{
     let backBtn = UI.button({icon:"back",onClick:()=>window.location.reload()});
     let saveSceneBtn = UI.button({id: ui.IDeditor_saveSceneBtn, text:"SAVE CHANGES", onClick: editor.onSaveSceneBtnIsClicked, classList:"hidden"})
     let openInHathorBtn = UI.button({title:"Open scene in HATHOR front end", text:"Launch scene (HATHOR)", onClick: ()=>utils.goToHathorScene(_sid)})
-    let topBarContent = UI.flexBox({dir:"row",content:[backBtn,titleTopBar,saveSceneBtn,openInHathorBtn]});
+    let vrBtn = UI.button({text:"vr",onClick:()=> ATON.XR.toggle("immersive-vr")})
+    let topBarContent = UI.flexBox({dir:"row",content:[backBtn,titleTopBar,saveSceneBtn,openInHathorBtn,vrBtn]});
     
    return UI.createEl({id:"IDeditor_topBar",className:"dash_topBar",content: topBarContent})
 }
@@ -653,8 +654,13 @@ ui.editor_gizmoControlToolbox = (modes=null)=>{
         if(!modes) modes=["translate","rotate","scale"];
 
         const isSelected=(mode)=>{
+            
+            if(!gizmoManager.control) return "";
+            if(gizmoManager._currentMode ==mode) return "selected";
+            /*
             if (!ATON._gizmo )return "";
             if(ATON._gizmo.mode == mode) return "selected"
+            */
         }
 
         const gizmotoolboxBtns={
@@ -664,7 +670,7 @@ ui.editor_gizmoControlToolbox = (modes=null)=>{
         }
 
         const onGizmoModeBtnClicked=(mode)=>{
-                ATON._gizmo.setMode(mode);
+                gizmoManager.setMode(mode); //ATON._gizmo.setMode(mode);
                 //change selected Style:
                 var _container = document.getElementById(ui.IDeditor_gizmoToolbox);
                 Array.from(_container.children).forEach(c => {
@@ -711,7 +717,7 @@ utils.goToScene=(sid,blank=true)=>{
     let _url =  window.location.origin+"/s/"+sid;
         if(blank){ window.open(_url, '_blank'); }
         else{ window.location.href = _url;}
-    }
+}
 
 utils.createNewScene=async()=>{
         
@@ -1052,9 +1058,9 @@ editor.sendGlobalScenePatch=(onComplete=null)=>{
 
 editor.udpateGizmoOnMouseUpListener=(handler)=>{
 
-    if(!ATON._gizmo) return;
-    ATON._gizmo._listeners.mouseUp=undefined;
-    ATON._gizmo.addEventListener("mouseUp", handler );
+    if(!gizmoManager.control) return;
+    gizmoManager.control._listeners.mouseUp=undefined;
+    gizmoManager.control.addEventListener("mouseUp", handler );
 }
 
 editor.gizmoToInspectorMapper=(o)=>{
@@ -1071,10 +1077,13 @@ editor.gizmoToInspectorMapper=(o)=>{
     const gizmoHandler = (evt)=>{
         const gizmoOptions = o;
         console.log(gizmoOptions)
+        
         //get current gizmo mode
         let _mode = evt.mode; console.log(_mode);
+        
         //get relevant property of ATON Node according with gizmoMode
-        let _v = gizmoOptions[_mode].getProperty(ATON._gizmo.object);
+        let _v = gizmoOptions[_mode].getProperty(gizmoManager.control.object);
+        
         //Update Inspector
         editor.updateVector3UI(gizmoOptions[_mode].idVector3UIContainer,_v);
     }
@@ -1085,7 +1094,9 @@ editor.gizmoToInspectorMapper=(o)=>{
 editor.onGizmoMouseUp=(evt)=>{
     
     console.log("editor handler: "); console.log(evt); window.gizmoEVT = evt;
-    if(ATON._gizmo.object.uuid != APP.dashboard.editor.activeNode.uuid) return;
+
+    //if(ATON._gizmo.object.uuid != APP.dashboard.editor.activeNode.uuid) return;
+    if(gizmoManager.control.object.uuid != APP.dashboard.editor.activeNode.uuid) return;
 
     const gizmoHandler = {
         translate: {
@@ -1106,7 +1117,7 @@ editor.onGizmoMouseUp=(evt)=>{
     }
     
     let _mode = evt.mode; console.log(_mode);
-    let _v = gizmoHandler[_mode].getProperty(ATON._gizmo.object);
+    let _v = gizmoHandler[_mode].getProperty(gizmoManager.control.object/*ATON._gizmo.object*/);
     //let _v = ATON._gizmo.object[gizmoHandler[_mode].nodePropertyToCopy];
 
     editor.updateVector3UI(gizmoHandler[_mode].idVector3UIContainer,_v);
@@ -1123,7 +1134,7 @@ editor.onGizmoMouseUp=(evt)=>{
         var _value = value;
 
         var bodyPatch = {
-            nid: ATON._gizmo.object.nid,
+            nid: gizmoManager.control.object.nid, // ATON._gizmo.object.nid,
             type: "transformNode",
             property: gizmoHandler[_mode].propertyName,
             dimension: _dimension,
@@ -1251,17 +1262,23 @@ editor.updateVector3UI =(idContainer,_v)=>{
 
 //GIZMO CONTROLLER:
 editor.setGizmoByNode=(node,mode=null)=>{
-    
+   
+    gizmoManager.attachGizmoToNode(node,mode); return;
+    /*
     if(mode==null){
         if(ATON._gizmo){ mode = ATON._gizmo.mode;}
         else{mode="translate"}
     }
     UI.attachGizmoByNode(node,mode);
-    //if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
+    */
+   //if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
 }
 
-editor.setGizmoByNID=(nid,mode=null)=>{
+editor.setGizmoByNID=(nid, mode=null)=>{
 
+    gizmoManager.attachGizmoByNID(nid,mode); return;
+    
+    /*
     if(mode==null){
         if(ATON._gizmo) mode = ATON._gizmo.mode;
         else{mode="translate"}
@@ -1270,6 +1287,7 @@ editor.setGizmoByNID=(nid,mode=null)=>{
     console.log("setting GIMZO in editor")
     UI.attachGizmoBynid(nid,mode);
     //if(!ATON._gizmo._listeners.mouseUp) ATON._gizmo.addEventListener("mouseUp",editor.onGizmoMouseUp);
+    */
 }
 
 editor.onCloseInspectorBtnClicked=()=>{
@@ -1283,7 +1301,7 @@ editor.onCloseInspectorBtnClicked=()=>{
     if(inspector) inspector.remove();
 
     /*detach Gizmo*/
-    UI.detachGizmo();
+    gizmoManager.detachGizmo();//UI.detachGizmo();
 
     /*deactive previews widget-item*/
     if(editor.activeWidget){
