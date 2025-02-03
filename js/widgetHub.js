@@ -1,6 +1,6 @@
 import {viewpoints_widget} from './widgets/viewpoints.js';
 import {measurements_widget} from './widgets/measurements.js';
-import {semantics_widget} from './widgets/semanticAnnotations.js';
+import {semantics_widget} from './widgets/semantics.js';
 import {layers_widget} from './widgets/layers.js';
 
 let widgetsHub = {}
@@ -102,6 +102,12 @@ widgetsHub.focusOnItem_base=({id,wid})=>{
 
     console.log(editor.patch)
 }
+
+
+widgetsHub.deleteItem_base=({id,wid})=>{
+    
+}
+
 
 /*Widget Factory*/
 widgetsHub.widget = (o)=>{

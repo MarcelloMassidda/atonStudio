@@ -3,6 +3,57 @@ var editor = null;
 var gizmoManager = null;
 
 
+let convexShapeManager = {};
+
+convexShapeManager.bConvexBuilding=false;
+convexShapeManager._currentSemId = null;
+
+convexShapeManager.setIsBuilding=(b)=>{
+    convexShapeManager.bConvexBuilding = b;
+};
+
+convexShapeManager.addSurfaceConvexPoint=()=>{
+    ATON.SemFactory.addSurfaceConvexPoint();
+};
+
+convexShapeManager.completeConvexShape=()=>{
+    let id = convexShapeManager._currentSemId;
+    if(!id) return;
+
+    let S = ATON.SemFactory.completeConvexShape(id);
+    
+    if (S) ATON.getRootSemantics().add(S);
+    convexShapeManager.setIsBuilding(false);
+    
+    //TODO: Update local graph scene
+    //TODO: Update patch
+    //TODO: Update widgetMainPanel
+    //TODO: Focus on item
+    //TODO: Update Gizmo
+}
+
+convexShapeManager.stopCurrentConvex=()=>{
+    ATON.SemFactory.stopCurrentConvex();
+}
+
+/* 
+convexShapeManager._createConvexShape=()=>{ 
+ 
+    //Listing HATHOR Beahviours 
+    const HATHOR = {}; 
+    HATHOR.selectionMode = ()=>{return HATHOR}; 
+ 
+    HATHOR._actState == HATHOR.SELECTION_ADDCONVEXPOINT; 
+    HATHOR.setSelectionMode(HATHOR.SELACTION_ADDCONVEXPOINT); 
+    ATON.Nav.setUserControl(false); 
+ 
+    //on select: 
+    //ATON.SemFactory.addSurfaceConvexPoint(); 
+    ATON.EventHub.on("Tap", (e)=>{ 
+        console.log("tapped from shapes"); 
+    }); 
+}
+*/
 
 const semantics_OnChangePropFromInspector=(evt)=>{
  
@@ -96,7 +147,10 @@ const createSemantic=(dataUser)=>{
         semNode = ATON.SemFactory.createSphere(id, p, r);
     }
     if(mode=="convex"){
-        alert("Convex Shape is not implemented yet"); return;
+       convexShapeManager._currentSemId = dataUser.id;
+       convexShapeManager.setIsBuilding(true);
+       console.log("SETUP CONVEX BUILDING");
+       return;
     }
 
     //Realtime Add to Scene:
@@ -208,11 +262,30 @@ const semantics_composePatch_transform=(propName,v)=>{
     editor.OnPatchChanged();
 }
 
+let semantics_setupEvents =()=>{
+
+    ATON.on("Tap",(e)=>{
+        if(!convexShapeManager.bConvexBuilding) return;
+        convexShapeManager.addSurfaceConvexPoint(); 
+    })
+}
+
 
 let _semantics_widget = ()=> widgetsHub.widget({
+    convexShapeManager:convexShapeManager,
     id:"annotations",
     mainBtnOptions:{id:"Annotations_mainBtn",text:"Annotations",icon:"ann-sphere"},
-    itemBtnOptions:{icon:"ann-sphere"},
+    //itemBtnOptions:{icon:"ann-sphere"},
+    itemBtn:(itemId)=>{
+        let _icon = getSemanticsType(itemId)=="sphere"? "ann-sphere" : "ann-convex";
+        return widgetsHub.itemBtn_base({
+            icon:_icon,
+            id:itemId,
+            text:itemId,
+            attr:{"data-id":itemId,"data-wid":"annotations"},
+            onClick:function(){widgetsHub.onClicked_itemBtn_base(this)}
+        }
+    )},
     items:()=>{
        var semgraph = widgetsHub.currScene()["semanticgraph"];
        return semgraph? semgraph.nodes : null;
@@ -263,6 +336,9 @@ let _semantics_widget = ()=> widgetsHub.widget({
                 }
             }
         }
+    },
+    init:()=>{
+        semantics_setupEvents();
     }
 });
 

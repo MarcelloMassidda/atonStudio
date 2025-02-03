@@ -1,5 +1,6 @@
 import {widgetsHub} from './widgetHub.js';
 import {gizmoManager} from './gizmo.js';
+import {ui} from './ui.js';
 
 let APP;
 let UI; //uitoolkit
