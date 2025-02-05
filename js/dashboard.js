@@ -1,6 +1,6 @@
 import {widgetsHub} from './widgetHub.js';
 import {gizmoManager} from './gizmo.js';
-import {ui} from './ui.js';
+//import {ui} from './ui.js';
 
 let APP;
 let UI; //uitoolkit
@@ -690,6 +690,17 @@ ui.editor_removeGizmoToolBox=()=>{
     let gizmoToolbox = document.getElementById(ui.IDeditor_centralToolBoxContainer);
     if(gizmoToolbox) gizmoToolbox.remove();
 }
+
+
+ui.editor_setCentralHelperPanel=(content)=>{
+    document.body.appendChild(UI.createEl({id:ui.IDeditor_centralToolBoxContainer, className:"editorContainer_centerToolbox",content}));
+}
+
+ui.editor_removeCentralHelperPanel=()=>{
+    let centralHelper = document.getElementById(ui.IDeditor_centralToolBoxContainer);
+    if(centralHelper) centralHelper.remove();
+}
+
 /* dashboard.utils
 =====================*/
 utils.goToHathorScene = (_sid)=>dashboard.utils.goToScene(_sid);

@@ -55,6 +55,14 @@ convexShapeManager._createConvexShape=()=>{
 }
 */
 
+let semantics_setupEvents =()=>{
+
+    ATON.on("Tap",(e)=>{
+        if(!convexShapeManager.bConvexBuilding) return;
+        convexShapeManager.addSurfaceConvexPoint(); 
+    })
+}
+
 const semantics_OnChangePropFromInspector=(evt)=>{
  
     APP._currentEVT = evt;
@@ -146,10 +154,15 @@ const createSemantic=(dataUser)=>{
         let r = dataUser.radius? parseFloat(dataUser.radius) : ATON.SUI.getSelectorRadius();
         semNode = ATON.SemFactory.createSphere(id, p, r);
     }
+
     if(mode=="convex"){
        convexShapeManager._currentSemId = dataUser.id;
        convexShapeManager.setIsBuilding(true);
-       console.log("SETUP CONVEX BUILDING");
+       
+       //Setup Central Panel:
+       const helperContent = semantics_ConvexShape_HelperContent();
+       APP.dashboard.ui.editor_setCentralHelperPanel(helperContent);
+       //Manage toolbox currenlty active? TODO?
        return;
     }
 
@@ -186,10 +199,24 @@ const createSemantic=(dataUser)=>{
 
 }
 
+const onConvexShapeCompleteBtnClicked=()=>{
+    APP.dashboard.ui.editor_removeCentralHelperPanel(); 
+    convexShapeManager.completeConvexShape();
+    //Show Inspector TODO;
+    //Patch TODO;
+}
+const semantics_ConvexShape_HelperContent=()=>{
+
+    const head = convexShapeManager._currentSemId + ": Convex Shape Building";
+    const completeBtn =  UI.button({id:"completeShape" ,tooltip:"Complete the current convex shape", onClick:()=>onConvexShapeCompleteBtnClicked(), text:"Complete Shape"});
+    const abortBtn = UI.button({id:"abortShape" ,tooltip:"Abort the current convex shape", onClick:()=>convexShapeManager.stopCurrentConvex(), text:"Abort Shape"});
+    const btns = UI.flexBox({content:[completeBtn,abortBtn]});
+    const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
+    return UI.flexBox({content});
+}
 
 
 const semantics_GizmoHandler=(evt)=>{
-
 
     //TODO: manage convex/sphere
     const _activeNode = APP.dashboard.editor.activeNode;
@@ -262,13 +289,7 @@ const semantics_composePatch_transform=(propName,v)=>{
     editor.OnPatchChanged();
 }
 
-let semantics_setupEvents =()=>{
 
-    ATON.on("Tap",(e)=>{
-        if(!convexShapeManager.bConvexBuilding) return;
-        convexShapeManager.addSurfaceConvexPoint(); 
-    })
-}
 
 
 let _semantics_widget = ()=> widgetsHub.widget({
