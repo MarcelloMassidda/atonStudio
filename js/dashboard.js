@@ -209,6 +209,13 @@ ui.create3DEditor=(s=null)=>{
             document.body.appendChild(UI.createEl({className:"editorContainer_dash_topBar", content: topBar}));
             document.body.appendChild(UI.createEl({className:"editorContainer_inspector", content: inspector}));
             document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));
+
+            //SETUP 3D HELPERS:
+            const size = 10;
+            const divisions = 10;
+
+            editor.gridHelper = new THREE.GridHelper( size, divisions );
+            ATON.getRootScene().add( editor.gridHelper );
 }
 
 

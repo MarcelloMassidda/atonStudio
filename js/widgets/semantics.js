@@ -25,35 +25,43 @@ convexShapeManager.completeConvexShape=()=>{
     if (S) ATON.getRootSemantics().add(S);
     convexShapeManager.setIsBuilding(false);
     
-    //TODO: Update local graph scene
-    //TODO: Update patch
-    //TODO: Update widgetMainPanel
-    //TODO: Focus on item
-    //TODO: Update Gizmo
+    //Update local graph scene: See from hathors/1422
+    let E = {};
+    E.semanticgraph = {};
+    E.semanticgraph.nodes = {};
+    E.semanticgraph.nodes[S.nid] = {};
+    E.semanticgraph.nodes[S.nid].convexshapes = ATON.SceneHub.getJSONsemanticConvexShapes(S.nid);
+    
+  //  if (S.getDescription()) E.semanticgraph.nodes[S.nid].description = S.getDescription();
+  //  if (S.getAudio()) E.semanticgraph.nodes[S.nid].audio = S.getAudio();
+    E.semanticgraph.edges = ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM); 
+    let semNode_info = E.semanticgraph.nodes[S.nid];
+
+    let localSceneSemGraph = APP.dashboard.db.data.currScene.semanticgraph;
+    if(localSceneSemGraph){
+            localSceneSemGraph.nodes[id] = semNode_info;
+            localSceneSemGraph.edges = E.semanticgraph.edges;       
+        }
+    else { APP.dashboard.db.data.currScene.semanticgraph = E.semanticgraph}
+
+    //Update patch
+    let _patch = editor.patch;
+    if(!_patch)  {_patch = E;}
+    else{_patch.semanticgraph = E.semanticgraph}
+    editor.patch = _patch;
+    editor.OnPatchChanged();
+
+    //Focus on item
+    widgetsHub.focusOnItem_base({ id, wid:editor.widgetsHub.widgets.annotations.id}); // (focus_base set current actualWidget)
+
+    //Update WidgetMainPanel
+     APP.dashboard.ui.editor_updateWidgetMainPanel();
 }
 
 convexShapeManager.stopCurrentConvex=()=>{
     ATON.SemFactory.stopCurrentConvex();
 }
 
-/* 
-convexShapeManager._createConvexShape=()=>{ 
- 
-    //Listing HATHOR Beahviours 
-    const HATHOR = {}; 
-    HATHOR.selectionMode = ()=>{return HATHOR}; 
- 
-    HATHOR._actState == HATHOR.SELECTION_ADDCONVEXPOINT; 
-    HATHOR.setSelectionMode(HATHOR.SELACTION_ADDCONVEXPOINT); 
-    ATON.Nav.setUserControl(false); 
- 
-    //on select: 
-    //ATON.SemFactory.addSurfaceConvexPoint(); 
-    ATON.EventHub.on("Tap", (e)=>{ 
-        console.log("tapped from shapes"); 
-    }); 
-}
-*/
 
 let semantics_setupEvents =()=>{
 
@@ -227,10 +235,12 @@ const semantics_GizmoHandler=(evt)=>{
             propertyName:"position",
             idVector3UIContainer:"semantics_position_V3",
             getProperty:(n)=> {
+                console.log("n is:");
                 console.log(n)
                 if(mode=="sphere") return n.position;
-                else {throw(mode + "not yet implemented")}} 
-            }
+                if(mode=="convex") {return n.position};
+            } 
+        }
     }
 
     //Update inspector:
@@ -313,6 +323,11 @@ let _semantics_widget = ()=> widgetsHub.widget({
     },
     returnItem:(nid)=>{return ATON.getSemanticNode(nid)},
     setupGizmo:(id)=>{ 
+        
+        if(getSemanticsType(id)!="sphere"){
+            APP.dashboard.ui.editor_setGizmoToolbox([]);
+            return;}
+
         let node = ATON.getSemanticNode(id);
         editor.setGizmoByNode(node.children[0]); //Only return first sphere of semantic node, TODO: mulitple items and convex shape case
         APP.dashboard.ui.editor_setGizmoToolbox();
@@ -321,8 +336,11 @@ let _semantics_widget = ()=> widgetsHub.widget({
     createBtnOptions:{text:"Add new Annotation",icon:"add", onClick: ()=>semantics_createBtnClicked()},
     props:{
         //SPHERE: (convex to add)
-        "position":{
+        "position":{            
             inspectorBlock:(node)=>{
+
+                if(getSemanticsType(node.nid)!="sphere") return null;
+
                 return widgetsHub.parsers.vector3({
                     id:"semantics_position_V3",
                     title:"Position",
@@ -341,6 +359,9 @@ let _semantics_widget = ()=> widgetsHub.widget({
         },
         "radius":{
             inspectorBlock:(node)=>{
+
+                if(getSemanticsType(node.nid)!="sphere") return null;
+
                 return widgetsHub.parsers.float({
                     id: "semantics_radius_float",
                     title:"Radius",

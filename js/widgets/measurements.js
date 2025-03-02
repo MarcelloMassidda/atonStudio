@@ -1,5 +1,72 @@
+
 var widgetsHub = null;
 var editor = null;
+
+
+//CREATE MEASUREMENTS
+const measurementManager = {
+    bMeasuring:false
+};
+
+measurementManager.setIsBuilding=(b)=>{
+    measurementManager.bMeasuring = b;
+    //update ui
+}
+const measurements_setupEvents =()=>{
+    ATON.on("Tap",(e)=>{
+            if(!measurementManager.bMeasuring) return;
+            addMeasurePoint(); 
+        })
+}
+
+const measurements_createBtnClicked = ()=>{
+    measurementManager.setIsBuilding(true);
+}
+
+const addMeasurePoint=()=>{
+    console.log("create new measurement");
+    let P = ATON.getSceneQueriedPoint();
+    let M = ATON.SUI.addMeasurementPoint( P );
+
+    if (M === undefined) return;
+    measurementManager.setIsBuilding(false);
+    
+
+    //Create new measurement
+    let mid = ATON.Utils.generateID("meas");
+    console.log(mid)
+    let E = {};
+    E.measurements = {};
+    E.measurements[mid] = {};
+    E.measurements[mid].points = [
+        parseFloat(M.A.x.toPrecision(ATON.SceneHub.FLOAT_PREC)),
+        parseFloat(M.A.y.toPrecision(ATON.SceneHub.FLOAT_PREC)),
+        parseFloat(M.A.z.toPrecision(ATON.SceneHub.FLOAT_PREC)),
+        parseFloat(M.B.x.toPrecision(ATON.SceneHub.FLOAT_PREC)),
+        parseFloat(M.B.y.toPrecision(ATON.SceneHub.FLOAT_PREC)),
+        parseFloat(M.B.z.toPrecision(ATON.SceneHub.FLOAT_PREC))
+    ];
+
+    //Update local graph
+    let localmeasurements = APP.dashboard.db.data.currScene.measurements;
+    if(!localmeasurements) localmeasurements = E;
+    else localmeasurements[mid] = E.measurements[mid];
+    APP.dashboard.db.data.currScene.measurements = localmeasurements;
+    
+    //Focus Active and  on item
+    widgetsHub.focusOnItem_base({ id:mid, wid:editor.widgetsHub.widgets.measurements.id}); //TOFIX self-widget-reference
+
+    //Update mainpanel widget
+    APP.dashboard.ui.editor_updateWidgetMainPanel();
+    
+    //Update patch
+    let _patch = editor.patch;
+    if(!_patch)  {_patch = E;}
+    else{_patch.measurements = E.measurements}
+    editor.patch = _patch;
+    editor.OnPatchChanged();
+}
+
 
 const removeAllMeasurements=()=>{
     ATON._rootUI.children[3].removeChildren()
@@ -103,28 +170,36 @@ const measurements_composePatch=()=>{
 }
 
 
+
 let _measurements_widget = ()=> widgetsHub.widget({
     id:"measurements",
     mainBtnOptions:{id:"measurements_mainBtn",text:"Measurements",icon:"measure"},
     itemBtnOptions:{icon:"measure"},
-    createBtnOptions:{text:"Add new measurement",icon:"add"},
-    activeItem:function(id){
-   
+    createBtnOptions:{text:"Add new measurement",icon:"add",onClick: ()=>measurements_createBtnClicked()},
+    activeItem:(meas_id)=>{
+        if(!meas_id) return;
+      
+        console.log("active item: " + meas_id);
         if(editor.activeNode && editor.activeWidget.id=="measurements"){ //TO DO BETTER
-        editor.activeWidget.deactiveItem(editor.activeNode.nid)
+            editor.activeWidget.deactiveItem(editor.activeNode.nid)
         }
-
-        let measure = this._items[id];
-        if(!measure) throw("no measure founded for: " + id);
+        //Get measurement info from active widget items
+        let _items = editor.widgetsHub.widgets.measurements.items();
+        console.log(_items)
+        console.log("looking for: " + meas_id)
+        let measure = _items[meas_id];
+        if(!measure) throw("no measure founded for: " + meas_id);
+        
+        //Create 3D icon
         const p = measure.points;
-        var tmpMeasurementIcon = ATON.createSceneNode(id);
+        var tmpMeasurementIcon = ATON.createSceneNode(meas_id);
         var _icon = UI.MEASURE_3Dicon([p[0],p[1],p[2]],[p[3],p[4],p[5]]);
         tmpMeasurementIcon.add(_icon)
         tmpMeasurementIcon.attachToRoot();
     },
     deactiveItem:(id)=> {ATON.getSceneNode(id).delete();},
     //returnItem default
-    focuItem:(item)=>{
+    focusItem:(item)=>{
         console.log(item)
         let line = item.children[1];        
         ATON.Nav.requestPOVbyNode(line,0.3);
@@ -134,6 +209,9 @@ let _measurements_widget = ()=> widgetsHub.widget({
         let A = node.children[0].children[0];
         editor.setGizmoByNode(A);
         editor.udpateGizmoOnMouseUpListener(measurementsGizmoHandlers.pointA)
+    },
+    init:()=>{
+        measurements_setupEvents();
     },
     props:{
         "PointA": {
