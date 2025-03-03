@@ -17,8 +17,12 @@ convexShapeManager.addSurfaceConvexPoint=()=>{
 };
 
 convexShapeManager.completeConvexShape=()=>{
+    
     let id = convexShapeManager._currentSemId;
-    if(!id) return;
+    if(!id) {window.alert("No id for the convex shape"); return null;}
+
+    let numPoints = ATON.SemFactory.convexPoints.length;
+    if(numPoints<4) {window.alert("At least 4 points are needed to create a convex shape"); return null;}
 
     let S = ATON.SemFactory.completeConvexShape(id);
     
@@ -37,12 +41,12 @@ convexShapeManager.completeConvexShape=()=>{
     E.semanticgraph.edges = ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM); 
     let semNode_info = E.semanticgraph.nodes[S.nid];
 
-    let localSceneSemGraph = APP.dashboard.db.data.currScene.semanticgraph;
+    let localSceneSemGraph = APP.db.data.currScene.semanticgraph;
     if(localSceneSemGraph){
             localSceneSemGraph.nodes[id] = semNode_info;
             localSceneSemGraph.edges = E.semanticgraph.edges;       
         }
-    else { APP.dashboard.db.data.currScene.semanticgraph = E.semanticgraph}
+    else { APP.db.data.currScene.semanticgraph = E.semanticgraph}
 
     //Update patch
     let _patch = editor.patch;
@@ -52,14 +56,17 @@ convexShapeManager.completeConvexShape=()=>{
     editor.OnPatchChanged();
 
     //Focus on item
-    widgetsHub.focusOnItem_base({ id, wid:editor.widgetsHub.widgets.annotations.id}); // (focus_base set current actualWidget)
+    widgetsHub.focusOnItem_base({ id, wid:APP.widgetsHub.widgets.annotations.id}); // (focus_base set current actualWidget)
 
     //Update WidgetMainPanel
-     APP.dashboard.ui.editor_updateWidgetMainPanel();
+     APP.ui.editor_updateWidgetMainPanel();
+
+     return S;
 }
 
 convexShapeManager.stopCurrentConvex=()=>{
     ATON.SemFactory.stopCurrentConvex();
+    convexShapeManager.setIsBuilding(false);
 }
 
 
@@ -81,13 +88,13 @@ const semantics_OnChangePropFromInspector=(evt)=>{
     //Trovare un altro modo per disaccoppiare widgetHub.parsers effect (non sempre float influenza una singola cosa nel 3D, in effetti stesso per Vector3?)
     if(propName=="radius"){
         let _val = parseFloat(evt.target.value.replaceAll(",","."));
-        let _target = APP.dashboard.editor.activeNode.children[0];
+        let _target = APP.editor.activeNode.children[0];
         _target.scale.x = _val;
         _target.scale.y = _val;
         _target.scale.z = _val;
     }
 
-    let prophandler = APP.dashboard.editor.activeWidget.props[propName];
+    let prophandler = APP.editor.activeWidget.props[propName];
     if(!prophandler) throw(propName + ": no prophandler to manage");
     let v = prophandler.get();
     semantics_composePatch_transform(propName,v);
@@ -95,7 +102,7 @@ const semantics_OnChangePropFromInspector=(evt)=>{
 
 const getSemanticsType=(nid)=>{
     console.log("NID IS: " + nid);
-     const semNode = APP.dashboard.db.data.currScene.semanticgraph.nodes[nid];
+     const semNode = APP.db.data.currScene.semanticgraph.nodes[nid];
      console.log(semNode);
 
      if(semNode.spheres) return "sphere";
@@ -144,9 +151,7 @@ const semantics_createBtnClicked= async()=>{
 
 const createSemantic=(dataUser)=>{
 
-    //TODO: Manage mode:
-    //TODO: Manage if it's to add on existing semantic node
-    //TODO: Manage mode geometry
+    //TODO: Manage nested sems
     
     const mode = dataUser.mode;
     const id = dataUser.id;
@@ -167,10 +172,16 @@ const createSemantic=(dataUser)=>{
        convexShapeManager._currentSemId = dataUser.id;
        convexShapeManager.setIsBuilding(true);
        
-       //Setup Central Panel:
+       //Setup UI:
+       
+       //Central Panel:
        const helperContent = semantics_ConvexShape_HelperContent();
-       APP.dashboard.ui.editor_setCentralHelperPanel(helperContent);
-       //Manage toolbox currenlty active? TODO?
+       APP.ui.editor_setCentralHelperPanel(helperContent);
+       
+       //Hide leftMenu while building sem
+       APP.ui.toggle_sideMenus(false);
+       
+       //Manage toolbox currenlty active - TODO?
        return;
     }
 
@@ -187,9 +198,9 @@ const createSemantic=(dataUser)=>{
     //edges
     E.semanticgraph.edges = ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM);
     
-    let localSceneSemGraph = APP.dashboard.db.data.currScene.semanticgraph;
+    let localSceneSemGraph = APP.db.data.currScene.semanticgraph;
     if(localSceneSemGraph){ localSceneSemGraph.nodes[id] = semNode_info;}
-    else { APP.dashboard.db.data.currScene.semanticgraph = E.semanticgraph}
+    else { APP.db.data.currScene.semanticgraph = E.semanticgraph}
 
     //patch
     let _patch = editor.patch;
@@ -199,25 +210,37 @@ const createSemantic=(dataUser)=>{
     editor.OnPatchChanged();
 
     //focus:
-    widgetsHub.focusOnItem_base({ id, wid:editor.widgetsHub.widgets.annotations.id});
+    widgetsHub.focusOnItem_base({ id, wid:APP.widgetsHub.widgets.annotations.id});
     //focus_base set current actualWidget
 
     //Update WidgetMainPanel
-    APP.dashboard.ui.editor_updateWidgetMainPanel();
+    APP.ui.editor_updateWidgetMainPanel();
 
 }
 
 const onConvexShapeCompleteBtnClicked=()=>{
-    APP.dashboard.ui.editor_removeCentralHelperPanel(); 
-    convexShapeManager.completeConvexShape();
-    //Show Inspector TODO;
-    //Patch TODO;
+
+    let S = convexShapeManager.completeConvexShape();
+    if(!S) return;
+    //UI:
+    APP.ui.editor_removeCentralHelperPanel(); 
+    APP.ui.toggle_sideMenus(true);
+    APP.ui.editor_updateWidgetMainPanel(); // To fix position
 }
+
+const onConvexShapeAbortBtnClicked=()=>{
+    convexShapeManager.stopCurrentConvex();
+    //UI:
+    APP.ui.toggle_sideMenus(true);
+    APP.ui.editor_removeCentralHelperPanel(); 
+
+}
+
 const semantics_ConvexShape_HelperContent=()=>{
 
     const head = convexShapeManager._currentSemId + ": Convex Shape Building";
     const completeBtn =  UI.button({id:"completeShape" ,tooltip:"Complete the current convex shape", onClick:()=>onConvexShapeCompleteBtnClicked(), text:"Complete Shape"});
-    const abortBtn = UI.button({id:"abortShape" ,tooltip:"Abort the current convex shape", onClick:()=>convexShapeManager.stopCurrentConvex(), text:"Abort Shape"});
+    const abortBtn = UI.button({id:"abortShape" ,tooltip:"Abort the current convex shape", onClick:()=>onConvexShapeAbortBtnClicked(), text:"Abort Shape"});
     const btns = UI.flexBox({content:[completeBtn,abortBtn]});
     const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
     return UI.flexBox({content});
@@ -226,8 +249,7 @@ const semantics_ConvexShape_HelperContent=()=>{
 
 const semantics_GizmoHandler=(evt)=>{
 
-    //TODO: manage convex/sphere
-    const _activeNode = APP.dashboard.editor.activeNode;
+    const _activeNode = APP.editor.activeNode;
     const mode = getSemanticsType(_activeNode.nid);
 
     const semanticsGizmoOptions = {
@@ -261,7 +283,7 @@ const semantics_composePatch_transform=(propName,v)=>{
     //TODO: To manage convex shapes
     //TODO: How to separate 3D logic from UI?
 
-    let node = APP.dashboard.editor.activeNode;
+    let node = APP.editor.activeNode;
     if(!node) throw("no node");
     
     const mode = getSemanticsType(node.nid);
@@ -282,7 +304,7 @@ const semantics_composePatch_transform=(propName,v)=>{
 
     //Non importa quale parametro sto modificando, patch sia radius che position.
     //Position:
-    let w = APP.dashboard.editor.activeWidget;
+    let w = APP.editor.activeWidget;
     const p = w.props.position.get()
     _spheres[0][0]= p.x;
     _spheres[0][1]= p.y;
@@ -325,12 +347,12 @@ let _semantics_widget = ()=> widgetsHub.widget({
     setupGizmo:(id)=>{ 
         
         if(getSemanticsType(id)!="sphere"){
-            APP.dashboard.ui.editor_setGizmoToolbox([]);
+            APP.ui.editor_setGizmoToolbox([]);
             return;}
 
         let node = ATON.getSemanticNode(id);
         editor.setGizmoByNode(node.children[0]); //Only return first sphere of semantic node, TODO: mulitple items and convex shape case
-        APP.dashboard.ui.editor_setGizmoToolbox();
+        APP.ui.editor_setGizmoToolbox();
         editor.udpateGizmoOnMouseUpListener(semantics_GizmoHandler);
     },
     createBtnOptions:{text:"Add new Annotation",icon:"add", onClick: ()=>semantics_createBtnClicked()},
@@ -351,7 +373,7 @@ let _semantics_widget = ()=> widgetsHub.widget({
                 })  
             },
             get:()=>{
-                let node = APP.dashboard.editor.activeNode;
+                let node = APP.editor.activeNode;
                 if(getSemanticsType(node.nid)=="sphere"){
                     return node.children[0].position;
                 }
@@ -372,7 +394,7 @@ let _semantics_widget = ()=> widgetsHub.widget({
                 })
             },
             get:()=>{
-                let node = APP.dashboard.editor.activeNode;
+                let node = APP.editor.activeNode;
                 if(getSemanticsType(node.nid)=="sphere"){
                     return node.children[0].scale.x;
                 }
@@ -387,9 +409,9 @@ let _semantics_widget = ()=> widgetsHub.widget({
 
 let semantics_widget = {
     create: (_APP) => {
-        widgetsHub = _APP.dashboard.editor.widgetsHub;
-        editor = _APP.dashboard.editor;
-        gizmoManager = _APP.dashboard.gizmoManager;
+        widgetsHub = _APP.widgetsHub;
+        editor = _APP.editor;
+        gizmoManager = _APP.gizmoManager;
         return _semantics_widget()
     }
 }

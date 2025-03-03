@@ -11,6 +11,7 @@ let ui = {
 
     //Dashboard
     IDdash_mainContainer: "IDdash_mainContainer",
+
     //Editor
     IDeditor_saveSceneBtn: "IDeditor_saveSceneBtn",
     //Editor - SideMenu
@@ -236,6 +237,18 @@ ui.getSideActiveTab=()=>{
     if(activeTab==ui.ID_editorSideMenu_Scene) aTab="scene";
     if(activeTab==ui.ID_editorSideMenu_Widget) aTab="widgets";
     return aTab;
+}
+
+ui.toggle_sideMenus=(b)=>{ ui.toggle_sideMenu( b); ui.toggle_secondSideMenu(b);}
+
+ui.toggle_sideMenu=(b)=>{ ui.toggle(ui.ID_editorSideMainContainer, b);}
+ui.toggle_secondSideMenu=(b)=>{ ui.toggle(ui.ID_SecondSideMenuCurrentlyActive, b);}
+
+
+ui.toggle= (id, b)=>{
+    let el = document.getElementById(id);
+    let _display = b? "block" : "none";
+    if(el) el.style.display = _display;
 }
 
 ui.editor_sideMenu=()=>{

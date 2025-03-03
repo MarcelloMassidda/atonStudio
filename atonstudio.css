@@ -12,6 +12,8 @@
     --editor-panelMargin: var(--spacing-sm);
 }
 
+/**/
+
 /*Main Container*/
 .dash_mainContainer{
     overflow: hidden;

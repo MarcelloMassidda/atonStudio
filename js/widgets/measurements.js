@@ -10,8 +10,13 @@ const measurementManager = {
 
 measurementManager.setIsBuilding=(b)=>{
     measurementManager.bMeasuring = b;
-    //update ui
 }
+
+measurementManager.abortMeasure=()=>{
+    measurementManager.setIsBuilding(false);
+    if(ATON.SUI._prevMPoint) ATON.SUI._prevMPoint = undefined;
+}
+
 const measurements_setupEvents =()=>{
     ATON.on("Tap",(e)=>{
             if(!measurementManager.bMeasuring) return;
@@ -21,6 +26,11 @@ const measurements_setupEvents =()=>{
 
 const measurements_createBtnClicked = ()=>{
     measurementManager.setIsBuilding(true);
+    //UI:
+    //Central Panel:
+    const helperContent = measurements_HelperContent();
+    APP.ui.editor_setCentralHelperPanel(helperContent);
+    APP.ui.toggle_sideMenus(false);
 }
 
 const addMeasurePoint=()=>{
@@ -30,7 +40,6 @@ const addMeasurePoint=()=>{
 
     if (M === undefined) return;
     measurementManager.setIsBuilding(false);
-    
 
     //Create new measurement
     let mid = ATON.Utils.generateID("meas");
@@ -48,17 +57,18 @@ const addMeasurePoint=()=>{
     ];
 
     //Update local graph
-    let localmeasurements = APP.dashboard.db.data.currScene.measurements;
+    let localmeasurements = APP.db.data.currScene.measurements;
     if(!localmeasurements) localmeasurements = E;
     else localmeasurements[mid] = E.measurements[mid];
-    APP.dashboard.db.data.currScene.measurements = localmeasurements;
+    APP.db.data.currScene.measurements = localmeasurements;
     
     //Focus Active and  on item
-    widgetsHub.focusOnItem_base({ id:mid, wid:editor.widgetsHub.widgets.measurements.id}); //TOFIX self-widget-reference
+    widgetsHub.focusOnItem_base({ id:mid, wid:APP.widgetsHub.widgets.measurements.id}); //TOFIX self-widget-reference
 
-    //Update mainpanel widget
-    APP.dashboard.ui.editor_updateWidgetMainPanel();
-    
+    //Update UI
+    APP.ui.toggle_sideMenus(true);
+    APP.ui.editor_updateWidgetMainPanel();
+
     //Update patch
     let _patch = editor.patch;
     if(!_patch)  {_patch = E;}
@@ -67,6 +77,20 @@ const addMeasurePoint=()=>{
     editor.OnPatchChanged();
 }
 
+const onMeasureAbortBtnClicked=()=>{
+    measurementManager.abortMeasure();
+    APP.ui.toggle_sideMenus(true);
+    APP.ui.editor_removeCentralHelperPanel(); 
+}
+
+const measurements_HelperContent=()=>{
+
+    const head = "Adding measurements: Click on any surface to add POINT A and POINT B"; 
+    const abortBtn = UI.button({id:"abortMeasurement" ,tooltip:"Abort the current mesaurement", onClick:()=>onMeasureAbortBtnClicked(), text:"Abort Shape"});
+    const btns = UI.flexBox({content:[abortBtn]});
+    const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
+    return UI.flexBox({content});
+}
 
 const removeAllMeasurements=()=>{
     ATON._rootUI.children[3].removeChildren()
@@ -107,10 +131,10 @@ const measurementsOnChangeProp=(evt)=>{
     let bPos = b.position;// [b.x,b.y,b.z];
 
     //Recreate measurements from currScene //TO FIX scene MANIPULATION
-    let currScene = APP.dashboard.db.data.currScene;
+    let currScene = APP.db.data.currScene;
     currScene.measurements[nid]= {points:[aPos.x,aPos.y,aPos.z,bPos.x,bPos.y,bPos.z]}
     updateMeasurements(currScene.measurements);
-    APP.dashboard.db.data.currScene = currScene;
+    APP.db.data.currScene = currScene;
 
     measurements_composePatch();
 }
@@ -146,10 +170,10 @@ const measurementsGizmoHandlers={
 
 const measurements_composePatch=()=>{
 
-    let node = APP.dashboard.editor.activeNode;
+    let node = APP.editor.activeNode;
     if(!node) throw("no node");
     
-    const w = APP.dashboard.editor.activeWidget;
+    const w = APP.editor.activeWidget;
     if(!w) throw("no widget active");
     
     //Compose patch:
@@ -184,7 +208,7 @@ let _measurements_widget = ()=> widgetsHub.widget({
             editor.activeWidget.deactiveItem(editor.activeNode.nid)
         }
         //Get measurement info from active widget items
-        let _items = editor.widgetsHub.widgets.measurements.items();
+        let _items = APP.widgetsHub.widgets.measurements.items();
         console.log(_items)
         console.log("looking for: " + meas_id)
         let measure = _items[meas_id];
@@ -237,7 +261,7 @@ let _measurements_widget = ()=> widgetsHub.widget({
            return inspectorBlock
         },
     get:()=>{
-        let node = APP.dashboard.editor.activeNode;
+        let node = APP.editor.activeNode;
         return node.children[0].children[0].position;
     }
     },
@@ -264,7 +288,7 @@ let _measurements_widget = ()=> widgetsHub.widget({
             return inspectorBlock;
         },
         get:()=>{
-            let node = APP.dashboard.editor.activeNode;
+            let node = APP.editor.activeNode;
             return node.children[0].children[1].position;
         }}
     }
@@ -272,8 +296,8 @@ let _measurements_widget = ()=> widgetsHub.widget({
 
 let measurements_widget = {
     create: (_APP) => {
-        widgetsHub = _APP.dashboard.editor.widgetsHub;
-        editor = _APP.dashboard.editor;
+        widgetsHub = _APP.widgetsHub;
+        editor = _APP.editor;
         return _measurements_widget()
     }
 }

@@ -17,7 +17,7 @@ const viewpointsOnChangeProp=(evt)=>{
     let p_pos = [pos.x,pos.y,pos.z];
     let p_target = [target.x,target.y,target.z];
     ATON.getSceneNode(nid).delete();
-    editor.widgetsHub.widgets.viewpoints.addItemToScene(nid,{position:p_pos,target:p_target});
+    APP.widgetsHub.widgets.viewpoints.addItemToScene(nid,{position:p_pos,target:p_target});
     
     viewpoints_composePatch();
 }
@@ -75,9 +75,9 @@ const viewpoints_createBtnClicked = async() => {
     editor.currScene.viewpoints = vp;
     //Update WidgetMainPanel
     editor.activeWidget = widgetsHub.widgets.viewpoints; //TODO:FIX THIS
-    APP.dashboard.ui.editor_updateWidgetMainPanel();
+    APP.ui.editor_updateWidgetMainPanel();
     //focus:
-    widgetsHub.focusOnItem_base({ id:dataPOV.id , wid:editor.widgetsHub.widgets.viewpoints.id });
+    widgetsHub.focusOnItem_base({ id:dataPOV.id , wid:APP.widgetsHub.widgets.viewpoints.id });
     //Patch:
     viewpoints_composePatch_add(dataPOV.id,bodyPov);
 }
@@ -170,9 +170,9 @@ const viewpointSetAsHome=(evt)=>{ ///ABORTED
     viewpoints_composePatch();
     
      //Ricompose widget Panel:
-     let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
-     let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
-     APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
+     let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
+     let target = document.getElementById(APP.ui.ID_editorSideMainContainer);
+     APP.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null);
      
      //Focus on currentNode:
      let _target = {dataset:{}};
@@ -262,9 +262,9 @@ const _viewpointSetAsHome=(evt)=>{ ///ABORTED
     console.log(editor.currScene.viewpoints)
     
     //Ricompose widget Panel:
-    let widgetMainPanel = APP.dashboard.ui.editor_widgetMainPanel(w);
-    let target = document.getElementById(APP.dashboard.ui.ID_editorSideMainContainer);
-    APP.dashboard.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null)
+    let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
+    let target = document.getElementById(APP.ui.ID_editorSideMainContainer);
+    APP.ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null)
 
     //To manage messingup with editor 
     console.log("is Home: " + bHome);
@@ -289,10 +289,10 @@ const _viewpointSetAsHome=(evt)=>{ ///ABORTED
 
 const viewpoints_composePatch=()=>{
 
-    let node = APP.dashboard.editor.activeNode;
+    let node = APP.editor.activeNode;
     if(!node) throw("no node");
     
-    const w = APP.dashboard.editor.activeWidget;
+    const w = APP.editor.activeWidget;
     if(!w) throw("no widget active");
     
     //Compose patch:
@@ -368,7 +368,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
             },
             get:()=>{
                     //get pos:
-                    let node = APP.dashboard.editor.activeNode;
+                    let node = APP.editor.activeNode;
                     console.log(node)
                     const pos = node.children[0].children[0];
                     const p_pos = pos.position;
@@ -398,7 +398,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
         },
         get:()=>{
              //get target:
-            let node = APP.dashboard.editor.activeNode;
+            let node = APP.editor.activeNode;
             const target = node.children[0].children[2];
             const p_target = target.position;
             return [p_target.x,p_target.y,p_target.z];
@@ -406,7 +406,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
         },
         "fov":{
             inspectorBlock:(node)=>{
-            let vp = APP.dashboard.db.data.currScene.viewpoints[node.nid];
+            let vp = APP.db.data.currScene.viewpoints[node.nid];
             return widgetsHub.parsers.float({
                 id:"viewpoints_fov",
                 title:"FOV",
@@ -439,8 +439,8 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
 
 let viewpoints_widget = {
     create: (_APP) => {
-        widgetsHub = _APP.dashboard.editor.widgetsHub;
-        editor = _APP.dashboard.editor;
+        widgetsHub = _APP.widgetsHub;
+        editor = _APP.editor;
         return _viewpoints_widget()
     }
 }

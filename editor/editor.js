@@ -1,0 +1,363 @@
+import {ui} from "./ui.js";
+import {utils} from "../src/utility.js";
+import {gizmoManager} from "../src/gizmo.js";
+import { db } from '../src/db.js';
+import { widgetsHub } from '../js/widgetHub.js';
+
+let APP;
+
+let editor = {db}
+
+editor.init = ()=>{
+    
+    APP = window.APP;
+    APP.db = db;
+    APP.gizmoManager = gizmoManager;
+    APP.ui = ui;
+    APP.widgetsHub = widgetsHub;
+
+    //get sid
+    const params = new URLSearchParams(window.location.search);
+    if(!params) throw new Error("No params found");
+    const sid = params.get('s');
+    db.data.currSID = sid;
+
+    //Load Scene:
+    utils.loadScene(sid,()=>{
+
+        db.data.currScene = ATON.SceneHub.currData;
+        editor.setupFromScene(db.data.currScene);
+    });
+}
+
+editor.setupFromScene=(s=null)=>{
+    
+    //setup:
+    editor.currScene = db.data.currScene;
+    editor.currSID = db.data.currSID;
+    editor.autoSaveMode = false;
+    widgetsHub.init();
+
+    //Setup UI:
+    ui.editorUI_Setup(db.data.currScene);
+    
+    //SETUP 3D HELPERS:
+    const size = 10;
+    const divisions = 10;
+    editor.gridHelper = new THREE.GridHelper( size, divisions );
+    ATON.getRootScene().add( editor.gridHelper );
+}
+
+//GIZMO HANDLERS:
+editor.setGizmoByNode=(node,mode=null)=>{ gizmoManager.attachGizmoToNode(node,mode);}
+editor.setGizmoByNID=(nid, mode=null)=>{ gizmoManager.attachGizmoByNID(nid,mode);}
+
+editor.udpateGizmoOnMouseUpListener=(handler)=>{
+
+    if(!gizmoManager.control) return;
+    gizmoManager.control._listeners.mouseUp=undefined;
+    gizmoManager.control.addEventListener("mouseUp", handler );
+}
+
+editor.gizmoToInspectorMapper=(o)=>{
+    //example for viewpoints position:
+    const _o  = {
+        translate:{
+            idVector3UIContainer:"viepoints_position_V3",
+            getProperty:(n)=> {return n.position}
+        },
+        rotate:null,
+        scale:null
+    }
+
+    const gizmoHandler = (evt)=>{
+        const gizmoOptions = o;
+        console.log(gizmoOptions)
+        
+        //get current gizmo mode
+        let _mode = evt.mode; console.log(_mode);
+        
+        //get relevant property of ATON Node according with gizmoMode
+        let _v = gizmoOptions[_mode].getProperty(gizmoManager.control.object);
+        
+        //Update Inspector
+        ui.updateVector3UI(gizmoOptions[_mode].idVector3UIContainer,_v);
+    }
+
+    return gizmoHandler;
+}
+
+editor.onGizmoMouseUp=(evt)=>{
+    
+    console.log("editor handler: "); console.log(evt); window.gizmoEVT = evt;
+
+    //if(ATON._gizmo.object.uuid != APP.dashboard.editor.activeNode.uuid) return;
+    if(gizmoManager.control.object.uuid != APP.dashboard.editor.activeNode.uuid) return;
+
+    const gizmoHandler = {
+        translate: {
+            propertyName:"position",
+            idVector3UIContainer: ui.IDeditor_inspectorTransform_pos,
+            getProperty:(n)=> {return n.position}
+        },
+        rotate: {
+            propertyName:"rotation",
+            idVector3UIContainer: ui.IDeditor_inspectorTransform_rot,
+            getProperty:(n)=> { let rot = n.rotation;  return {x:rot._x, y:rot._y, z: rot._z} }
+        },
+        scale: {
+            propertyName:"scale",
+            idVector3UIContainer: ui.IDeditor_inspectorTransform_scale,
+            getProperty:(n)=> {return n.scale}
+        } 
+    }
+    
+    let _mode = evt.mode; console.log(_mode);
+    let _v = gizmoHandler[_mode].getProperty(gizmoManager.control.object/*ATON._gizmo.object*/);
+    //let _v = ATON._gizmo.object[gizmoHandler[_mode].nodePropertyToCopy];
+
+    ui.updateVector3UI(gizmoHandler[_mode].idVector3UIContainer,_v);
+
+    console.log("GIMZING");
+    console.log(_v);
+    window.v = _v;
+
+    //compose Patch for x/y/z
+    for (const [key, value] of Object.entries(_v)) {
+        console.log(`${key}: ${value}`);
+
+        var _dimension = key;
+        var _value = value;
+
+        var bodyPatch = {
+            nid: gizmoManager.control.object.nid, // ATON._gizmo.object.nid,
+            type: "transformNode",
+            property: gizmoHandler[_mode].propertyName,
+            dimension: _dimension,
+            value: _value
+        };
+       
+        editor.composePatch(bodyPatch);
+      }
+}
+
+//INSPECTOR HANDLERS:
+editor.onCloseInspectorBtnClicked=()=>{
+    
+    /*hide GizmoToolbox*/
+    let gizmoBox = document.getElementById(ui.IDeditor_centralToolBoxContainer)
+    if(gizmoBox) gizmoBox.classList.add("hidden");
+
+    /*remove inspector*/
+    let inspector = document.getElementById(ui.IDeditor_Inspector);
+    if(inspector) inspector.remove();
+
+    /*detach Gizmo*/
+    gizmoManager.detachGizmo();//UI.detachGizmo();
+
+    /*deactive previews widget-item*/
+    if(editor.activeWidget){
+        if(editor.activeWidget.deactiveItem) editor.activeWidget.deactiveItem(editor.activeNode.nid);
+    }
+
+    /*reset editor globals*/
+    editor.activeNode = null;
+    editor.activeWidget = null;
+}
+
+//PATCH HANDLERS:
+
+editor.OnPatchChanged=()=>{
+    if(editor.autoSaveMode){
+        console.log("path changed: autosave");
+       // editor.managePatches();
+       editor.sendGlobalScenePatch();
+    }
+    else{
+        console.log("path changed: autosave FALSE");
+        document.getElementById(ui.IDeditor_saveSceneBtn).classList.remove("hidden");
+    }
+}
+
+
+editor.managePatches=()=>{
+if(editor.patchReqList){
+    editor.sendPatchQueue(editor.patchReqList)
+} //editor.patchReqList NOT USED.
+else{
+    editor.sendGlobalScenePatch();
+}
+}
+
+editor.sendGlobalScenePatch=(onComplete=null)=>{
+if( !editor.patch || editor.patch=={} ){console.log("SCENE PATCH NOT EXIST");  return}
+console.log("SENDING PATCH:");
+let _sid = editor.currSID;
+let _patch = editor.patch;
+let _mode =  editor.modePatch;
+console.log(_patch)
+console.log(_mode)
+editor.modePatch = null;
+editor.patch = null;
+
+db.sendSceneEdit( _sid, _patch, _mode, onComplete);
+}
+
+editor.sendPatchQueue=(patchReqList)=>{
+if(!patchReqList) return;    
+console.log(patchReqList)
+var index = 0;
+
+const sendPatchQueued = (req)=>{
+    console.log(req)
+    
+    var _onComplete = null;
+
+    editor.patch = req.patch;
+    editor.modePatch = req.modePatch;
+    
+    index++;
+    console.log("index is: " + index);
+    const nextReq = patchReqList[index];
+    console.log(nextReq)
+    if(nextReq){ _onComplete = ()=>sendPatchQueued(nextReq); }
+    else { _onComplete = ()=> { console.log("queue finished" ); } }
+
+    editor.sendGlobalScenePatch(_onComplete);
+}
+
+sendPatchQueued(patchReqList[index]);
+}
+
+editor._composePatch=(o)=>{
+
+if(!o.type) return;
+
+let _patch = null;
+
+if(o.type=="transformNode"){
+    
+    editor.modePatch = ATON.SceneHub.MODE_ADD;
+    
+    console.log("type of action is: " + o.type + ": dimension: " + o.dimension);
+    console.log(o);
+    /*
+    type:"transform"
+    nid  ....maybe not?
+    property: "scale" | "rotation" | "position"
+    dimension: x | y | z
+    value: float
+    */
+
+    const property= o.property;
+    const dimension = o.dimension;
+    const value = o.value;
+
+    const vector3Indexes = { x:0, y:1, z:2 };
+    const defaultTransform = {
+        "position": [0,0,0],
+        "rotation": [0,0,0],
+        "scale": [1,1,1]
+    }
+
+    let nid = editor.activeNode.nid;
+    _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
+    if(!_patch.scenegraph.nodes[nid]) _patch.scenegraph.nodes[nid] = {};
+    if(!_patch.scenegraph.nodes[nid].transform) _patch.scenegraph.nodes[nid].transform = {};
+    if(!_patch.scenegraph.nodes[nid].transform[property]) {
+
+        let _t = defaultTransform[property];
+        try {
+            let prevT = editor.currScene.scenegraph.nodes[nid].transform[property];
+            if(prevT) _t = prevT;
+            console.log("SETTED PREV T AS: "); console.log(prevT)
+        }
+        catch (e) { console.log(_t); console.error(e.message); }
+        _patch.scenegraph.nodes[nid].transform[property] = _t;
+        console.log("prev or fresh t: "); console.log(_t)
+    }
+
+    _patch.scenegraph.nodes[nid].transform[property][vector3Indexes[dimension]] = value;
+    
+    console.log("edited t: "); console.log(_patch.scenegraph.nodes[nid].transform[property])
+    console.log(_patch);      
+}
+
+if(o.type=="addNode"){
+    
+    editor.modePatch = ATON.SceneHub.MODE_ADD;
+
+    const nid = o.nid;
+    const nodeBody = o.nodeBody;
+
+    _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
+    if(_patch.scenegraph.nodes[nid]) {throw(nid + " node ID is already used."); }
+    
+    _patch.scenegraph.nodes[nid] = nodeBody;
+    _patch.scenegraph.edges = editor.currScene.scenegraph.edges;
+}
+
+if(o.type=="removeNode"){
+    editor.modePatch = ATON.SceneHub.MODE_DEL;
+    let nodes={};  nodes[o.nid]= {};
+    _patch = editor.patch? editor.patch : {scenegraph:{nodes, edges:{".":[o.nid]}}};
+}
+
+editor.patch = _patch;
+editor.OnPatchChanged();
+}
+
+//MIXED TO MOVE OR MANAGE!
+editor.onSaveSceneBtnIsClicked=()=>{
+    console.log("SaveSceneBtn Clicked");
+
+    document.getElementById(ui.IDeditor_saveSceneBtn).classList.add("hidden");
+   // editor.managePatches();
+   editor.sendGlobalScenePatch();
+}
+
+editor.onRemoveModelBtnClicked=async()=>{ //NOT USED!!!
+    if(!editor.activeNode) return;
+    let nid = APP.dashboard.editor.activeNode.nid;
+    
+    //prompt conferm todo
+    var conferm = await UI.promptConfermDialog({body:"Vuoi eliminare questo oggetto?", confermText:"ELIMINA", resumeText:"ANNULLA"});
+    if(!conferm) return;
+
+     const onRemoveConfermed = ()=>{
+        console.log("CANCELING: " + nid);
+ 
+        //Realtime Changes:
+        UI.detachGizmo();
+        APP.dashboard.editor.activeNode.delete();
+        delete APP.dashboard.editor.currScene.scenegraph.nodes[nid];
+        
+        //Local SceneGraph changes:
+        var _edges = APP.dashboard.editor.currScene.scenegraph.edges["."];
+        const i = _edges.indexOf(nid);
+        if(i <= -1) window.alert("error removing node");
+        APP.dashboard.editor.currScene.scenegraph.edges["."] = _edges.splice(i, 1);
+        
+        //Patch
+        const bodyPatch = {
+            type:"removeNode",
+            nid
+        };
+
+        editor.composePatch(bodyPatch);
+        ui.editor_updateHierarchy();
+        editor.onCloseInspectorBtnClicked();
+    }
+
+    onRemoveConfermed();
+}
+
+
+
+/*NOTES:
+
+WITH HATHOR SCENES CREATION objects inside the layers are not loaded as ATON-nodes: I can't edit transform properties.
+
+*/
+
+export {editor}

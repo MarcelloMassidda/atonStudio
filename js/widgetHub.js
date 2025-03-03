@@ -3,32 +3,29 @@ import {measurements_widget} from './widgets/measurements.js';
 import {semantics_widget} from './widgets/semantics.js';
 import {layers_widget} from './widgets/layers.js';
 
+/*Global References:*/
+let APP, editor;
+
 let widgetsHub = {}
 let widgets = {};
 
 
-/*Global References:*/
-let APP;
-let editor;
-
-widgetsHub.init=(_APP)=>{
-    APP = _APP;
-    editor = APP.dashboard.editor;
+widgetsHub.init=()=>{
+    APP = window.APP;
+    editor = APP.editor;
     
     /*Builtin Widgets:*/
-    widgetsHub.registerWidget(layers_widget.create(_APP));
-    widgetsHub.registerWidget(viewpoints_widget.create(_APP));
-    widgetsHub.registerWidget(measurements_widget.create(_APP));
-    widgetsHub.registerWidget(semantics_widget.create(_APP));
+    widgetsHub.registerWidget(layers_widget.create(APP));
+    widgetsHub.registerWidget(viewpoints_widget.create(APP));
+    widgetsHub.registerWidget(measurements_widget.create(APP));
+    widgetsHub.registerWidget(semantics_widget.create(APP));
     
-    
-
     /*Init Widgets:*/
     for (const [wId, w] of Object.entries(widgets)) {
         if(w.init) w.init();
     }
 
-    widgetsHub.widgets=widgets;
+    widgetsHub.widgets = widgets;
 }
 
 widgetsHub.registerWidget=(widget)=>{
@@ -63,7 +60,7 @@ widgetsHub.onClicked_itemBtn_base=(btnClicked)=>{
 
 widgetsHub.focusOnItem_base=({id,wid})=>{
 
-    let widgets = editor.widgetsHub.widgets;
+    let widgets = widgetsHub.widgets;
     let w = widgets[wid];
 
     //1 active (3D)Item if necessary
@@ -73,7 +70,7 @@ widgetsHub.focusOnItem_base=({id,wid})=>{
     let item = w.returnItem(id);
     console.log(item)
     editor.activeNode = item;
-    editor.activeWidget = editor.widgetsHub.widgets[wid];
+    editor.activeWidget = widgetsHub.widgets[wid];
     
     //3 set Focus (zoom)
     if(w.focusItem) w.focusItem(item);
@@ -86,7 +83,7 @@ widgetsHub.focusOnItem_base=({id,wid})=>{
 
     //---header
     let headerContent = w.item_inspector_header(id)
-    if(w.item_inspector_header) _inspectorContent.push( APP.dashboard.ui.inspectorHeader( headerContent ));
+    if(w.item_inspector_header) _inspectorContent.push( APP.ui.inspectorHeader( headerContent ));
     
     //---blocks
     if(w.props){
@@ -98,14 +95,17 @@ widgetsHub.focusOnItem_base=({id,wid})=>{
         }
     }
     
-    APP.dashboard.ui.editor_createInspector(_inspectorContent);
-
-    console.log(editor.patch)
+    APP.ui.editor_createInspector(_inspectorContent);
 }
 
 
-widgetsHub.deleteItem_base=({id,wid})=>{
-    
+widgetsHub.deleteItem_base=({id,wid})=>{ //TODO
+    //a) ADD first, DELETE after: 
+    // If patch ADD MODE is present, "don't delete before saving the adding/editing actions"
+
+    //b) udate scenegraph
+    //c) If it's a patch not saved -> remove from patch
+    //d) If it's a DELETE MODE Patch -> remove with DELETE patch
 }
 
 
@@ -191,7 +191,7 @@ widgetsHub.widget = (o)=>{
 }
 
 //Utils
-widgetsHub.currScene = ()=> {return APP.dashboard.db.data.currScene}
+widgetsHub.currScene = ()=> {return APP.db.data.currScene}
 
 widgetsHub.parsers={
 
@@ -215,7 +215,7 @@ widgetsHub.parsers={
             property: o.property, //"position",
             title: o.title, //"position",
             v: o.v, //node.position,
-            onChange:_handler //editor.onTransformVector3Changed
+            onChange:_handler
         })
     },
     float:(o)=>{

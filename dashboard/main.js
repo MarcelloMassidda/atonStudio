@@ -1,10 +1,9 @@
-import {dashboard} from '../js/dashboard.js';
 import {UI} from '../../uitoolkit/js/uitoolkit.js';
-
+import {dashboard} from './dashboard.js';
 
 let APP = ATON.App.realize();
 
-APP.baseUrl = window.location.origin + "a/atonstudio/";
+APP.baseUrl = window.location.origin + "/a/atonstudio/";
 
 APP.setup = async()=>{
 
@@ -14,11 +13,11 @@ APP.setup = async()=>{
 		UI.init();
 		APP.UI = UI;
 		APP.dashboard = dashboard;
+		
 		window.APP = APP;
 
 		APP.dashboard.init();
-
-	  }
+}
 	  
 // Run the App
 window.addEventListener('load', ()=>{

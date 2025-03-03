@@ -9,7 +9,7 @@ const layers_OnChangePropFromInspector=(evt)=>{
     //just compose patch:
     if(!evt.target) throw("no evt.target to manage");
     let propName = evt.target.dataset.property;
-    let prophandler = APP.dashboard.editor.activeWidget.props[propName];
+    let prophandler = APP.editor.activeWidget.props[propName];
     if(!prophandler) throw("no prophandler to manage");
     let v = prophandler.get();
     layers_composePatch_transform(propName,v);
@@ -17,9 +17,7 @@ const layers_OnChangePropFromInspector=(evt)=>{
 
 const layers_createBtnClicked=()=>{
 
-    console.log("BUTTON CREATE IS CLICKED")
-    var onModelItemClicked= async (e)=>{
-        console.log("BUTTON MODEL IS CLICKED")
+    var onModelItemClicked = async (e)=>{
         const url = e.target.parentNode.dataset.path; //TODO: to change
         UI.removePopup();
         
@@ -31,9 +29,11 @@ const layers_createBtnClicked=()=>{
 
 
         const updateEditorOnModelAdded=()=>{
-            //Focus on currentNode
-            widgetsHub.focusOnItem_base({ id:nodeName, wid:editor.widgetsHub.widgets.layers.id});
             
+            //Focus on currentNode
+            widgetsHub.focusOnItem_base({ id:nodeName, wid:APP.widgetsHub.widgets.layers.id});
+            
+
             //Update currentScene locally:
             //scenegraph
             let newSceneGraphNode = {urls:[url]}
@@ -44,17 +44,17 @@ const layers_createBtnClicked=()=>{
             else{_edges["."].push(nodeName)}
             editor.currScene.scenegraph.edges = _edges;
             layers_composePatch_add(nodeName,newSceneGraphNode);
+           
+            let activeSideMenuTab = APP.ui.getSideActiveTab();
             
-            let activeSideMenuTab = APP.dashboard.ui.getSideActiveTab();
-            console.log(activeSideMenuTab)
             if(activeSideMenuTab=="scene"){
                 //Update hierarchy
-                APP.dashboard.ui.editor_updateHierarchy();
+                APP.ui.editor_updateHierarchy();
             }
             if(activeSideMenuTab=="widgets"){
 
                 //Update widgetMainPanel:
-                APP.dashboard.ui.editor_updateWidgetMainPanel();
+                APP.ui.editor_updateWidgetMainPanel();
             }
         }
         
@@ -63,9 +63,9 @@ const layers_createBtnClicked=()=>{
     }
 
     //1 get models:
-    APP.dashboard.db.getModels((models)=>{
-    //2 create SummaryDialog:
-        
+    APP.db.getModels((models)=>{
+    
+        //2 create SummaryDialog:
         let _summary = UI.summarize(UI.parseInFolders( models , onModelItemClicked ));
         _summary.cssText+="text-align:left";
 
@@ -106,14 +106,14 @@ const layers_GizmoHandler=(evt)=>{
     //Compose patch:
     let propName = layersGizmoOptions[gizmoManager.control.mode].propertyName;
     if(!propName) throw("no property name in gizmo handler");
-    const _activeNode = APP.dashboard.editor.activeNode;
+    const _activeNode = APP.editor.activeNode;
     let v = layersGizmoOptions[gizmoManager.control.mode].getProperty(_activeNode);
     layers_composePatch_transform(propName,v);
 }
 
 const layers_composePatch_transform=(propName,v)=>{
 
-    let node = APP.dashboard.editor.activeNode;
+    let node = APP.editor.activeNode;
     if(!node) throw("no node");
 
     let transformProperties = ["position","rotation","scale"];
@@ -178,7 +178,7 @@ let _layers_widget = () => widgetsHub.widget({
     setupGizmo:(id)=>{
         let node = ATON.getSceneNode(id);
         editor.setGizmoByNode(node);
-        APP.dashboard.ui.editor_setGizmoToolbox();
+        APP.ui.editor_setGizmoToolbox();
         editor.udpateGizmoOnMouseUpListener(layers_GizmoHandler);
     },
     props:{
@@ -194,7 +194,7 @@ let _layers_widget = () => widgetsHub.widget({
                 })  
             },
             get:()=>{
-                let node = APP.dashboard.editor.activeNode;
+                let node = APP.editor.activeNode;
                 return node.position;
             }
         },
@@ -210,7 +210,7 @@ let _layers_widget = () => widgetsHub.widget({
                 })  
             },
             get:()=>{
-                let node = APP.dashboard.editor.activeNode;
+                let node = APP.editor.activeNode;
                 return node.rotation;
             }
         },
@@ -226,7 +226,7 @@ let _layers_widget = () => widgetsHub.widget({
                 })  
             },
             get:()=>{
-                let node = APP.dashboard.editor.activeNode;
+                let node = APP.editor.activeNode;
                 return node.scale;
             }
         }
@@ -238,9 +238,9 @@ let _layers_widget = () => widgetsHub.widget({
 let layers_widget = {
     create: (_APP) => {
         APP = _APP;
-        widgetsHub = _APP.dashboard.editor.widgetsHub;
-        editor = _APP.dashboard.editor;
-        gizmoManager = _APP.dashboard.gizmoManager;
+        widgetsHub = _APP.widgetsHub;
+        editor = _APP.editor;
+        gizmoManager = _APP.gizmoManager;
         return _layers_widget()
     }
 }
