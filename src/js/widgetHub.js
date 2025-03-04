@@ -79,23 +79,24 @@ widgetsHub.focusOnItem_base=({id,wid})=>{
     if(w.setupGizmo){ w.setupGizmo(id); }
  
     //5 Setup Inpector
-    let _inspectorContent = [];
+    let inspectorOptions = {};
 
     //---header
     let headerContent = w.item_inspector_header(id)
-    if(w.item_inspector_header) _inspectorContent.push( APP.ui.inspectorHeader( headerContent ));
+    if(w.item_inspector_header) inspectorOptions.title = headerContent;
     
     //---blocks
     if(w.props){
+        let blocks = [];
         for (const [propId, prop] of Object.entries(w.props)){
             console.log(prop);
             console.log(propId)
-          //  if(!prop.inspectorBlock) {console.log("no inspector"); return}
-            _inspectorContent.push(prop.inspectorBlock(item))
+            if(prop.inspectorBlock) blocks.push(prop.inspectorBlock(item))
         }
+        inspectorOptions.blocks = blocks;
     }
     
-    APP.ui.editor_createInspector(_inspectorContent);
+    APP.ui.editor_createInspector(inspectorOptions);
 }
 
 
@@ -198,6 +199,7 @@ widgetsHub.parsers={
     vector3:(o)=>{
      
         const base_onVector3Change=(evt)=>{
+            console.log("is changing")
             let property = evt.target.dataset.property; //can be position / rotation / scale
             let dimension = evt.target.name; //can be x/y/z
             let value = parseFloat(evt.target.value.replaceAll(",","."));

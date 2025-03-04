@@ -24,7 +24,7 @@
 	<meta property="og:image:height" content="200" />
 
 	<!-- PWA manifest -->
-	<link rel="manifest" href="app.webmanifest">
+	<link rel="manifest" href="../app.webmanifest">
 
 	<!-- Web-app ID -->
 	<meta name="aton:appid" content="app_template">
@@ -36,19 +36,23 @@
     <meta name="theme-color" content="#000000" />
 
     <title>atonstudio</title>
-    <!--ATON CSS--><link rel="stylesheet" type="text/css" href="/res/css/aton.css">
+    <link rel="stylesheet" type="text/css" href="/vendors/bootstrap/css/bootstrap.min.css">
+    <!--ATON CSS--> <link rel="stylesheet" type="text/css" href="/res/css/aton.css">
+    
+    <link rel="stylesheet" type="text/css" href="/res/css/main.css">
+    <link rel="stylesheet" type="text/css" href="../atonstudio.css">
+    <link rel="stylesheet" type="text/css" href="../../uitoolkit/styles/style.css">
 
-    <!-- Vendors -->
     <script type="text/javascript" src="/vendors/vendors.min.js"></script>
+    <script type="text/javascript" src="/vendors/bootstrap/js/bootstrap.bundle.min.js"></script>
+
     <script type="text/javascript" src="/dist/THREE.bundle.js"></script>
     <script type="text/javascript" src="/dist/ATON.min.js"></script>
 
 	<!-- Main js entry -->
 	<script type="module" src="./main.js"></script>
-    <link rel="stylesheet" type="text/css" href="../atonstudio.css">
 
-    <!--CSS UI TOOLKIT-->
-    <link rel="stylesheet" type="text/css" href="../../uitoolkit/styles/style.css">
+
 
 </head>
 

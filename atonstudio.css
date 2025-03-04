@@ -6,10 +6,12 @@
     --top-bar-size: 60px;
     --dash-side-menu-width: 15vw;
     --dash-main-width: calc( 100vw -  var(--dash-side-menu-width));
-    
-    --editor-inspector-width: 15vw;
 
-    --editor-panelMargin: var(--spacing-sm);
+    --editor-inspector-width: 15vw;
+    --editor-panelMargin: var(--spacing-sm); /*???*/
+
+    --editor-leftSide-menu-width: 300px;
+    --editor-leftSide-menu-second-width: 400px;
 }
 
 /**/
@@ -40,11 +42,8 @@ background-color: blue;
 }
 
 /*SideMenu*/
-.dash_sideMenu, .editor_inspector
+.dash_sideMenu
 {
-    /*background-color: RED;*/
-  
-
     width: var(--dash-side-menu-width);
     padding: var(--spacing-sm);
     display: flex;
@@ -53,37 +52,52 @@ background-color: blue;
     overflow-y: hidden;
 }
 
-.dash_sideMenu_Content
+.WidgetMainPanel_Container
 {
-    background-color: var( --color-backgroundPanel);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+   /* gap: var(--spacing-md);
     padding: var(--spacing-sm);
     border-radius: var( --border-radius-md);
+    width: 100%;
+    /*
+    background-color: var( --color-backgroundPanel);
     color: var(--color-textPrimary);
+    */
 }
 
-.dash_sideMenu_Content button
+.WidgetMainPanel_Container button
 {
+    /*
     background-color: var(--color-white);
-    color: var(--color-textPrimary);
+    color: var(--color-textPrimary);*/
 }
 
 .fillContainer
 {
-    width: 100%!important;
+   width: calc( 100% - var(--spacing-sm) )!important;
+   box-sizing: border-box; 
 }
 
-.dash_sideMenu_Content button img{
+.WidgetMainPanel_Container button img{
     background-color: var(--color-primary-dark);
     padding: var(--spacing-sm);
     border-radius: var( --border-radius-sm);
+   
 }
 
 .secondSideMenu{
     position: absolute;
-    background-color: blue;
+    left: calc( 100% +  var(--spacing-sm) ) ; /* Places it directly to the right */
+    top: 0;      /* Aligns it to the top */
+    width: max-content;
+    max-width: var(--editor-leftSide-menu-second-width);
+
+    color: var(--bs-offcanvas-color);
+    background-color: var(--bs-offcanvas-bg);
+    background-clip: padding-box;
+    outline: 0;
+    transition: var(--bs-offcanvas-transition);
 }
 
 /*PageContainer*/
@@ -140,6 +154,7 @@ background-color: blue;
     width: 100%;
 }
 
+/*OLD*/
 .editorContainer_dash_sideMenu{
     top: calc( var(--top-bar-size) + var(--editor-panelMargin));
     position:absolute;
@@ -154,17 +169,19 @@ background-color: blue;
     right: var(--editor-panelMargin);
 }
 
-.editor_inspector{
-    /*width: var(--editor-inspector-width);*/
-    /*background-color: purple;*/
 
+.editor_inspector 
+{
+    /*
+    width: var(--dash-side-menu-width);
     padding: var(--spacing-sm);
-    overflow-y:hidden;
-    background-color: var(--color-backgroundPanel);
-    color: var(--color-textPrimary);
-    border-radius: var( --border-radius-lg);
-    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    overflow-y: hidden;
+    */
 }
+
 
 .editor_inspector button
 {
@@ -175,21 +192,26 @@ background-color: blue;
 {
    border-color:transparent;
    height: auto;
+   color: black;
 }
 
 
 fieldset{
+    /*
     border: none;
     background-color: var(--color-gray-light);
     border-radius: var( --border-radius-md);
-    padding: var(--spacing-sm);   
+    padding: var(--spacing-sm); 
+    */
 }
   
 
 legend{
+    /*
 padding-left: var(--spacing-sm);
 padding-right: var(--spacing-sm);
 margin-top: 0.3rem;
+*/
 }
 
 
@@ -198,4 +220,22 @@ margin-top: 0.3rem;
     top: var(--top-bar-size);
     left: 50%;
     transform: translate(-50%,0%);
+}
+
+
+/*Bootstrap custom styles*/
+/**********************************************/
+
+.custom-offcanvas-start{
+    margin-top: calc( var(--top-bar-size) + var(--spacing-sm) );
+    margin-left: var(--spacing-sm);
+    max-width: var( --editor-leftSide-menu-width )!important;
+    height: min-content;
+}
+
+.custom-offcanvas-end{
+    margin-top: calc( var(--top-bar-size) + var(--spacing-sm) );
+    margin-right: var(--spacing-sm);
+    max-width: var( --editor-leftSide-menu-width )!important;
+    height: min-content;
 }

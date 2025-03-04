@@ -1,5 +1,6 @@
 import {UI} from '../../uitoolkit/js/uitoolkit.js';
-import {utils} from "../src/utility.js";
+import {utils} from "../src/js/utility.js";
+import {uikit}  from "../src/js/uikit.js";
 
 let APP, editor, widgetsHub, gizmoManager;
 
@@ -8,7 +9,7 @@ let ui = {
      //Editor
      IDeditor_saveSceneBtn: "IDeditor_saveSceneBtn",
      //Editor - SideMenu
-     ID_editorSideMainContainer: "ID_editorSideMainContainer",
+     ID_MainSideMenu: "ID_MainSideMenu",
      ID_editorSideMenu_Scene: "ID_editorSideMenu_Scene",
      ID_editorSideMenu_Widget: "ID_editorSideMenu_Widget",
      ID_SecondSideMenuCurrentlyActive:"ID_SecondSideMenuCurrentlyActive",
@@ -46,7 +47,8 @@ ui.editorUI_Setup=(s=null)=>{
             let inspector = ui.editor_createInspector();
             let gizmoToolBox =  ui.editor_gizmoControlToolbox();
             
-            document.body.appendChild(UI.createEl({id:ui.ID_editorSideMainContainer, className:"editorContainer_dash_sideMenu", content: sidemenu}));
+            //document.body.appendChild(UI.createEl({id:ui.ID_MainSideMenu, className:"editorContainer_dash_sideMenu", content: sidemenu}));
+            document.body.appendChild(sidemenu);
             document.body.appendChild(UI.createEl({className:"editorContainer_dash_topBar", content: topBar}));
             document.body.appendChild(UI.createEl({className:"editorContainer_inspector", content: inspector}));
             document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));
@@ -71,14 +73,14 @@ ui.toggle_sideMenus=(b)=>{
 }
 
 ui.toggle_sideMenu=(b)=>{
-    ui.toggle(ui.ID_editorSideMainContainer, b);
+    ui.toggle(ui.ID_MainSideMenu, b);
 }
 
 ui.toggle_secondSideMenu=(b)=>{
     ui.toggle(ui.ID_SecondSideMenuCurrentlyActive, b);
 }
 
-ui.editor_sideMenu=()=>{
+ui.OLD_editor_sideMenu=()=>{
     
     //TODO: "_tabLink" suffix is garbage (it's because otherwise tab and content have same id)  
 
@@ -88,8 +90,8 @@ ui.editor_sideMenu=()=>{
     const tabs=[
         {
             //Scene
-            text: "Scene",
-            tab: UI.createEl({
+            title: "Scene",
+            content: UI.createEl({
                 id:ui.ID_editorSideMenu_Scene,
                 className:"dash_sideMenu_Content",
                 content: ui.editor_scenehierarchy()
@@ -155,6 +157,39 @@ ui.editor_sideMenu=()=>{
     return main;
 }
 
+
+ui.editor_sideMenu=()=>{
+    
+    //Init with scene tab active:
+    if(!editor.activeTab) editor.activeTab = ui.ID_editorSideMenu_Scene; 
+
+    const onClickTab=(id)=>{
+        ui.closeSecondSideMenu();
+        console.log(id)
+        editor.activeTab = id;
+    }
+
+    const items=[
+        {
+            //Scene
+            title: "Scene",
+            onClick: ()=>onClickTab(ui.ID_editorSideMenu_Scene),
+            content: ui.editor_scenehierarchy()
+        },
+        {
+            //Widgets tab:
+            title:"Widgets",
+            onClick: ()=>onClickTab(ui.ID_editorSideMenu_Widget),
+            content: UI.createEl({content:ui.editor_widgetsListPanel()})
+        }
+    ];
+    let sideMenuContent = uikit.createTabsGroup({items});
+    sideMenuContent.id = ui.ID_MainSideMenu;
+    let sideMenu = uikit.createOffCanvas({content:sideMenuContent, title:"Prototyper Tools"});
+    
+    return sideMenu;
+}
+
 ui.editor_topBar = (s=null)=>{
 
     let titleTopBar = "ATON STUDIO";
@@ -164,7 +199,7 @@ ui.editor_topBar = (s=null)=>{
         titleTopBar += s.title? `${s.title} / ${_sid}` : _sid;
     }
 
-    let backBtn = UI.button({icon:"back",onClick:()=>window.location.reload()});
+    let backBtn = UI.button({icon:"back",onClick:()=> window.location.href = APP.url_dashboard});
     let saveSceneBtn = UI.button({id: ui.IDeditor_saveSceneBtn, text:"SAVE CHANGES", onClick: editor.onSaveSceneBtnIsClicked, classList:"hidden"})
     let openInHathorBtn = UI.button({title:"Open scene in HATHOR front end", text:"Launch scene (HATHOR)", onClick: ()=>utils.goToHathorScene(_sid)})
     let vrBtn = UI.button({text:"vr",onClick:()=> ATON.XR.toggle("immersive-vr")})
@@ -173,7 +208,7 @@ ui.editor_topBar = (s=null)=>{
    return UI.createEl({id:"IDeditor_topBar",className:"dash_topBar",content: topBarContent})
 }
 
-ui.editor_createInspector=(content=null)=>{
+ui.OLD_editor_createInspector=(content=null)=>{
     let contentInspector = content? content :"My default Inpsector content";
     let objInspector = UI.createEl({id:ui.IDeditor_Inspector,className:"editor_inspector", content:contentInspector});
 
@@ -183,6 +218,16 @@ ui.editor_createInspector=(content=null)=>{
    
     UI.addContent(container,objInspector); 
 }
+
+ui.editor_createInspector=(options = null)=>{
+    if(!options) return;
+    let {title, blocks} = options;
+    let content = blocks? UI.createEl({classList:["editor_inspector"], content:blocks}) : "";
+    document.body.append(uikit.createOffCanvas({pos:"end", content, title, onOffCanvasClose: editor.onCloseInspectorBtnClicked})); return;
+}
+
+
+
 
 //GIZMO UI:
 ui.editor_gizmoControlToolbox = (modes=null)=>{
@@ -228,7 +273,11 @@ ui.editor_setGizmoToolbox = ( modes = null ) => {
 
 ui.editor_scenehierarchy=()=>{
 
-    return ui.editor_widgetMainPanel(APP.widgetsHub.widgets.layers);
+    let content = ui.editor_widgetMainPanel(APP.widgetsHub.widgets.layers);
+    //Remove title:
+    let _title = content.querySelector("#mainTitle");
+    if(_title) _title.remove();
+    return content;
 }
 
 ui.editor_updateHierarchy=()=>{
@@ -240,7 +289,13 @@ ui.editor_updateHierarchy=()=>{
     //HierarchyContainer.appendChild(_c);    
 }
 
-ui.editor_widgetMainPanel_Title=(t)=> {return `${t}<br>---------------<br>`;}
+ui.editor_widgetMainPanel_Title=(_title)=> {
+    let _header = `
+    <div id="mainTitle" class="offcanvas-header">
+        <h5 class="offcanvas-title" id="offcanvasLabel">${_title}</h5>
+    </div>`
+    return _header;
+}
 
 ui.editor_widgetMainPanel=(w)=>{
     
@@ -266,7 +321,7 @@ ui.editor_widgetMainPanel=(w)=>{
     //Add New Item BTN:
     if(w.createBtn) _mainPanelContent.push(w.createBtn());
    
-    let _panel = UI.createEl({className:"dash_sideMenu_Content",content:_mainPanelContent});
+    let _panel = UI.createEl({className:"WidgetMainPanel_Container",content:_mainPanelContent});
     console.log(_panel)
     return _panel;
 }
@@ -275,8 +330,7 @@ ui.editor_updateWidgetMainPanel=()=>{
      //Update widgetMainPanel:
      var w = APP.editor.activeWidget;
      let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
-     let target = document.getElementById(APP.ui.ID_editorSideMainContainer);
-     APP.ui.openSecondSideMenu(target, widgetMainPanel, w.items()==null);
+     APP.ui.openSecondSideMenu(widgetMainPanel);
 }
 
 ui.editor_widgetsListPanel=()=>{
@@ -298,7 +352,7 @@ ui.editor_widgetsListPanel=()=>{
         
         //Compose widget Panel:
         let widgetMainPanel = ui.editor_widgetMainPanel(w);
-        ui.openSecondSideMenu(target, widgetMainPanel,w.items()==null)
+        ui.openSecondSideMenu(widgetMainPanel)
     }
 
     for (const [wId, w] of Object.entries(widgets)) {
@@ -312,7 +366,7 @@ ui.editor_widgetsListPanel=()=>{
     return widgetsBtnList;
 }
 
-ui.inspectorHeader=(headContent)=>{
+ui.inspectorHeader=(headContent)=>{ //OLD
 
        return UI.flexBox({
             dir:"row",
@@ -348,27 +402,18 @@ ui.closeSecondSideMenu=(id=null)=>{
     if(secondSidePanel) secondSidePanel.remove();
 }
 
-ui.openSecondSideMenu=(target,content, isCentered=false)=>{
-    console.log("isCentered is: " + isCentered );
+ui.openSecondSideMenu=(content)=>{
     //Close existing panel
+    console.log(content)
     ui.closeSecondSideMenu(); 
-
-    //Set position near to target clicked:
-    console.log(target);
-    if(!isCentered) target = document.getElementById(ui.ID_editorSideMainContainer);
-    console.log(target);
-    const rect = target.getBoundingClientRect();
-    var marginRight = rect.right;
-    var marginTop = isCentered? (rect.bottom-((rect.bottom-rect.top)/2)) : rect.top;
-    var transform = isCentered? "transform: translateY(-50%)" : "";
 
     
     const panel = UI.createEl({
         id:ui.ID_SecondSideMenuCurrentlyActive,
-        classList:["secondSideMenu"],
-        content,
-        cssText:`left:${marginRight}px; margin-left:var(--spacing-xs); top: ${marginTop}px; ${transform}`});
-    document.body.appendChild(panel);
+        classList:["secondSideMenu","p-2"],
+        content
+     });
+    document.getElementById(ui.ID_MainSideMenu).appendChild(panel);
 }
 
 ui.editor_removeGizmoToolBox=()=>{

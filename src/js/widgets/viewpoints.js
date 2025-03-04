@@ -323,6 +323,7 @@ const viewpoints_composePatch_add=(id,body)=>{
 
 let _viewpoints_widget = ()=> widgetsHub.widget({
     id:"viewpoints",
+    mainPanelOptions:{title:"View Points"},
     mainBtnOptions:{id:"viewpoints_mainBtn",text:"View Points",icon:"pov"},
     itemBtnOptions:{icon:"pov"},
     createBtnOptions:{text:"Add new viewpoint",icon:"add", onClick: ()=>viewpoints_createBtnClicked()},

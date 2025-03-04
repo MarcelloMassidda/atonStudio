@@ -27,7 +27,6 @@ const measurements_setupEvents =()=>{
 const measurements_createBtnClicked = ()=>{
     measurementManager.setIsBuilding(true);
     //UI:
-    //Central Panel:
     const helperContent = measurements_HelperContent();
     APP.ui.editor_setCentralHelperPanel(helperContent);
     APP.ui.toggle_sideMenus(false);
@@ -41,9 +40,8 @@ const addMeasurePoint=()=>{
     if (M === undefined) return;
     measurementManager.setIsBuilding(false);
 
-    //Create new measurement
+    //Create new measure info object
     let mid = ATON.Utils.generateID("meas");
-    console.log(mid)
     let E = {};
     E.measurements = {};
     E.measurements[mid] = {};
@@ -57,10 +55,10 @@ const addMeasurePoint=()=>{
     ];
 
     //Update local graph
-    let localmeasurements = APP.db.data.currScene.measurements;
-    if(!localmeasurements) localmeasurements = E;
-    else localmeasurements[mid] = E.measurements[mid];
-    APP.db.data.currScene.measurements = localmeasurements;
+    let curr_measurements = APP.db.data.currScene.measurements;
+    if(!curr_measurements) curr_measurements = E.measurements;
+    else curr_measurements[mid] = E.measurements[mid];
+    APP.db.data.currScene.measurements = curr_measurements;
     
     //Focus Active and  on item
     widgetsHub.focusOnItem_base({ id:mid, wid:APP.widgetsHub.widgets.measurements.id}); //TOFIX self-widget-reference
@@ -68,6 +66,7 @@ const addMeasurePoint=()=>{
     //Update UI
     APP.ui.toggle_sideMenus(true);
     APP.ui.editor_updateWidgetMainPanel();
+    APP.ui.editor_removeCentralHelperPanel();
 
     //Update patch
     let _patch = editor.patch;
@@ -197,6 +196,7 @@ const measurements_composePatch=()=>{
 
 let _measurements_widget = ()=> widgetsHub.widget({
     id:"measurements",
+    mainPanelOptions:{title:"Measuremenets"},
     mainBtnOptions:{id:"measurements_mainBtn",text:"Measurements",icon:"measure"},
     itemBtnOptions:{icon:"measure"},
     createBtnOptions:{text:"Add new measurement",icon:"add",onClick: ()=>measurements_createBtnClicked()},

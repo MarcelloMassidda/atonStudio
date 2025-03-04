@@ -17,6 +17,8 @@ const layers_OnChangePropFromInspector=(evt)=>{
 
 const layers_createBtnClicked=()=>{
 
+    console.log("Create new Layer");
+
     var onModelItemClicked = async (e)=>{
         const url = e.target.parentNode.dataset.path; //TODO: to change
         UI.removePopup();
@@ -65,10 +67,10 @@ const layers_createBtnClicked=()=>{
     //1 get models:
     APP.db.getModels((models)=>{
     
+        console.log(models)
         //2 create SummaryDialog:
         let _summary = UI.summarize(UI.parseInFolders( models , onModelItemClicked ));
         _summary.cssText+="text-align:left";
-
         document.body.appendChild(UI.dialog({
             content:[
                 UI.button({icon:"cancel", onClick:()=>UI.removePopup()}),
@@ -81,6 +83,7 @@ const layers_createBtnClicked=()=>{
 
 const layers_GizmoHandler=(evt)=>{
 
+    console.log(evt)
     const layersGizmoOptions = {
 
         translate:{
@@ -166,6 +169,7 @@ let _layers_widget = () => widgetsHub.widget({
             `contains: ${objNum} objects`]
         })
     },
+    mainPanelOptions:{title:"Layers"},
     createBtnOptions:{text:"Add new layer",icon:"add", onClick: ()=>layers_createBtnClicked()},
     //createBtn:()=>{return widgetsHub.mainBtn_base({id:"layers_createBtn",icon:"add", text:"Add new Layer"})},
     mainBtnOptions:{id:"layers_mainBtn",text:"Layers",icon:"collection-item"},

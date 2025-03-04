@@ -1,8 +1,9 @@
 import {ui} from "./ui.js";
-import {utils} from "../src/utility.js";
-import {gizmoManager} from "../src/gizmo.js";
-import { db } from '../src/db.js';
-import { widgetsHub } from '../js/widgetHub.js';
+import {uikit} from "../src/js/uikit.js";
+import {utils} from "../src/js/utility.js";
+import {gizmoManager} from "../src/js/gizmo.js";
+import { db } from '../src/js/db.js';
+import { widgetsHub } from '../src/js/widgetHub.js';
 
 let APP;
 
@@ -14,6 +15,7 @@ editor.init = ()=>{
     APP.db = db;
     APP.gizmoManager = gizmoManager;
     APP.ui = ui;
+    APP.uikit = uikit;
     APP.widgetsHub = widgetsHub;
 
     //get sid
@@ -54,7 +56,8 @@ editor.setGizmoByNID=(nid, mode=null)=>{ gizmoManager.attachGizmoByNID(nid,mode)
 
 editor.udpateGizmoOnMouseUpListener=(handler)=>{
 
-    if(!gizmoManager.control) return;
+    if(!gizmoManager.control){console.log("NO GIZMO CONTROL"); return;}
+
     gizmoManager.control._listeners.mouseUp=undefined;
     gizmoManager.control.addEventListener("mouseUp", handler );
 }
@@ -144,6 +147,7 @@ editor.onGizmoMouseUp=(evt)=>{
 //INSPECTOR HANDLERS:
 editor.onCloseInspectorBtnClicked=()=>{
     
+    console.log("INSPECTOR CLOSE BTN CLICKED");
     /*hide GizmoToolbox*/
     let gizmoBox = document.getElementById(ui.IDeditor_centralToolBoxContainer)
     if(gizmoBox) gizmoBox.classList.add("hidden");
@@ -306,6 +310,7 @@ if(o.type=="removeNode"){
 editor.patch = _patch;
 editor.OnPatchChanged();
 }
+
 
 //MIXED TO MOVE OR MANAGE!
 editor.onSaveSceneBtnIsClicked=()=>{

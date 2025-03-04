@@ -1,6 +1,6 @@
-import { gizmoManager } from '../js/gizmo.js';
-import { utils } from "../src/utility.js";
-import { db } from '../src/db.js';
+import { gizmoManager } from '../src/js/gizmo.js';
+import { utils } from "../src/js/utility.js";
+import { db } from '../src/js/db.js';
 
 let APP, UI;
 
@@ -110,9 +110,7 @@ ui.dash_topBar = ()=>{
 ui.openSceneIn3DEditor=(sid)=>{
 
     //MOVE TO PAGE:
-    let path = APP.baseUrl+"editor/";
-    console.log(path);
-    let url = new URL(path);
+    let url = new URL(APP.url_editor);
     url.searchParams.append("s",sid);
     window.location.href = url; return; 
 }

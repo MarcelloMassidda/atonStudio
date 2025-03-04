@@ -327,6 +327,7 @@ const semantics_composePatch_transform=(propName,v)=>{
 let _semantics_widget = ()=> widgetsHub.widget({
     convexShapeManager:convexShapeManager,
     id:"annotations",
+    mainPanelOptions:{title:"Semantic annotations"},
     mainBtnOptions:{id:"Annotations_mainBtn",text:"Annotations",icon:"ann-sphere"},
     //itemBtnOptions:{icon:"ann-sphere"},
     itemBtn:(itemId)=>{
