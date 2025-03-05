@@ -180,7 +180,7 @@ ui.editor_sideMenu=()=>{
             //Widgets tab:
             title:"Widgets",
             onClick: ()=>onClickTab(ui.ID_editorSideMenu_Widget),
-            content: UI.createEl({content:ui.editor_widgetsListPanel()})
+            content: UI.createEl({classList:["d-grid", "gap-2"], content:ui.editor_widgetsListPanel()})
         }
     ];
     let sideMenuContent = uikit.createTabsGroup({items});
@@ -277,11 +277,13 @@ ui.editor_scenehierarchy=()=>{
     //Remove title:
     let _title = content.querySelector("#mainTitle");
     if(_title) _title.remove();
+    content.id = ui.ID_editorSideMenu_Scene;
     return content;
 }
 
 ui.editor_updateHierarchy=()=>{
     var HierarchyContainer = document.getElementById(ui.ID_editorSideMenu_Scene);
+    console.log(HierarchyContainer)
     HierarchyContainer.innerHTML = "";
     var _c = ui.editor_scenehierarchy();
     console.log(_c);
@@ -294,15 +296,16 @@ ui.editor_widgetMainPanel_Title=(_title)=> {
     <div id="mainTitle" class="offcanvas-header">
         <h5 class="offcanvas-title" id="offcanvasLabel">${_title}</h5>
     </div>`
-    return _header;
+    return uikit.createElfromString(_header);
 }
 
 ui.editor_widgetMainPanel=(w)=>{
     
-    let _mainPanelContent = [];
+    let mainPanelItemList = [];
+
     //Title:
     if(w.mainPanelOptions){
-        if(w.mainPanelOptions.title) _mainPanelContent.push(ui.editor_widgetMainPanel_Title(w.mainPanelOptions.title))
+        if(w.mainPanelOptions.title) mainPanelItemList.push(ui.editor_widgetMainPanel_Title(w.mainPanelOptions.title))
     }
     //Items:
     if(w.items && w.itemBtn){
@@ -314,14 +317,13 @@ ui.editor_widgetMainPanel=(w)=>{
             for (const [_id, _item] of Object.entries(_items)){
                 let itemBtn = w.itemBtn(_id,_item);
                // itemBtn.addEventListener("click",function(){onItemBtnClicked(this)});
-                _mainPanelContent.push(itemBtn);
+               mainPanelItemList.push(itemBtn);
             }
         }
     }
     //Add New Item BTN:
-    if(w.createBtn) _mainPanelContent.push(w.createBtn());
-   
-    let _panel = UI.createEl({className:"WidgetMainPanel_Container",content:_mainPanelContent});
+    if(w.createBtn) mainPanelItemList.push(w.createBtn());   
+    let _panel = UI.createEl({classList:["WidgetMainPanel_Container","d-grid", "gap-2"],content:mainPanelItemList});
     console.log(_panel)
     return _panel;
 }
@@ -343,6 +345,7 @@ ui.editor_widgetsListPanel=()=>{
 
         //Reset preview opened tools and panels:
         editor.onCloseInspectorBtnClicked();
+        
         ui.editor_removeGizmoToolBox();
 
         console.log(target);
@@ -410,7 +413,7 @@ ui.openSecondSideMenu=(content)=>{
     
     const panel = UI.createEl({
         id:ui.ID_SecondSideMenuCurrentlyActive,
-        classList:["secondSideMenu","p-2"],
+        classList:["secondSideMenu","p-2", "dark_bg", "rounded-2"],
         content
      });
     document.getElementById(ui.ID_MainSideMenu).appendChild(panel);

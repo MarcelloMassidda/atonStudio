@@ -21,21 +21,22 @@ const layers_createBtnClicked=()=>{
 
     var onModelItemClicked = async (e)=>{
         const url = e.target.parentNode.dataset.path; //TODO: to change
-        UI.removePopup();
+        //ATON.UI.hideModal(); //UI.removePopup();
         
         //Prompt node Name:
-        const promptResponse = await UI.promptDialog({inputs:[{name:"newNodeName",labelText:"Node Name",type:"text"}]});
-        // console.log("nodeName");
-        if(!promptResponse) {UI.removePopup(); console.log("NO PROMPT"); return;}
+        const promptResponse = await UI.promptDialog({header:"Layer Name", inputs:[{name:"newNodeName", labelText:"Node Name",type:"text"}]});
+        if(!promptResponse) {ATON.UI.hideModal(); console.log("NO PROMPT"); return;}
+        console.log(promptResponse);
         const nodeName = promptResponse.newNodeName;
 
 
         const updateEditorOnModelAdded=()=>{
             
+            console.log(1);
             //Focus on currentNode
             widgetsHub.focusOnItem_base({ id:nodeName, wid:APP.widgetsHub.widgets.layers.id});
             
-
+            console.log(2);
             //Update currentScene locally:
             //scenegraph
             let newSceneGraphNode = {urls:[url]}
@@ -45,20 +46,25 @@ const layers_createBtnClicked=()=>{
             if(!_edges) { _edges = {".":[nodeName]}}
             else{_edges["."].push(nodeName)}
             editor.currScene.scenegraph.edges = _edges;
+            console.log(3);
             layers_composePatch_add(nodeName,newSceneGraphNode);
-           
+            console.log(4);
             let activeSideMenuTab = APP.ui.getSideActiveTab();
-            
+            console.log(5);
             if(activeSideMenuTab=="scene"){
                 //Update hierarchy
+                console.log(6);
                 APP.ui.editor_updateHierarchy();
+                console.log(7);
             }
             if(activeSideMenuTab=="widgets"){
-
+                console.log(8);
                 //Update widgetMainPanel:
                 APP.ui.editor_updateWidgetMainPanel();
+                console.log(9);
             }
         }
+        console.log(10);
         
         //Add in scene:
         var newAtonNode = ATON.createSceneNode(nodeName).load(url,()=> {newAtonNode.attachToRoot().setPosition(0,0,0); updateEditorOnModelAdded();});
@@ -71,12 +77,11 @@ const layers_createBtnClicked=()=>{
         //2 create SummaryDialog:
         let _summary = UI.summarize(UI.parseInFolders( models , onModelItemClicked ));
         _summary.cssText+="text-align:left";
-        document.body.appendChild(UI.dialog({
-            content:[
-                UI.button({icon:"cancel", onClick:()=>UI.removePopup()}),
-                _summary
-            ]
-        }));
+         ATON.UI.showModal(
+            {
+                header: "Select a model",
+                body:_summary}
+    );
     })
     
 }
@@ -164,9 +169,12 @@ let _layers_widget = () => widgetsHub.widget({
     hierarchy:true,
     itemBtn:(id,item)=>{
             let objNum  = item.urls? item.urls.length : 0;
-        return UI.createEl({content:[ //THINK SOMETHING BETTER FOR OVERRIDE
-            widgetsHub.mainBtn_base({text:id, attr:{"data-id":id,"data-wid":"layers"},  onClick:function(){widgetsHub.onClicked_itemBtn_base(this)}}),
-            `contains: ${objNum} objects`]
+            
+        return widgetsHub.mainBtn_base({
+            text: id + " ("+objNum+")",
+            attr:{"data-id":id,"data-wid":"layers"},
+            onClick:function(){widgetsHub.onClicked_itemBtn_base(this)},
+            //badge:`contains: ${objNum} objects`
         })
     },
     mainPanelOptions:{title:"Layers"},

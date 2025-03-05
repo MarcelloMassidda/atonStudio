@@ -148,6 +148,8 @@ editor.onGizmoMouseUp=(evt)=>{
 editor.onCloseInspectorBtnClicked=()=>{
     
     console.log("INSPECTOR CLOSE BTN CLICKED");
+    //Ensure closing inspector:
+    if(APP.uikit.offcanvas_end)  APP.uikit.offcanvas_end.hide();
     /*hide GizmoToolbox*/
     let gizmoBox = document.getElementById(ui.IDeditor_centralToolBoxContainer)
     if(gizmoBox) gizmoBox.classList.add("hidden");

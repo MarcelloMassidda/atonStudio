@@ -3,6 +3,8 @@ import {measurements_widget} from './widgets/measurements.js';
 import {semantics_widget} from './widgets/semantics.js';
 import {layers_widget} from './widgets/layers.js';
 
+import {uikit}  from "./uikit.js";
+
 /*Global References:*/
 let APP, editor;
 
@@ -35,7 +37,8 @@ widgetsHub.registerWidget=(widget)=>{
 /*DEFAULT UI and LOGIC FOR EDITOR*/
 widgetsHub.mainBtn_base=(o)=>{
     //id,text,icon,attr=null,onClick
-    let b = UI.button(o);
+
+    let b = uikit.createButton(o);
     b.classList.add("fillContainer");
     return b;
     //return UI.button({id,icon,text,attr,className:"fillContainer"})
@@ -199,10 +202,18 @@ widgetsHub.parsers={
     vector3:(o)=>{
      
         const base_onVector3Change=(evt)=>{
-            console.log("is changing")
+            console.log("is changing");
+            console.log(evt)
             let property = evt.target.dataset.property; //can be position / rotation / scale
             let dimension = evt.target.name; //can be x/y/z
             let value = parseFloat(evt.target.value.replaceAll(",","."));
+            console.log("property");
+            console.log(property);
+            console.log("dimension");
+            console.log(dimension);
+            console.log("value");
+            console.log(value);
+
             //Real time change:
             if(o.target) o.target[property][dimension] = value;
         }

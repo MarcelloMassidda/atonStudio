@@ -2,8 +2,32 @@ import {UI} from '../../../uitoolkit/js/uitoolkit.js';
 
 let uikit = {};
 
+uikit.default_buttonVariant = "dark";
+
 uikit.createElfromString = (html)=>{ return ATON.UI.createElementFromHTMLString(html); };
 
+
+uikit.createButton=(options)=>{
+
+    let el = UI.button(options);     
+    if (options.badge){ 
+        el.append( uikit.createElfromString("<span class='badge text-bg-secondary'>"+options.badge+"</span>"));
+    }
+    ///Set variant:
+    let _variant = options.variant || uikit.default_buttonVariant;
+    el.classList.add("btn-"+_variant, "p-2");
+
+    return el;
+};
+
+//NOT USED:
+uikit.wrapInGroupList=(options)=>{
+    let list = uikit.createElfromString(`<div class="list-group"></div>`);
+    let {items} = options;
+
+    items.forEach(item => {list.append(item);});
+    return list;
+}
 
 uikit.createOffCanvas=(options)=>{
 
@@ -21,12 +45,12 @@ uikit.createOffCanvas=(options)=>{
     let btnCloseid = "closeOffCanvas"+pos+"Btn";
 
     let offCanvasHTML = `
-    <div class="offcanvas offcanvas-${pos} ${customClass}" tabindex="-1" id="offcanvas_${pos}" aria-labelledby="offcanvasLabel">
+    <div class="offcanvas offcanvas-${pos} ${customClass} dark_bg rounded-2" tabindex="-1" id="offcanvas_${pos}" aria-labelledby="offcanvasLabel">
         <div class="offcanvas-header">
             <h5 class="offcanvas-title" id="offcanvasLabel">${title}</h5>
             <button type="button" id=${btnCloseid} class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-        <div class="offcanvas-body p-2"></div>
+        <div class="offcanvas-body"></div>
     </div>`;
 
  let el_Canvas = uikit.createElfromString(offCanvasHTML);
@@ -41,14 +65,6 @@ uikit.createOffCanvas=(options)=>{
  uikit[id] = bs_Canvas;
  return el_Canvas;
 };
-
-uikit.showOffCanvas=(options)=>{
-
-    
-/* pos can be: start, end, top, bottom */
-/* title */
-
-}
 
 uikit.createTabsGroup=(options)=>{
 
