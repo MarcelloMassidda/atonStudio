@@ -288,7 +288,6 @@ ui.editor_updateHierarchy=()=>{
     var _c = ui.editor_scenehierarchy();
     console.log(_c);
     UI.addContent(HierarchyContainer,_c);
-    //HierarchyContainer.appendChild(_c);    
 }
 
 ui.editor_widgetMainPanel_Title=(_title)=> {
@@ -331,8 +330,9 @@ ui.editor_widgetMainPanel=(w)=>{
 ui.editor_updateWidgetMainPanel=()=>{
      //Update widgetMainPanel:
      var w = APP.editor.activeWidget;
+     if(!w) return;
      let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
-     APP.ui.openSecondSideMenu(widgetMainPanel);
+     if(APP.editor.activeTab == APP.ui.ID_editorSideMenu_Widget) APP.ui.openSecondSideMenu(widgetMainPanel);
 }
 
 ui.editor_widgetsListPanel=()=>{

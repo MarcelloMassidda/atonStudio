@@ -30,12 +30,19 @@ utils.goToScene=(sid,blank=true)=>{
         else{ window.location.href = _url;}
 }
 
+utils.openSceneIn3DEditor=(sid)=>{
+   //MOVE TO EDITOR PAGE:
+    let url = new URL(APP.url_editor);
+    url.searchParams.append("s",sid);
+    window.location.href = url; return; 
+}
+
 utils.createNewScene=async()=>{
         
     //0 Wizard for prompt info Scene
     var formSceneInfo = await UI.promptDialog({
 
-        title:"<div>New Scene</div>",
+        header:"Create new Scene",
         inputs:[
             {
                 id:"sceneTitle",
@@ -107,7 +114,7 @@ utils.createNewScene=async()=>{
             console.log(_edits);
 
             // sid, patch, mode, onComplete=null
-        dashboard.db.sendSceneEdit( _sid, _edits, ATON.SceneHub.MODE_ADD, ()=>{
+        db.sendSceneEdit( _sid, _edits, ATON.SceneHub.MODE_ADD, ()=>{
             
             console.log("Scene Created!");
             
@@ -121,7 +128,7 @@ utils.createNewScene=async()=>{
             */
             
             //or open in atonStudio:
-            ui.openSceneIn3DEditor(_sid);
+            utils.openSceneIn3DEditor(_sid);
         })
 
     //})

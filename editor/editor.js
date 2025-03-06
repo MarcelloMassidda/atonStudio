@@ -163,7 +163,11 @@ editor.onCloseInspectorBtnClicked=()=>{
 
     /*deactive previews widget-item*/
     if(editor.activeWidget){
-        if(editor.activeWidget.deactiveItem) editor.activeWidget.deactiveItem(editor.activeNode.nid);
+        if(editor.activeWidget.deactiveItem){
+            if(editor.activeNode) {
+                editor.activeWidget.deactiveItem(editor.activeNode.nid);
+            }
+        }
     }
 
     /*reset editor globals*/
@@ -173,7 +177,7 @@ editor.onCloseInspectorBtnClicked=()=>{
 
 //PATCH HANDLERS:
 
-editor.OnPatchChanged=()=>{
+editor.OnPatchChanged=()=>{ //OK
     if(editor.autoSaveMode){
         console.log("path changed: autosave");
        // editor.managePatches();
@@ -186,7 +190,7 @@ editor.OnPatchChanged=()=>{
 }
 
 
-editor.managePatches=()=>{
+editor.managePatches=()=>{  //QUEUE PATCH, NOT USED
 if(editor.patchReqList){
     editor.sendPatchQueue(editor.patchReqList)
 } //editor.patchReqList NOT USED.
@@ -195,9 +199,10 @@ else{
 }
 }
 
-editor.sendGlobalScenePatch=(onComplete=null)=>{
+editor.sendGlobalScenePatch=(onComplete=null)=>{ //OK
 if( !editor.patch || editor.patch=={} ){console.log("SCENE PATCH NOT EXIST");  return}
 console.log("SENDING PATCH:");
+
 let _sid = editor.currSID;
 let _patch = editor.patch;
 let _mode =  editor.modePatch;
@@ -209,7 +214,7 @@ editor.patch = null;
 db.sendSceneEdit( _sid, _patch, _mode, onComplete);
 }
 
-editor.sendPatchQueue=(patchReqList)=>{
+editor.sendPatchQueue=(patchReqList)=>{ //QUEUE PATCH, NOT USED
 if(!patchReqList) return;    
 console.log(patchReqList)
 var index = 0;
@@ -235,7 +240,7 @@ const sendPatchQueued = (req)=>{
 sendPatchQueued(patchReqList[index]);
 }
 
-editor._composePatch=(o)=>{
+editor._composePatch=(o)=>{ //OLD!!
 
 if(!o.type) return;
 
@@ -313,7 +318,6 @@ editor.patch = _patch;
 editor.OnPatchChanged();
 }
 
-
 //MIXED TO MOVE OR MANAGE!
 editor.onSaveSceneBtnIsClicked=()=>{
     console.log("SaveSceneBtn Clicked");
@@ -359,6 +363,30 @@ editor.onRemoveModelBtnClicked=async()=>{ //NOT USED!!!
     onRemoveConfermed();
 }
 
+
+
+
+editor.deleteAnnotation=(o)=>{
+    //Compose
+    if(!o.nid) throw("error deleting annotations");
+    let nodes={};  nodes[o.nid]= {};
+    let _patch = {semanticgraph:{nodes}};
+    //Patch
+    editor.patch = _patch;
+    editor.modePatch = ATON.SceneHub.MODE_DEL;
+    editor.OnPatchChanged();
+}
+
+editor.checkPendingPatch=()=>{
+    if(editor.patch) { UI.showModal({body:"Apply edits first, then delete"}); return false}
+    else return true;
+}
+
+//SNIPPET TO DELETE:
+
+//editor.modePatch = ATON.SceneHub.MODE_DEL;
+//let nodes={};  nodes[o.nid]= {};
+//_patch = editor.patch? editor.patch : {scenegraph:{nodes, edges:{".":[o.nid]}}};
 
 
 /*NOTES:

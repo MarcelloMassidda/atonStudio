@@ -107,14 +107,6 @@ ui.dash_topBar = ()=>{
     return UI.createEl({id:"IDdash_topBar",className:"dash_topBar",content:"dash_topBar"})
 }
 
-ui.openSceneIn3DEditor=(sid)=>{
-
-    //MOVE TO PAGE:
-    let url = new URL(APP.url_editor);
-    url.searchParams.append("s",sid);
-    window.location.href = url; return; 
-}
-
 ui.sceneItem = (s)=>{
 
     const _size = "sm";
@@ -130,12 +122,12 @@ ui.sceneItem = (s)=>{
         content:_content,
         links:[
            // UI.button({text:"Load",onClick:()=>dashboard.utils.loadScene(s.sid)}),
-           UI.button({text:"Open", onClick: ()=>ui.openSceneIn3DEditor(s.sid)}),
+           UI.button({text:"Open", onClick: ()=>utils.openSceneIn3DEditor(s.sid)}),
            UI.button({text:"Duplicate"}),
            UI.button({text:"Delete"}),
            UI.button({text:"open in hathor", onClick: ()=>utils.goToHathorScene(s.sid)}),
         ],
-        onClick: ()=>ui.openSceneIn3DEditor(s.sid)
+        onClick: ()=>utils.openSceneIn3DEditor(s.sid)
     })
     return _item;
 }

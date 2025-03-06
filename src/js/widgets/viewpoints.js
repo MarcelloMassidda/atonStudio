@@ -1,3 +1,4 @@
+var APP = null;
 var widgetsHub = null;
 var editor = null;
 
@@ -321,6 +322,34 @@ const viewpoints_composePatch_add=(id,body)=>{
     editor.OnPatchChanged();
 }
 
+const viewpoints_delete=(nid)=>{
+
+    if(!editor.checkPendingPatch()) return;
+
+    // Live changes:
+    APP.gizmoManager.detachGizmo();
+    editor.activeNode.delete();
+
+    //Update localgraph:
+    let n = editor.currScene.viewpoints[nid];
+    if(n) delete editor.currScene.viewpoints[nid];
+    
+    //Update UI editor:
+    APP.ui.editor_updateWidgetMainPanel();
+    editor.onCloseInspectorBtnClicked();
+    //Change focus TODO
+
+     //Compose
+     if(!nid) throw("error deleting viewpoint");
+     let viewpoints={};  viewpoints[nid]= {};
+     let _patch = {viewpoints};
+     //Send
+     editor.patch = _patch;
+     editor.modePatch = ATON.SceneHub.MODE_DEL;
+     editor.OnPatchChanged();
+}
+
+
 let _viewpoints_widget = ()=> widgetsHub.widget({
     id:"viewpoints",
     mainPanelOptions:{title:"View Points"},
@@ -352,6 +381,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
                     {className:"inspector_Block",
                     content:[
                         UI.button({text:"position",onClick:()=>{
+                            console.log("Position clicked");
                             editor.setGizmoByNode(pos);
                             editor.udpateGizmoOnMouseUpListener(viewpointGizmoHandlers.position)
                         }}),
@@ -381,7 +411,8 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
             let inspectorBlock = UI.createEl(
                 {className:"inspector_Block",
                 content:[
-                    UI.button({text:"target",onClick:()=>{
+                    UI.button({text:"target", onClick:()=>{
+                        console.log("Target clicked");
                         editor.setGizmoByNode(povTarget);
                         editor.udpateGizmoOnMouseUpListener(viewpointGizmoHandlers.target)
                     }}),
@@ -432,6 +463,9 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
         },
         get:()=>{return parseFloat(document.getElementById("viewpoints_home").checked)}
         }*/
+    },
+    components:{
+      "delete":{ inspectorBlock:(node)=>{ return APP.uikit.deleteButton({icon:"trash",text:"Remove", onClick:()=>viewpoints_delete(node.nid)}) }}
     }
     }
 );
@@ -440,6 +474,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
 
 let viewpoints_widget = {
     create: (_APP) => {
+        APP = _APP;
         widgetsHub = _APP.widgetsHub;
         editor = _APP.editor;
         return _viewpoints_widget()

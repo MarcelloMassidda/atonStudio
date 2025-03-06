@@ -321,7 +321,32 @@ const semantics_composePatch_transform=(propName,v)=>{
     editor.OnPatchChanged();
 }
 
+const semantics_delete=(nid)=>{
 
+    if(!editor.checkPendingPatch()) return;
+
+    //Live changes:
+    gizmoManager.detachGizmo();
+    APP.editor.activeNode.delete();
+
+    //Update localgraph:
+    let n = APP.editor.currScene.semanticgraph.nodes[nid];
+    if(n) delete APP.editor.currScene.semanticgraph.nodes[nid];
+
+    //Update UI editor:
+    APP.ui.editor_updateWidgetMainPanel();
+    APP.editor.onCloseInspectorBtnClicked();
+    //Change focus TODO
+
+     //Compose
+     if(!nid) throw("error deleting Semantic annotations");
+     let nodes={};  nodes[nid]= {};
+     let _patch = {semanticgraph:{nodes}};
+     //Patch
+     editor.patch = _patch;
+     editor.modePatch = ATON.SceneHub.MODE_DEL;
+     editor.OnPatchChanged();
+}
 
 
 let _semantics_widget = ()=> widgetsHub.widget({
@@ -401,6 +426,9 @@ let _semantics_widget = ()=> widgetsHub.widget({
                 }
             }
         }
+    },
+    components:{
+        "delete":{ inspectorBlock:(node)=>{ return APP.uikit.deleteButton({icon:"trash",text:"Remove", onClick:()=>semantics_delete(node.nid)}) }}
     },
     init:()=>{
         semantics_setupEvents();

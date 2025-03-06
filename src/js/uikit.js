@@ -9,7 +9,8 @@ uikit.createElfromString = (html)=>{ return ATON.UI.createElementFromHTMLString(
 
 uikit.createButton=(options)=>{
 
-    let el = UI.button(options);     
+    let el = UI.button(options);
+
     if (options.badge){ 
         el.append( uikit.createElfromString("<span class='badge text-bg-secondary'>"+options.badge+"</span>"));
     }
@@ -19,6 +20,12 @@ uikit.createButton=(options)=>{
 
     return el;
 };
+
+uikit.deleteButton=(options)=>{ options.variant = "danger"; return uikit.createButton(options)};
+
+
+uikit.inspectorSeparator=()=>{
+return uikit.createElfromString(`<div class="p-2"></div>`)}
 
 //NOT USED:
 uikit.wrapInGroupList=(options)=>{

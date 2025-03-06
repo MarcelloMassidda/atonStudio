@@ -89,15 +89,27 @@ widgetsHub.focusOnItem_base=({id,wid})=>{
     if(w.item_inspector_header) inspectorOptions.title = headerContent;
     
     //---blocks
+    let blocks=[]
     if(w.props){
-        let blocks = [];
         for (const [propId, prop] of Object.entries(w.props)){
             console.log(prop);
             console.log(propId)
             if(prop.inspectorBlock) blocks.push(prop.inspectorBlock(item))
         }
-        inspectorOptions.blocks = blocks;
     }
+    //---components (NOT directly connected to editable properties of single item)
+    blocks.push(uikit.inspectorSeparator());
+    if(w.components){
+        //separator:
+        
+        for (const [cId, c] of Object.entries(w.components)){
+            console.log(c);
+            console.log(cId)
+            if(c.inspectorBlock) blocks.push(c.inspectorBlock(item))
+        }
+    }
+
+    inspectorOptions.blocks = blocks;
     
     APP.ui.editor_createInspector(inspectorOptions);
 }

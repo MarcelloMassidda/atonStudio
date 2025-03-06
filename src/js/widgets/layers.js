@@ -49,6 +49,11 @@ const layers_createBtnClicked=()=>{
             console.log(3);
             layers_composePatch_add(nodeName,newSceneGraphNode);
             console.log(4);
+            
+            APP.ui.editor_updateHierarchy();
+            APP.ui.editor_updateWidgetMainPanel();
+            
+            /*
             let activeSideMenuTab = APP.ui.getSideActiveTab();
             console.log(5);
             if(activeSideMenuTab=="scene"){
@@ -63,6 +68,7 @@ const layers_createBtnClicked=()=>{
                 APP.ui.editor_updateWidgetMainPanel();
                 console.log(9);
             }
+            */
         }
         console.log(10);
         
@@ -148,8 +154,35 @@ const layers_composePatch_transform=(propName,v)=>{
     editor.OnPatchChanged();
 }
 
-const layers_composePatch_add=( nid , nodeBody )=>{
 
+const layers_delete=(nid)=>{
+    
+    if(!editor.checkPendingPatch()) return;
+
+    //Live changes:
+    gizmoManager.detachGizmo();
+    APP.editor.activeNode.delete();
+
+    //Update localgraph:
+    let n = editor.currScene.scenegraph.nodes[nid];
+    if(n) delete editor.currScene.scenegraph.nodes[nid];
+    
+    //Update UI editor:
+    APP.ui.editor_updateHierarchy();
+    APP.ui.editor_updateWidgetMainPanel();
+    APP.editor.onCloseInspectorBtnClicked();
+    //Change focus TODO
+
+    //Compose and send patch:
+    if(!nid) throw("error deleting layer");
+    let nodes = {}; nodes[nid]={};
+    editor.patch = { scenegraph:{nodes} };
+    editor.modePatch = ATON.SceneHub.MODE_DEL;
+    editor.OnPatchChanged();
+}
+
+
+const layers_composePatch_add=( nid , nodeBody )=>{
 
     var _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
     if(_patch.scenegraph.nodes[nid]) {throw(nid + " node ID is already used."); }
@@ -160,7 +193,6 @@ const layers_composePatch_add=( nid , nodeBody )=>{
     editor.modePatch = ATON.SceneHub.MODE_ADD;
 
     editor.OnPatchChanged();
-
 }
 
 
@@ -242,9 +274,10 @@ let _layers_widget = () => widgetsHub.widget({
                 return node.scale;
             }
         }
-
     },
-
+    components:{
+        "delete":{ inspectorBlock:(node)=>{ return APP.uikit.deleteButton({icon:"trash",text:"Remove"/*,attr:{"data-id":node.nid}*/,onClick:()=>layers_delete(node.nid)}) }}
+    }
 })
 
 let layers_widget = {

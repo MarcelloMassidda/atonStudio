@@ -192,6 +192,37 @@ const measurements_composePatch=()=>{
     editor.OnPatchChanged();
 }
 
+const measurements_delete=(nid)=>{
+
+    if(!editor.checkPendingPatch()) return;
+    
+    // Live changes:
+    APP.gizmoManager.detachGizmo();
+    editor.activeWidget.deactiveItem(nid);
+    editor.activeNode = null;
+    
+    //Workaraound to delete one measure:
+    // 1) change currscene 2) recreate all measurements from scenegraph infos.
+
+    // Update localgraph:
+    let n = editor.currScene.measurements[nid];
+    if(n) delete editor.currScene.measurements[nid];
+    updateMeasurements(editor.currScene.measurements);
+
+     //Update UI editor:
+     APP.ui.editor_updateWidgetMainPanel();
+     editor.onCloseInspectorBtnClicked();
+     //Change focus TODO
+
+    //Compose
+    if(!nid) throw("error deleting measurements");
+    let measurements={};  measurements[nid]= {};
+    let _patch = {measurements};
+    //Send
+    editor.patch = _patch;
+    editor.modePatch = ATON.SceneHub.MODE_DEL;
+    editor.OnPatchChanged();
+}
 
 
 let _measurements_widget = ()=> widgetsHub.widget({
@@ -291,7 +322,10 @@ let _measurements_widget = ()=> widgetsHub.widget({
             let node = APP.editor.activeNode;
             return node.children[0].children[1].position;
         }}
-    }
+    },
+    components:{
+        "delete":{ inspectorBlock:(node)=>{ return APP.uikit.deleteButton({icon:"trash",text:"Remove", onClick:()=>measurements_delete(node.nid)}) }}
+      }
 });
 
 let measurements_widget = {
