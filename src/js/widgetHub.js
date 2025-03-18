@@ -35,19 +35,22 @@ widgetsHub.registerWidget=(widget)=>{
 }
 
 /*DEFAULT UI and LOGIC FOR EDITOR*/
-widgetsHub.mainBtn_base=(o)=>{
-    //id,text,icon,attr=null,onClick
-
+widgetsHub.mainBtn_base=(o)=>{ //id,text,icon,attr=null,onClick
     let b = uikit.createButton(o);
-    b.classList.add("fillContainer");
+    b.classList.add("btn-primary");
     return b;
-    //return UI.button({id,icon,text,attr,className:"fillContainer"})
 }
 
 widgetsHub.itemBtn_base=(o)=>{
     let b = widgetsHub.mainBtn_base(o);
    // b.setAttribute("data-id",id);
    // b.addEventListener("click",widgets.onClickInFocus)
+    return b;
+}
+
+widgetsHub.createBtn_base=(o)=>{ //id,text,icon,attr=null,onClick
+    o.variant ="primary";
+    let b = uikit.createButton(o);
     return b;
 }
 
@@ -160,7 +163,8 @@ widgetsHub.widget = (o)=>{
             
             o.createBtn=()=>{
                 console.log(_createBtnOptions);
-                return widgetsHub.itemBtn_base(_createBtnOptions)}
+                return widgetsHub.createBtn_base(_createBtnOptions);
+            }
         }
     }
 

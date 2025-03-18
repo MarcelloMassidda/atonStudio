@@ -6,7 +6,6 @@ uikit.default_buttonVariant = "dark";
 
 uikit.createElfromString = (html)=>{ return ATON.UI.createElementFromHTMLString(html); };
 
-
 uikit.createButton=(options)=>{
 
     let el = UI.button(options);
@@ -27,8 +26,7 @@ uikit.deleteButton=(options)=>{ options.variant = "danger"; return uikit.createB
 uikit.inspectorSeparator=()=>{
 return uikit.createElfromString(`<div class="p-2"></div>`)}
 
-//NOT USED:
-uikit.wrapInGroupList=(options)=>{
+uikit.wrapInGroupList=(options)=>{//NOT USED:
     let list = uikit.createElfromString(`<div class="list-group"></div>`);
     let {items} = options;
 
@@ -73,7 +71,7 @@ uikit.createOffCanvas=(options)=>{
  return el_Canvas;
 };
 
-uikit.createTabsGroup=(options)=>{
+uikit.createTabsGroup=(options)=>{ //Created to add onClick to Tab
 
     let baseid = ATON.Utils.generateID("tabgroup");
 
@@ -134,5 +132,75 @@ uikit.createTabsGroup=(options)=>{
 
     return el;
 }
+
+//TO FIX WITH PROMISE?
+uikit.createModelGallery=(options)=>{
+
+    //o.onModelItemClicked
+
+    let models, media;
+    
+    APP.db.getMedia((_media)=>{
+        media = _media;
+        models = APP.config.artworks;
+        _create();
+    })
+
+
+    const getThumb=(m)=>{
+        if(!m.thumb) return APP.ui.baseIcons+"placeholder.png";
+        else return ATON.PATH_COLLECTION + APP.config.baseMediaPath+ m.thumb;
+    }
+
+    const getName=( path )=>{
+        return path;
+    }
+    
+    const createCard=(o)=>{
+       let _string = `
+        <div class="card modelCard" style="width: 30%">
+        <div class="card-img-top modelThumb_centerCropped" 
+         style="background-image: url('${o.thumb}');">
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">${o.title}</h5>
+        </div>
+        </div>
+        `
+        let card = uikit.createElfromString(_string);
+        card.addEventListener("click",()=>o.onClick({id:o.id, url:o.path}));
+        return card;
+    }
+   
+    const abortGallery=()=>{
+        ATON.UI.hideModal();
+      //  ATON.UI.elModal.children[0].classList.remove("modal-xl");
+    }
+
+    const _create=()=>{
+        let container = uikit.createElfromString("<div class='cardsFlexContainer' id='ModelCardsContainer'></div>")
+
+        models.forEach(m => {
+            console.log(m)
+            let thumb = getThumb(m);
+            let id = m.nodeId;
+            let title = m.title;
+            let path = APP.config.baseModelsPath + m.path;
+            let onClick = options.onModelItemClicked;
+            let card = createCard({ id, path, thumb, title, onClick })
+            container.append(card);
+        });
+        
+        //Modal composer //TODO: Add class "modal-dialog-scrollable" 
+        let header = "Select a Model";
+        let body = container;
+        let footer = uikit.createButton({onClick:abortGallery,text:"Cancel"});
+
+        //Show MODAL:
+        ATON.UI.elModal.children[0].classList.add("modal-xl"); //Set extralarge. //TO REMOVE AFTER, TO FI
+        ATON.UI.showModal({header,body,footer});
+    }
+}
+
 
 export {uikit};

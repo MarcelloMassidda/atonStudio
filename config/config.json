@@ -1,0 +1,57 @@
+{
+    "welcomeText":"<p>Lets design an <b>exhibition</b> for archeological MANN Museum</p>",
+    "baseMediaPath":"bastet/media/m_thumbs/",
+    "baseModelsPath": "bastet/models/proto_collection/",
+    "artworks":
+    [
+        {
+            "id": "1_amphora",
+            "nodeId":"Black Amphora",
+            "path": "attic_black_figure_amphora/converted/scene.gltf",
+            "title": "Amphora",
+            "thumb":"attic_black_figure_amphora.jpg"
+        },
+        {
+            "id": "2_bowl",
+            "nodeId":"Black Bowl",
+            "path": "attic_black-figure_bowl/converted/scene.gltf",
+            "title": "Bowl",
+            "thumb":"attic_black-figure_bowl.jpg"
+        },
+        {
+            "id": "3_marcusAurelius",
+            "nodeId":"Marcus Aurelius",
+            "path": "naples_-_archeological_museum_-_marcus_aurelius/scene.gltf",
+            "title": "Marcus Aurelius",
+            "thumb":"marcus_aurelius.jpg"
+        },
+        {
+            "id": "4_kritios",
+            "nodeId":"Kritios Boy",
+            "path": "kritios_boy/scene.gltf",
+            "title": "Kritios Boy",
+            "thumb":"kritios_boy.jpg"
+        },
+        {
+            "id": "5_VenusAnadiomene",
+            "nodeId":"Venus Anadiomene",
+            "path": "Bikini_anadyomene/venus_anadyomene.gltf",
+            "title": "Venus Anadyomene",
+            "thumb":"venus_anadiomene.jpg"
+        },
+        {
+            "id": "5_BikiniVenus",
+            "nodeId":"Bikini Venus",
+            "path": "Bikini_venus/venere_bikini_RGB.gltf",
+            "title": "Venus Bikini",
+            "thumb":"Venus_Bikini.jpg"
+        },
+        {
+            "id": "6_oldDrunkard",
+            "nodeId":"The Old Drunkard",
+            "path": "old_drunkard/scene.gltf",
+            "title": "Old Drunkard",
+            "thumb":"old_drunkard.jpg"
+        }
+    ]
+}

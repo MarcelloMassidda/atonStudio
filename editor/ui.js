@@ -199,13 +199,40 @@ ui.editor_topBar = (s=null)=>{
         titleTopBar += s.title? `${s.title} / ${_sid}` : _sid;
     }
 
-    let backBtn = UI.button({icon:"back",onClick:()=> window.location.href = APP.url_dashboard});
-    let saveSceneBtn = UI.button({id: ui.IDeditor_saveSceneBtn, text:"SAVE CHANGES", onClick: editor.onSaveSceneBtnIsClicked, classList:"hidden"})
-    let openInHathorBtn = UI.button({title:"Open scene in HATHOR front end", text:"Launch scene (HATHOR)", onClick: ()=>utils.goToHathorScene(_sid)})
+    let backBtn = uikit.createButton({icon:"back",onClick:()=> window.location.href = APP.url_dashboard});
+    let saveSceneBtn = uikit.createButton({id: ui.IDeditor_saveSceneBtn, text:"SAVE CHANGES", onClick: editor.onSaveSceneBtnIsClicked, classList:"hidden"})
+    let openInHathorBtn = uikit.createButton({icon:"play",title:"Open scene in HATHOR front end", text:"Play Prototype", onClick: ()=>utils.goToHathorScene(_sid)})
     let vrBtn = UI.button({text:"vr",onClick:()=> ATON.XR.toggle("immersive-vr")})
-    let topBarContent = UI.flexBox({dir:"row",content:[backBtn,titleTopBar,saveSceneBtn,openInHathorBtn,vrBtn]});
-    
-   return UI.createEl({id:"IDeditor_topBar",className:"dash_topBar",content: topBarContent})
+    let topBarContent = UI.flexBox({dir:"row",content:[
+        backBtn,
+        titleTopBar,
+        saveSceneBtn,
+        openInHathorBtn,
+    //    vrBtn
+    ]});
+   //OLD
+   // return UI.createEl({id:"IDeditor_topBar",classList:["aton-std-bg","dash_topBar"],content: topBarContent})
+
+   //Bootstrap navbar:
+
+   const wrapInLI = (c)=>{
+    let l = uikit.createElfromString("<li class='nav-item'></li>");
+    l.append(c);
+    return l;
+   }
+
+   let _navBar = UI.createNavbar({
+    id:"IDeditor_topBar",
+    brand:{title:"You are editing: "+ s.title},
+    links:[ 
+        //wrapInLI(titleTopBar),
+        //wrapInLI(saveSceneBtn),
+        //wrapInLI(openInHathorBtn)
+    ],
+    form: UI.flexBox({content:[saveSceneBtn,openInHathorBtn]})
+   });
+
+   return _navBar;
 }
 
 ui.OLD_editor_createInspector=(content=null)=>{
@@ -225,9 +252,6 @@ ui.editor_createInspector=(options = null)=>{
     let content = blocks? UI.createEl({classList:["editor_inspector"], content:blocks}) : "";
     document.body.append(uikit.createOffCanvas({pos:"end", content, title, onOffCanvasClose: editor.onCloseInspectorBtnClicked})); return;
 }
-
-
-
 
 //GIZMO UI:
 ui.editor_gizmoControlToolbox = (modes=null)=>{
@@ -262,7 +286,7 @@ ui.editor_gizmoControlToolbox = (modes=null)=>{
             });
     }
 
-    return UI.flexBox({id:ui.IDeditor_gizmoToolbox, content: modes.map( m => gizmotoolboxBtns[m]() )})
+    return UI.flexBox({id:ui.IDeditor_gizmoToolbox, classList:["aton-std-bg","rounded","p-2"],content: modes.map( m => gizmotoolboxBtns[m]() )})
 }
 ui.editor_setGizmoToolbox = ( modes = null ) => {
     let actualEl = document.getElementById( ui.IDeditor_centralToolBoxContainer); if(actualEl) actualEl.remove();

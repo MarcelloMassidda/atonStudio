@@ -10,7 +10,10 @@ let APP;
 let editor = {db}
 
 editor.init = ()=>{
-    
+    editor.checkUser((user)=>editor.initialize());
+}
+
+editor.initialize=()=>{
     APP = window.APP;
     APP.db = db;
     APP.gizmoManager = gizmoManager;
@@ -29,8 +32,36 @@ editor.init = ()=>{
 
         db.data.currScene = ATON.SceneHub.currData;
         editor.setupFromScene(db.data.currScene);
+
+        if(!APP.config) return;
+        if(APP.config.welcomeText)
+            {
+                ATON.UI.showModal({
+                    header:"Welcome to Prototyper",
+                    body: uikit.createElfromString(APP.config.welcomeText),
+                    footer: uikit.createButton({variant:"primary",text:"Go",onClick:()=>ATON.UI.hideModal()})
+                })
+        }
     });
 }
+
+
+editor.checkUser=(callback)=>{
+    console.log("checking user")
+    db.getUser((user)=>{
+        console.log(user)
+        if(Object.keys(user).length === 0){
+            var _url = window.location.href;
+            window.location.href = window.location.origin + "/shu/auth" + "?url=" + _url;
+        }
+        else{
+            db.data.user = user;
+        }
+        callback();
+    });
+}
+
+
 
 editor.setupFromScene=(s=null)=>{
     

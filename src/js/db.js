@@ -9,6 +9,24 @@ db.getSceneDetail=(sid,callback=null)=>db.get("scene/"+sid, callback);
 db.getKeywords=(callback=null)=>db.get("keywords",callback);
 db.getModels=(callback=null)=>db.get("c/models",callback);
 
+db.getMedia=(callback=null)=>{
+  db.getUser((user)=>{
+    if(!user) throw("NO USER LOGGED"); //To implement redirect to login
+    db.get(`v2/items/${user.username}/media`,callback)
+  });
+}
+
+db.getUser=(callback=null)=>{
+  ATON.Utils.checkAuth((_user) => { callback(_user)});
+
+  /*
+  if (Object.keys(_user).length === 0) {
+    return null;
+  }
+  else return user;
+  */
+}
+
 db.get = (endpoint,onReceive) => {
 
     const url = ATON.PATH_RESTAPI + endpoint;
@@ -34,7 +52,7 @@ db.get = (endpoint,onReceive) => {
     });
 };
 
-db.post = (endpoint, content, onComplete) => {
+db.post = (endpoint, content, onComplete) => { //NOT TESTED?
 
     const url = ATON.PATH_RESTAPI + endpoint;
     fetch(url, {
