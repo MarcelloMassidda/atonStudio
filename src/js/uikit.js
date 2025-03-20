@@ -78,7 +78,8 @@ uikit.createTabsGroup=(options)=>{ //Created to add onClick to Tab
     let el = document.createElement('div');
 
     let eltabs = document.createElement('ul');
-    eltabs.classList.add("nav","nav-justified","nav-tabs"); // "nav-underline"
+    eltabs.classList.add("nav","nav-tabs"); //, "nav-underline"
+    if(options.justified == true)  eltabs.classList.add("nav-justified");
     eltabs.setAttribute("role","tablist");
 
     let eltabcontent = document.createElement('div');
@@ -133,34 +134,32 @@ uikit.createTabsGroup=(options)=>{ //Created to add onClick to Tab
     return el;
 }
 
+
 //TO FIX WITH PROMISE?
 uikit.createModelGallery=(options)=>{
 
     //o.onModelItemClicked
 
-    let models, media;
+    let artworks, utilities, media;
     
     APP.db.getMedia((_media)=>{
         media = _media;
-        models = APP.config.artworks;
+        artworks = APP.config.artworks;
+        utilities = APP.config.utilities;
+        
         _create();
     })
 
-
-    const getThumb=(m)=>{
+    const getThumb=(m,thumbBasePath)=>{
         if(!m.thumb) return APP.ui.baseIcons+"placeholder.png";
-        else return ATON.PATH_COLLECTION + APP.config.baseMediaPath+ m.thumb;
+        else return ATON.PATH_COLLECTION + thumbBasePath + m.thumb;
     }
 
-    const getName=( path )=>{
-        return path;
-    }
-    
     const createCard=(o)=>{
        let _string = `
-        <div class="card modelCard" style="width: 30%">
-        <div class="card-img-top modelThumb_centerCropped" 
-         style="background-image: url('${o.thumb}');">
+        <div class="card modelCard" style="width: 30%; height:200px">
+        <div class="card-img-top centerCropped" 
+         style="background-image: url('${o.thumb}'); height:200px">
         </div>
         <div class="card-body">
             <h5 class="card-title">${o.title}</h5>
@@ -177,28 +176,50 @@ uikit.createModelGallery=(options)=>{
       //  ATON.UI.elModal.children[0].classList.remove("modal-xl");
     }
 
-    const _create=()=>{
+    //TODO: isolare createItemList e usare per artworks e utilites, generare tab contents, Chiamare da dentro "create"
+    const createGallery=({models,thumbBasePath,modelBasePath})=>{
+        console.log(models)
+        console.log(thumbBasePath)
         let container = uikit.createElfromString("<div class='cardsFlexContainer' id='ModelCardsContainer'></div>")
-
         models.forEach(m => {
             console.log(m)
-            let thumb = getThumb(m);
+            let thumb = getThumb(m,thumbBasePath);
             let id = m.nodeId;
             let title = m.title;
-            let path = APP.config.baseModelsPath + m.path;
+            let path = modelBasePath + m.path;
             let onClick = options.onModelItemClicked;
             let card = createCard({ id, path, thumb, title, onClick })
             container.append(card);
         });
+        return container;
+    }
+    const _create=()=>{
         
-        //Modal composer //TODO: Add class "modal-dialog-scrollable" 
+        let artworksGallery = createGallery({
+            models:artworks,
+            thumbBasePath: APP.config.baseArtworksThumbPath,
+            modelBasePath: APP.config.baseArtworksModelsPath});
+
+        let utilitiesGallery = createGallery({
+            models:utilities,
+            thumbBasePath:APP.config.baseUtilitiesThumbPath,
+            modelBasePath:APP.config.baseUtilitiesModelsPath});
+        
+        let tabsOptions = {items:[
+            {title:"Artworks",content:artworksGallery},
+            {title:"Utilities",content:utilitiesGallery},
+        ]};
+        
+        let tabs = uikit.createTabsGroup(tabsOptions);
+
+        //COMPOSE MODAL
         let header = "Select a Model";
-        let body = container;
+        let body = tabs;
         let footer = uikit.createButton({onClick:abortGallery,text:"Cancel"});
 
         //Show MODAL:
-        ATON.UI.elModal.children[0].classList.add("modal-xl"); //Set extralarge. //TO REMOVE AFTER, TO FI
-        ATON.UI.showModal({header,body,footer});
+        //ATON.UI.elModal.children[0].classList.add("modal-xl"); //Set extralarge. //TO REMOVE AFTER, TO FI
+        UI.showModal({header,body,footer,size:"xl"});
     }
 }
 

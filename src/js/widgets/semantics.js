@@ -125,11 +125,11 @@ const semantics_createBtnClicked= async()=>{
         const shapeMode = e.target.value;
         let sphereOptionsPanel = document.getElementById("sphere_OptionsPanel");
         let _visible = shapeMode=="sphere" ? "block" :"none";
-        sphereOptionsPanel.style.display=_visible;
+        sphereOptionsPanel.style.display = _visible;
     }
     const dataUser = await UI.promptDialog({inputs:
     [
-        { name:"id", type:"text", legendText:"Insert Annotation ID"},
+        { name:"id", type:"text", legendText:"Insert Annotation ID", required:true},
         { legendText: "Shape type", inputs:[
             { type:"radio", name:"mode", value:"sphere", labelText:"sphere", events:{"change":onShapeModeClicked}, checked:"checked"},
             { type:"radio", name:"mode", value:"convex", labelText:"convex" ,events:{"change":onShapeModeClicked} },
@@ -239,8 +239,8 @@ const onConvexShapeAbortBtnClicked=()=>{
 const semantics_ConvexShape_HelperContent=()=>{
 
     const head = convexShapeManager._currentSemId + ": Convex Shape Building";
-    const completeBtn =  UI.button({id:"completeShape" ,tooltip:"Complete the current convex shape", onClick:()=>onConvexShapeCompleteBtnClicked(), text:"Complete Shape"});
-    const abortBtn = UI.button({id:"abortShape" ,tooltip:"Abort the current convex shape", onClick:()=>onConvexShapeAbortBtnClicked(), text:"Abort Shape"});
+    const completeBtn =   APP.uikit.createButton({id:"completeShape" ,tooltip:"Complete the current convex shape", onClick:()=>onConvexShapeCompleteBtnClicked(), text:"Complete Shape"});
+    const abortBtn = APP.uikit.createButton({id:"abortShape" ,tooltip:"Abort the current convex shape", onClick:()=>onConvexShapeAbortBtnClicked(), text:"Abort Shape"});
     const btns = UI.flexBox({content:[completeBtn,abortBtn]});
     const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
     return UI.flexBox({content});

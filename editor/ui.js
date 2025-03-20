@@ -52,6 +52,16 @@ ui.editorUI_Setup=(s=null)=>{
             document.body.appendChild(UI.createEl({className:"editorContainer_dash_topBar", content: topBar}));
             document.body.appendChild(UI.createEl({className:"editorContainer_inspector", content: inspector}));
             document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));
+
+            ui.CreateMenuBtn();
+}
+
+ui.CreateMenuBtn=()=>{
+    let btn = ATON.UI.createButton({id:"toggleMenuBtn", icon: ui.baseIcons+"burgerMenuIcon.svg"});
+    btn.classList.add("position-absolute", "toggleBtnOffCanvas", "aton-std-bg", "p-2", "mt-2", "ms-2", "rounded-circle");
+    btn.setAttribute("data-bs-toggle","offcanvas");
+    btn.setAttribute("data-bs-target","#"+ APP.uikit.offcanvas_start._element.id);
+    document.body.prepend(btn);
 }
 
 ui.toggle= (id, b)=>{
@@ -69,11 +79,23 @@ ui.getSideActiveTab=()=>{
 }
 
 ui.toggle_sideMenus=(b)=>{
-    ui.toggle_sideMenu( b); ui.toggle_secondSideMenu(b);
+    let s = APP.uikit.offcanvas_start;
+    let e = APP.uikit.offcanvas_end;
+    if(!b){
+       if(s) s.hide();
+       if(e) e.hide();
+    }
+    else{
+        if(s) s.show();
+       if(e) e.show();
+    }
 }
 
 ui.toggle_sideMenu=(b)=>{
-    ui.toggle(ui.ID_MainSideMenu, b);
+    let s = APP.uikit.offcanvas_start;
+    if(!s) return;
+    if(b){ s.show();}
+    else{s.hide();}
 }
 
 ui.toggle_secondSideMenu=(b)=>{
@@ -183,7 +205,7 @@ ui.editor_sideMenu=()=>{
             content: UI.createEl({classList:["d-grid", "gap-2"], content:ui.editor_widgetsListPanel()})
         }
     ];
-    let sideMenuContent = uikit.createTabsGroup({items});
+    let sideMenuContent = uikit.createTabsGroup({items, justified:true});
     sideMenuContent.id = ui.ID_MainSideMenu;
     let sideMenu = uikit.createOffCanvas({content:sideMenuContent, title:"Prototyper Tools"});
     
@@ -450,7 +472,8 @@ ui.editor_removeGizmoToolBox=()=>{
 }
 
 ui.editor_setCentralHelperPanel=(content)=>{
-    document.body.appendChild(UI.createEl({id:ui.IDeditor_centralToolBoxContainer, className:"editorContainer_centerToolbox",content}));
+    document.body.appendChild(UI.createEl({id:ui.IDeditor_centralToolBoxContainer, classList:["editorContainer_centerToolbox","aton-std-bg","rounded","p-2"],content}));
+    // rounded p-2
 }
 
 ui.editor_removeCentralHelperPanel=()=>{

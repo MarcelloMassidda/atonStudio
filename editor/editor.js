@@ -29,20 +29,78 @@ editor.initialize=()=>{
 
     //Load Scene:
     utils.loadScene(sid,()=>{
-
         db.data.currScene = ATON.SceneHub.currData;
         editor.setupFromScene(db.data.currScene);
-
-        if(!APP.config) return;
-        if(APP.config.welcomeText)
-            {
-                ATON.UI.showModal({
-                    header:"Welcome to Prototyper",
-                    body: uikit.createElfromString(APP.config.welcomeText),
-                    footer: uikit.createButton({variant:"primary",text:"Go",onClick:()=>ATON.UI.hideModal()})
-                })
-        }
+        editor.CustomEventsSetup();
+        editor.showWelcomeModal();
     });
+}
+
+
+editor.CustomEventsSetup=()=>{
+
+    ATON.on("KeyPress", function(k){
+		if (k === 'x') ATON.fireEvent("myEvent", ATON._queryDataScene);
+	});
+
+	// ...and here we handle our event!
+	ATON.on("myEvent", function(p){
+        console.log(p)
+        window.p= p;
+        return;
+		if (p === undefined) return; // no picked point, nothing to do
+
+		p.y += 0.5; // add a little height offset
+
+		ATON.createSceneNode()
+			.load("samples/models/atoncube.glb")
+			.setPosition(p)
+			.attachToRoot();
+	});
+
+    
+    //ATON.setMainPanorama("samples/pano/bg-welcome.jpg");
+    //ATON.setMainLightDirection( new THREE.Vector3(-37.681762018779956, -26.286302074928848,-19.726001479915375) );
+    //ATON.toggleShadows(false);
+    //ATON.setExposure(0.9);
+
+    //ATON.FX.togglePass(ATON.FX.PASS_AO, b);
+}
+
+
+editor.showWelcomeModal=()=>{
+    if(!APP.config) return;
+    if(!APP.config.welcomeText) return
+    
+    let welcomeContent="";
+    //1 Welcome Hero Image
+    if(APP.config.welcomeHeroImagePath){
+        let _path = ATON.PATH_COLLECTION + APP.config.baseMediaPath + APP.config.welcomeHeroImagePath;
+        welcomeContent +=  `
+        <div>
+            <div class="img-fluid">
+            <div class="card-img-top centerCropped" 
+             style="background-image: url('${_path}'); height:625px"></div>`
+    }  
+    //2 Welcome Html Text:
+   // welcomeContent += `${APP.config.welcomeText}`
+    welcomeContent +=`</div>`;
+    console.log(welcomeContent)
+    //3 Compose and show Modal
+
+    let _elModal = ATON.UI.elModal.children[0];
+    _elModal.children[0].classList.add("customModal");
+
+    UI.showModal({
+        iscustom:true, //TO DELETE, USED FOR SITEM
+        size:"xl",
+    //    header:"Your next exhibition can be just a click away",
+        body: uikit.createElfromString(welcomeContent),
+        footer: uikit.createButton({variant:"primary", text:"Start Design", onClick:()=>{
+            ATON.UI.hideModal();
+            _elModal.children[0].classList.remove("customModal");
+        }})
+    })
 }
 
 
@@ -68,7 +126,7 @@ editor.setupFromScene=(s=null)=>{
     //setup:
     editor.currScene = db.data.currScene;
     editor.currSID = db.data.currSID;
-    editor.autoSaveMode = false;
+    editor.autoSaveMode = true;
     widgetsHub.init();
 
     //Setup UI:
@@ -78,7 +136,7 @@ editor.setupFromScene=(s=null)=>{
     const size = 10;
     const divisions = 10;
     editor.gridHelper = new THREE.GridHelper( size, divisions );
-    ATON.getRootScene().add( editor.gridHelper );
+ //   ATON.getRootScene().add( editor.gridHelper );
 }
 
 //GIZMO HANDLERS:

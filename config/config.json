@@ -1,7 +1,11 @@
 {
-    "welcomeText":"<p>Lets design an <b>exhibition</b> for archeological MANN Museum</p>",
-    "baseMediaPath":"bastet/media/m_thumbs/",
-    "baseModelsPath": "bastet/models/proto_collection/",
+    "welcomeHeroImagePath":"welcome_hero.png",
+    "welcomeText":"<div><p>Welcome to <b>PERCEIVE Prototyper Tool</b></p><p>You are now seeing one of the exhibition rooms of the Archaeological Museum in Naples: a collection of Greco-Roman artworks and basic elements of the museum set-up is at your disposal.</p><p>Envision your exhibition idea using the features of our tool and visit your prototype via desktop or VR.</p></div>",
+    "baseMediaPath":"bastet/media/",
+    "baseArtworksThumbPath":"bastet/media/m_thumbs/",
+    "baseUtilitiesThumbPath":"bastet/media/u_thumbs/",
+    "baseArtworksModelsPath": "bastet/models/proto_collection/artworks/",
+    "baseUtilitiesModelsPath": "bastet/models/proto_collection/utilities/",
     "artworks":
     [
         {
@@ -19,16 +23,9 @@
             "thumb":"attic_black-figure_bowl.jpg"
         },
         {
-            "id": "3_marcusAurelius",
-            "nodeId":"Marcus Aurelius",
-            "path": "naples_-_archeological_museum_-_marcus_aurelius/scene.gltf",
-            "title": "Marcus Aurelius",
-            "thumb":"marcus_aurelius.jpg"
-        },
-        {
             "id": "4_kritios",
             "nodeId":"Kritios Boy",
-            "path": "kritios_boy/scene.gltf",
+            "path": "kritios_boy/converted/scene.gltf",
             "title": "Kritios Boy",
             "thumb":"kritios_boy.jpg"
         },
@@ -49,9 +46,68 @@
         {
             "id": "6_oldDrunkard",
             "nodeId":"The Old Drunkard",
-            "path": "old_drunkard/scene.gltf",
+            "path": "old_drunkard/converted/scene.gltf",
             "title": "Old Drunkard",
             "thumb":"old_drunkard.jpg"
+        }
+    ],
+    "utilities":
+    [
+        {
+            "id": "1_trusse",
+            "nodeId":"Trusse",
+            "path": "truss/americana.gltf",
+            "title": "Truss",
+            "thumb":"truss.jpg"
+        },
+        {
+            "id": "2_displayCase",
+            "nodeId":"DisplayCase",
+            "path": "display_case/scene.gltf",
+            "title": "Display Case",
+            "thumb":"displayCase.jpg"
+        },
+        {
+            "id": "3_displayCube",
+            "nodeId":"DisplayCube",
+            "path": "cube/scene.gltf",
+            "title": "Display Cube",
+            "thumb":"cube.jpg"
+        },
+        {
+            "id": "4_bench",
+            "nodeId":"Bench",
+            "path": "Bench/Bench.gltf",
+            "title": "Bench",
+            "thumb":"bench.jpg"
+        },
+        {
+            "id": "5_monitor",
+            "nodeId":"Monitor",
+            "path": "Monitor/Monitor.gltf",
+            "title": "Monitor",
+            "thumb":"monitor.jpg"
+        },
+        {
+            "id": "6_standA",
+            "nodeId":"Stand 1",
+            "path": "StandA/scene.gltf",
+            "title": "Stand 1",
+            "thumb":"standA.jpg"
+        },
+        {
+            "id": "7_standB",
+            "nodeId":"Stand 2",
+            "path": "StandB/scene.gltf",
+            "title": "Stand 2",
+            "thumb":"standB.jpg"
+        },
+        {
+            "id": "8_room",
+            "nodeId":"Room",
+            "path": "Room/Room.gltf",
+            "title": "Room",
+            "thumb":"room.jpg"
         }
     ]
 }

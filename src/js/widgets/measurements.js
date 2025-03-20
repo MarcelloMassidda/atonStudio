@@ -85,7 +85,7 @@ const onMeasureAbortBtnClicked=()=>{
 const measurements_HelperContent=()=>{
 
     const head = "Adding measurements: Click on any surface to add POINT A and POINT B"; 
-    const abortBtn = UI.button({id:"abortMeasurement" ,tooltip:"Abort the current mesaurement", onClick:()=>onMeasureAbortBtnClicked(), text:"Abort Shape"});
+    const abortBtn = APP.uikit.createButton({id:"abortMeasurement", tooltip:"Abort the current mesaurement", onClick:()=>onMeasureAbortBtnClicked(), text:"Abort Shape"});
     const btns = UI.flexBox({content:[abortBtn]});
     const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
     return UI.flexBox({content});
@@ -262,7 +262,7 @@ let _measurements_widget = ()=> widgetsHub.widget({
     setupGizmo:(id)=>{
         let node = ATON.getSceneNode(id);
         let A = node.children[0].children[0];
-        editor.setGizmoByNode(A);
+        editor.setGizmoByNode(A,"translate");
         editor.udpateGizmoOnMouseUpListener(measurementsGizmoHandlers.pointA)
     },
     init:()=>{

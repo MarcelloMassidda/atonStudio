@@ -97,6 +97,22 @@ utils.createNewScene=async()=>{
     return edits;
     }
 
+    window.o = o;
+
+    ///////////////////////
+    //BRUTAL SITEM SETTINGS:
+    o.data.environment = {
+        mainpano:{url:"bastet/pano/defsky-sand.jpg"},
+        lightprobes:{auto:true, mainlight:{
+            direction:[-0.6158569204732198,-0.7689435899866076,-0.1715983942924587],
+            shadow:true,
+            exposure:0.9
+        }}
+    };
+    o.data.scenegraph.nodes["room"] = {urls:["bastet/models/proto_collection/utilities/Room/Room.gltf"],transform:{position:[0,0,0]}};
+    o.data.scenegraph.edges["."].push("room");
+    //END SITEM SETTINGS
+
 
     let handleServerResponse = (r)=>{
         if (r){

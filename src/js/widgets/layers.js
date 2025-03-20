@@ -74,8 +74,13 @@ const layers_createBtnClicked_original=()=>{
         console.log(10);
         
         //Add in scene:
-        var newAtonNode = ATON.createSceneNode(nodeName).load(url,()=> {newAtonNode.attachToRoot().setPosition(0,0,0); updateEditorOnModelAdded();});
+        ATON.createSceneNode(nodeName).load(url,()=>{
+            ATON.getRootScene().assignLightProbesByProximity();
+            ATON.updateLightProbes();
+            updateEditorOnModelAdded();
+        }).setPosition(0,0,0).attachToRoot();
     }
+
 
     //1 get models:
     APP.db.getModels((models)=>{
@@ -83,13 +88,14 @@ const layers_createBtnClicked_original=()=>{
         //2 create SummaryDialog:
         let _summary = UI.summarize(UI.parseInFolders( models , onModelItemClicked ));
         _summary.cssText+="text-align:left";
-         ATON.UI.showModal(
+         APP.uikit.showModal(
             {
                 header: "Select a model",
                 body:_summary}
     );
     })
 }
+
 
 //config and card-based VERSION:
 const layers_createBtnClicked=()=>{
@@ -105,7 +111,7 @@ const layers_createBtnClicked=()=>{
 
         //Predefined Id:
         ATON.UI.hideModal();
-        const nodeName = id;
+        const nodeName = ATON.Utils.generateID(id);
 
         const updateEditorOnModelAdded=()=>{
             
@@ -134,7 +140,12 @@ const layers_createBtnClicked=()=>{
         console.log(10);
         
         //Add in scene:
-        var newAtonNode = ATON.createSceneNode(nodeName).load(url,()=> {newAtonNode.attachToRoot().setPosition(0,0,0); updateEditorOnModelAdded();});
+        ATON.createSceneNode(nodeName).load(url,()=>{
+            updateEditorOnModelAdded();
+            ATON.getRootScene().assignLightProbesByProximity();
+            ATON.updateLightProbes();
+        }).setPosition(0,0,0).attachToRoot();
+
     }
 
     //1 get Gallery:
@@ -262,10 +273,10 @@ let _layers_widget = () => widgetsHub.widget({
             //badge:`contains: ${objNum} objects`
         })
     },
-    mainPanelOptions:{title:"Layers"},
+    mainPanelOptions:{title:"Models"},
     createBtnOptions:{text:"Add new model",icon:"add", onClick: ()=>layers_createBtnClicked()},
     //createBtn:()=>{return widgetsHub.mainBtn_base({id:"layers_createBtn",icon:"add", text:"Add new Layer"})},
-    mainBtnOptions:{id:"layers_mainBtn",text:"Layers",icon:"collection-item"},
+    mainBtnOptions:{id:"layers_mainBtn",text:"Models",icon:"collection-item"},
     items:()=>{
         let s = widgetsHub.currScene();
         if(!s.scenegraph) return null;

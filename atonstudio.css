@@ -25,6 +25,11 @@
 
 }
 
+/*SITEM*/
+.customModal{
+    height: 730px;
+}
+
 /*Main Container*/
 .dash_mainContainer{
     overflow: hidden;
@@ -166,6 +171,19 @@ background-color: blue;
     width: 100%;
 }
 
+/*SideMenu Btn*/
+.toggleBtnOffCanvas{
+    background-color:  var(--bs-body-bg);
+    top: calc( var(--top-bar-size) + var(--editor-panelMargin));
+    left: var(--editor-panelMargin);
+}
+
+.toggleBtnOffCanvas img{
+    width: 30px;
+    height: 30px;
+    margin:0px;
+}
+
 /*OLD*/
 .editorContainer_dash_sideMenu{
     top: calc( var(--top-bar-size) + var(--editor-panelMargin));
@@ -191,7 +209,7 @@ background-color: blue;
     flex-direction: column;
     gap: var(--spacing-sm);
     overflow-y: hidden;
-    
+    */   
 }
 
 
@@ -314,10 +332,9 @@ margin-top: 0.3rem;
     cursor: pointer;
 }
 
-.modelThumb_centerCropped{
+.centerCropped{
     width: 100%;
-    height: 200px;
-    background-position: top center;
+    background-position: center center;
     background-repeat: no-repeat;
     background-size: cover;
 }
