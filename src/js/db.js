@@ -11,10 +11,28 @@ db.getSceneDetail=(sid,callback=null)=>db.get("scene/"+sid, callback);
 db.getKeywords=(callback=null)=>db.get("keywords",callback);
 db.getModels=(callback=null)=>db.get("c/models",callback);
 
+//get User media including samples
 db.getMedia=(callback=null)=>{
   db.getUser((user)=>{
-    if(!user) throw("NO USER LOGGED"); //To implement redirect to login
+    if(!user) throw("NO USER LOGGED"); //To implement Error handling
     db.get(`v2/items/${user.username}/media`, callback)
+  });
+}
+
+//get User media excluding samples
+db.getOnlyUserMedia=(callback=null)=>{
+  db.getMedia((media)=>{
+    if(!media) throw("NO MEDIA"); //To implement Error handling
+    let _media = media.filter(item =>{
+     
+      if (item.startsWith("samples/")) {
+        return item.startsWith("samples/media/prototyper/textures");
+      }
+      else return true;
+    }
+    );
+    
+    callback(_media);
   });
 }
 
@@ -31,20 +49,19 @@ db.getUser=(callback=null)=>{
 
 
 db.initUser=()=>{
+  
   db.getUser( async(user)=>{
     db.user = user;
 
     webdavManager.setConfig({
-      baseURL: "http://localhost:8081/",
-      username: user.username,
-      password: user.username //USERS WITH SAME PASSWORD FOR TESTING
+      baseURL: "http://localhost:8082/", //My alternative WebDAV server
+      username: db.user.username,
+      password: ""
     });
 
-    console.log("WebDAV config:", webdavManager.config);
-
     return;
-    let basePath = "tmp-collection/" + db.user.username + "/";
-    await webdavManager.ensureFoldersExist([basePath, basePath+"media", basePath+"models", basePath+"pano"]);
+   // let basePath = "tmp-collection/" + db.user.username + "/";
+   // await webdavManager.ensureFoldersExist([basePath, basePath+"media", basePath+"models", basePath+"pano"]);
   });
 }
 
@@ -141,7 +158,7 @@ db.openFileDialog = (o=null)=>{
 
   let _callback = o.callback || (()=>{});
 
-  webdavManager.openFileDialog(targetPath,_callback);
+  webdavManager.openFileDialog( targetPath, _callback );
 }
 
 

@@ -1,13 +1,14 @@
 {
     "welcomeHeroImagePath":"welcome_hero.png",
     "welcomeText":"<div><p>Welcome to <b>PERCEIVE Prototyper Tool</b></p><p>You are now seeing one of the exhibition rooms of the Archaeological Museum in Naples: a collection of Greco-Roman artworks and basic elements of the museum set-up is at your disposal.</p><p>Envision your exhibition idea using the features of our tool and visit your prototype via desktop or VR.</p></div>",
-    "baseMediaPath":"bastet/media/",
-    "baseArtworksThumbPath":"bastet/media/m_thumbs/",
-    "baseUtilitiesThumbPath":"bastet/media/u_thumbs/",
-    "baseCustomizablesThumbPath":"bastet/media/c_thumbs/",
-    "baseArtworksModelsPath": "bastet/models/proto_collection/artworks/",
-    "baseUtilitiesModelsPath": "bastet/models/proto_collection/utilities/",
-    "baseCustomizablesModelsPath": "bastet/models/proto_collection/customizables/",
+    "baseMediaPath":"samples/prototyper/media/",
+    "baseArtworksThumbPath":"samples/prototyper/media/m_thumbs/",
+    "baseUtilitiesThumbPath":"samples/prototyper/media/u_thumbs/",
+    "baseCustomizablesThumbPath":"samples/prototyper/media/c_thumbs/",
+    "baseArtworksModelsPath": "samples/prototyper/models/proto_collection/artworks/",
+    "baseUtilitiesModelsPath": "samples/prototyper/models/proto_collection/utilities/",
+    "baseCustomizablesModelsPath": "samples/prototyper/models/proto_collection/customizables/",
+    "baseCustomizablesDefaultTexturesPath": "samples/media/prototyper/textures/",
     "models":{
     "artworks":
     [
@@ -113,14 +114,16 @@
             "nodeId":"Interactive Totem",
             "path": "Interactive Totem/interactive_totem.gltf",
             "title": "Interactive Totem",
-            "thumb":"thumbnail_interactive_totem.png"
+            "thumb":"thumbnail_interactive_totem.png",
+            "textureDefaultPath":"interactive_totem.png"
         },
         {
             "id": "2_stand",
             "nodeId":"Stand",
             "path": "Stand/scene.gltf",
             "title": "Info Stand",
-            "thumb":"stand.jpg"
+            "thumb":"stand.jpg",
+            "textureDefaultPath":"perceive1.jpg"
         }
     ]
 }

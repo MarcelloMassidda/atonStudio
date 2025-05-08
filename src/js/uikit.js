@@ -177,7 +177,7 @@ uikit.createModelGallery=(options)=>{
    
     const abortGallery=()=>{
         ATON.UI.hideModal();
-      //  ATON.UI.elModal.children[0].classList.remove("modal-xl");
+      // ATON.UI.elModal.children[0].classList.remove("modal-xl");
     }
 
     //TODO: isolare createItemList e usare per artworks e utilites, generare tab contents, Chiamare da dentro "create"
@@ -186,13 +186,13 @@ uikit.createModelGallery=(options)=>{
         console.log(thumbBasePath)
         let container = uikit.createElfromString("<div class='cardsFlexContainer' id='ModelCardsContainer'></div>")
         models.forEach(m => {
-            console.log(m)
-            let thumb = getThumb(m,thumbBasePath);
+            console.log(m);
+            let thumb = getThumb( m , thumbBasePath );
             let id = m.nodeId;
             let title = m.title;
             let path = modelBasePath + m.path;
             let onClick = options.onModelItemClicked;
-            let card = createCard({type, id, path, thumb, title, onClick })
+            let card = createCard({ type, id, path, thumb, title, onClick });
             container.append(card);
         });
         return container;
@@ -245,7 +245,8 @@ uikit.createMediaGallery=(options)=>{
 
     let media;
     
-    APP.db.getMedia((_media)=>{
+    
+    APP.db.getOnlyUserMedia((_media)=>{
         media = _media;     
         //TODO: filter media by type and only single user?
    
@@ -310,7 +311,7 @@ uikit.TextureSelectorBlock=(imgPath,onBtnClicked)=>{
        return UI.image(icon,"sm");
     }
 
-    const btn = (click)=> uikit.createButton({text:"Change content",onClick:click});
+    const btn = (click)=> uikit.createButton({text:"🛠️ Change content",onClick:click});
 
     return UI.flexBox({content:[imageThumb(imgPath),btn(onBtnClicked)], alignItems:"center"});
 }

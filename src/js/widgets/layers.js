@@ -123,8 +123,7 @@ const layers_createBtnClicked=()=>{
         const updateEditorOnModelAdded=()=>{
             
             console.log(1);
-            console.log(nodeName)
-            
+            console.log(nodeName);
             
             console.log(2);
             //Update currentScene locally:
@@ -136,10 +135,25 @@ const layers_createBtnClicked=()=>{
             if(!_edges) { _edges = {".":[nodeName]}}
             else{_edges["."].push(nodeName)}
             editor.currScene.scenegraph.edges = _edges;
+
             if(type=="customizables"){
+
+                const getDefaultTexturePathByNodeId=(id)=> {
+                    let customizables = APP.config.models.customizables;
+                    if(!customizables) return null;
+                    
+                    let basePath = APP.config.baseCustomizablesDefaultTexturesPath;
+                    
+                    console.log("id is: " + id);
+                    let obj = customizables.find(item => item.nodeId === id);
+                    console.log(obj);
+
+                    return  basePath + obj.textureDefaultPath;
+                }
+
                 //texturized
                 editor.currScene.texturized = editor.currScene.texturized? editor.currScene.texturized : {};
-                editor.currScene.texturized[nodeName] = {"imageScreenPath":""};
+                editor.currScene.texturized[nodeName] = {"imageScreenPath":getDefaultTexturePathByNodeId(id)};
             }
             console.log(3);
             layers_composePatch_add(nodeName,newSceneGraphNode,type);
@@ -161,6 +175,12 @@ const layers_createBtnClicked=()=>{
             updateEditorOnModelAdded();
             ATON.getRootScene().assignLightProbesByProximity();
             ATON.updateLightProbes();
+
+            if(type=="customizables"){
+                let sceneTexturized = {};
+                sceneTexturized[nodeName] = {"imageScreenPath":editor.currScene.texturized[nodeName].imageScreenPath};
+                ATON.Flares.Prototyper_flare.parse(sceneTexturized);
+            }
         }).setPosition(0,0,0).attachToRoot();
     }
 
@@ -171,14 +191,21 @@ const layers_createBtnClicked=()=>{
 
 //TEXTURIZED LAYERS:
 //MediaPicker:
-const layers_getMediaPickerForTexturizedLayers = ()=>APP.uikit.createMediaGallery({
-
-    onMediaItemClicked:onSelectTextureFromMedia,
-
-    onAddFileBtnClicked:(evt)=>{
-        APP.db.openFileDialog({callback:layers_getMediaPickerForTexturizedLayers});
+//the callback seems recursive, but it's recalling the MediaPicker again after the user has uploaded a new file.
+const layers_getMediaPickerForTexturizedLayers =  ()=>{
+    
+    const delaytedUpdateGalleryCallback= async()=>{
+        await setTimeout(() => {
+            layers_getMediaPickerForTexturizedLayers();
+          }, 600); // 300ms is often enough
     }
-});
+
+    console.log("getMediaPickerForTexturizedLayers");
+    APP.uikit.createMediaGallery({
+        onMediaItemClicked:onSelectTextureFromMedia,
+        onAddFileBtnClicked:(evt)=>{
+            APP.db.openFileDialog({callback:delaytedUpdateGalleryCallback});}
+});}
 
 
 const onSelectTextureFromMedia=(item)=>{    
@@ -328,9 +355,16 @@ let widget_options = {
     hierarchy:true,
     itemBtn:(id,item)=>{
             let objNum  = item.urls? item.urls.length : 0;
-            
+            let _itemName = id;
+
+            if(editor.currScene.texturized!=undefined){
+                if(editor.currScene.texturized[id]!=undefined){
+                    _itemName =  "🛠️ " + _itemName;
+                }
+            }
+
         return widgetsHub.mainBtn_base({
-            text: id /* + " ("+objNum+")" */,
+            text: _itemName /* + " ("+objNum+")" */,
             attr:{"data-id":id,"data-wid":"layers"},
             onClick:function(){widgetsHub.onClicked_itemBtn_base(this)},
             //badge:`contains: ${objNum} objects`

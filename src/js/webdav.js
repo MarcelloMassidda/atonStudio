@@ -1,17 +1,35 @@
 let webdavManager = {
-    config: {
-      baseURL: "http://localhost:8081/",
-      username: "tmp",
-      password: "tmp"
+   
+   config: {
+      baseURL: "http://localhost:8082/", //My alternative WebDAV server
+      username: "",
+      password: ""
     },
   
     setConfig(opts) {
       Object.assign(this.config, opts);
     },
   
+
+    getAuthHeader() {
+
+      let _username, _password;
+      _username = this.config.username? this.config.username : window.prompt("Insert username:", "");
+      _password = this.config.password? this.config.password : window.prompt("Insert password:", "");
+
+      console.log("going with", _username, _password);
+      
+      this.config.username = _username;
+      this.config.password = _password;
+
+      return "Basic " + btoa(_username + ":" + _password);
+     // return "Basic " + btoa(this.config.username + ":" + this.config.password);
+    },
+    
+    /*
     getAuthHeader() {
       return "Basic " + btoa(this.config.username + ":" + this.config.password);
-    },
+    },*/
   
     async uploadFile(file, remotePath, callback = () => {}) {
         const fullUrl = this.config.baseURL + remotePath + encodeURIComponent(file.name);
