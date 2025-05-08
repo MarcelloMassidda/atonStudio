@@ -20,6 +20,8 @@ uikit.createButton=(options)=>{
     return el;
 };
 
+
+
 uikit.deleteButton=(options)=>{ options.variant = "danger"; return uikit.createButton(options)};
 
 
@@ -136,16 +138,18 @@ uikit.createTabsGroup=(options)=>{ //Created to add onClick to Tab
 
 
 //TO FIX WITH PROMISE?
+
 uikit.createModelGallery=(options)=>{
 
     //o.onModelItemClicked
 
-    let artworks, utilities, media;
+    let artworks, utilities, customizables, media;
     
     APP.db.getMedia((_media)=>{
         media = _media;
-        artworks = APP.config.artworks;
-        utilities = APP.config.utilities;
+        artworks = APP.config.models.artworks;
+        utilities = APP.config.models.utilities;
+        customizables = APP.config.models.customizables;
         
         _create();
     })
@@ -167,7 +171,7 @@ uikit.createModelGallery=(options)=>{
         </div>
         `
         let card = uikit.createElfromString(_string);
-        card.addEventListener("click",()=>o.onClick({id:o.id, url:o.path}));
+        card.addEventListener("click",()=>o.onClick({id:o.id, url:o.path, type:o.type}));
         return card;
     }
    
@@ -177,7 +181,7 @@ uikit.createModelGallery=(options)=>{
     }
 
     //TODO: isolare createItemList e usare per artworks e utilites, generare tab contents, Chiamare da dentro "create"
-    const createGallery=({models,thumbBasePath,modelBasePath})=>{
+    const createGallery=({models,thumbBasePath,modelBasePath,type})=>{
         console.log(models)
         console.log(thumbBasePath)
         let container = uikit.createElfromString("<div class='cardsFlexContainer' id='ModelCardsContainer'></div>")
@@ -188,7 +192,7 @@ uikit.createModelGallery=(options)=>{
             let title = m.title;
             let path = modelBasePath + m.path;
             let onClick = options.onModelItemClicked;
-            let card = createCard({ id, path, thumb, title, onClick })
+            let card = createCard({type, id, path, thumb, title, onClick })
             container.append(card);
         });
         return container;
@@ -196,18 +200,27 @@ uikit.createModelGallery=(options)=>{
     const _create=()=>{
         
         let artworksGallery = createGallery({
+            type:"artworks",
             models:artworks,
             thumbBasePath: APP.config.baseArtworksThumbPath,
             modelBasePath: APP.config.baseArtworksModelsPath});
 
         let utilitiesGallery = createGallery({
+            type:"utilities",
             models:utilities,
             thumbBasePath:APP.config.baseUtilitiesThumbPath,
             modelBasePath:APP.config.baseUtilitiesModelsPath});
+
+        let customizablesGallery = createGallery({
+            type:"customizables",
+            models:customizables,
+            thumbBasePath:APP.config.baseCustomizablesThumbPath,
+            modelBasePath:APP.config.baseCustomizablesModelsPath});
         
         let tabsOptions = {items:[
-            {title:"Artworks",content:artworksGallery},
-            {title:"Utilities",content:utilitiesGallery},
+            {title:"Artworks", content: artworksGallery},
+            {title:"Utilities", content: utilitiesGallery},
+            {title:"Customizables", content: customizablesGallery}
         ]};
         
         let tabs = uikit.createTabsGroup(tabsOptions);
@@ -221,6 +234,85 @@ uikit.createModelGallery=(options)=>{
         //ATON.UI.elModal.children[0].classList.add("modal-xl"); //Set extralarge. //TO REMOVE AFTER, TO FI
         UI.showModal({header,body,footer,size:"xl"});
     }
+}
+
+
+
+uikit.createMediaGallery=(options)=>{
+
+    //o.onMediaItemClicked
+    //o.onAddFileBtnClicked
+
+    let media;
+    
+    APP.db.getMedia((_media)=>{
+        media = _media;     
+        //TODO: filter media by type and only single user?
+   
+        _create();
+    })
+
+    const createCard=(o)=>{
+       let _string = `
+        <div class="card modelCard" style="width: 20%; height:200px">
+        <div class="card-img-top centerCropped" 
+         style="background-image: url('${ATON.Utils.resolveCollectionURL(o.path)}'); height:200px">
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">${o.name}</h5>
+        </div>
+        </div>
+        `
+        let card = uikit.createElfromString(_string);
+        card.addEventListener("click",()=>o.onClick({ url:o.path}));
+        return card;
+    }
+   
+    const abortGallery=()=>{ATON.UI.hideModal();}
+
+    const getLastPathSegment = (str) => str.split('/').pop();
+
+    const createGallery=(items)=>{
+        console.log(items)
+        let container = uikit.createElfromString("<div class='cardsFlexContainer' id='ModelCardsContainer'></div>")
+        items.forEach(m => {
+            console.log(m)
+            let name  =  getLastPathSegment(m);
+            let path = m
+            let onClick = options.onMediaItemClicked;
+            let card = createCard({ path, name, onClick })
+            container.append(card);
+        });
+        return container;
+    }
+
+    const _footer = ()=>{
+        let cancelBtn = uikit.createButton({text:"Cancel",onClick:abortGallery});
+        let addBtn = uikit.createButton({variant:"primary",text:"Add new file",onClick: options.onAddFileBtnClicked});
+        return UI.flexBox({content:[addBtn,cancelBtn],alignItems:"center",justifyContent:"between"});
+    }
+    const _create=()=>{
+      
+        //COMPOSE MODAL
+        let header = "Select a Media";
+        let body = createGallery(media);
+        let footer = _footer();
+
+        //Show MODAL:
+        UI.showModal({header,body,footer,size:"xl"});
+    }
+}
+
+uikit.TextureSelectorBlock=(imgPath,onBtnClicked)=>{
+
+    const imageThumb=(path)=>{
+       let icon = ATON.Utils.resolveCollectionURL(path);
+       return UI.image(icon,"sm");
+    }
+
+    const btn = (click)=> uikit.createButton({text:"Change content",onClick:click});
+
+    return UI.flexBox({content:[imageThumb(imgPath),btn(onBtnClicked)], alignItems:"center"});
 }
 
 

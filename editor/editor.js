@@ -26,26 +26,29 @@ editor.initialize=()=>{
     if(!params) throw new Error("No params found");
     const sid = params.get('s');
     db.data.currSID = sid;
+    db.initUser();
 
     //Load Scene:
     utils.loadScene(sid,()=>{
         db.data.currScene = ATON.SceneHub.currData;
         editor.setupFromScene(db.data.currScene);
-        editor.CustomEventsSetup();
+        editor.TestCustomEventsSetup();
         editor.showWelcomeModal();
     });
 }
 
 
-editor.CustomEventsSetup=()=>{
-
+editor.TestCustomEventsSetup=()=>{
     ATON.on("KeyPress", function(k){
 		if (k === 'x') ATON.fireEvent("myEvent", ATON._queryDataScene);
 	});
 
 	// ...and here we handle our event!
 	ATON.on("myEvent", function(p){
-        console.log(p)
+        console.log(p);
+
+        editor.focusOnItemByQueryDataScene(p.o);
+
         window.p= p;
         return;
 		if (p === undefined) return; // no picked point, nothing to do
@@ -57,15 +60,55 @@ editor.CustomEventsSetup=()=>{
 			.setPosition(p)
 			.attachToRoot();
 	});
-
-    
-    //ATON.setMainPanorama("samples/pano/bg-welcome.jpg");
-    //ATON.setMainLightDirection( new THREE.Vector3(-37.681762018779956, -26.286302074928848,-19.726001479915375) );
-    //ATON.toggleShadows(false);
-    //ATON.setExposure(0.9);
-
-    //ATON.FX.togglePass(ATON.FX.PASS_AO, b);
 }
+
+editor.focusOnItemByQueryDataScene=(o)=>{
+
+    const rootUUID = ATON.getRootScene().uuid;
+
+    // Recursive function to get the last parent before root
+    const getLastParent = (object) => {
+        if (!object.parent || object.parent.uuid === rootUUID) {
+            return object; // This is the last parent before root
+        }
+        return getLastParent(object.parent); // Keep going up
+    };
+    
+    const lastParent = getLastParent(o);
+    
+    if(!lastParent.name) {console.log("no name!"); return}
+
+    console.log("Last Parent Name is: " + lastParent.name);
+    let {widgetKey,item} = editor.findIteminWidgets(lastParent.name);
+    if(!widgetKey) {console.log("no widget!"); return}
+
+    APP.widgetsHub.focusOnItem_base({id:lastParent.name, wid: widgetKey})
+}
+
+editor.findIteminWidgets = (name) => {
+    let w = null;
+    let i = null;
+
+    for (const [key, widget] of Object.entries(APP.widgetsHub.widgets)) {
+        console.log(key);
+        console.log(widget._items);
+
+        if (widget._items) {
+            console.log(widget._items[name]);
+            if (widget._items[name] !== undefined) {
+                i = widget._items[name];
+                w = key;
+                // Return early with both values
+                console.log(`Found in widget: ${w}, item:`, i);
+                return { widgetKey: w, item: i };
+            }
+        }
+    }
+
+    console.log("Widget not found");
+    return null; // Return null if not found
+};
+
 
 
 editor.showWelcomeModal=()=>{
@@ -262,6 +305,7 @@ editor.onCloseInspectorBtnClicked=()=>{
     /*reset editor globals*/
     editor.activeNode = null;
     editor.activeWidget = null;
+    APP.ui.resetStyleOfActiveBtns();
 }
 
 //PATCH HANDLERS:
@@ -416,7 +460,7 @@ editor.onSaveSceneBtnIsClicked=()=>{
    editor.sendGlobalScenePatch();
 }
 
-editor.onRemoveModelBtnClicked=async()=>{ //NOT USED!!!
+editor.onRemoveModelBtnClicked=async()=>{ //OLD!   NOT USED!!!
     if(!editor.activeNode) return;
     let nid = APP.dashboard.editor.activeNode.nid;
     
@@ -428,7 +472,7 @@ editor.onRemoveModelBtnClicked=async()=>{ //NOT USED!!!
         console.log("CANCELING: " + nid);
  
         //Realtime Changes:
-        UI.detachGizmo();
+        UI.detachGizmo();  //OLD use gizmoManager.detachGizmo instead
         APP.dashboard.editor.activeNode.delete();
         delete APP.dashboard.editor.currScene.scenegraph.nodes[nid];
         

@@ -4,8 +4,11 @@
     "baseMediaPath":"bastet/media/",
     "baseArtworksThumbPath":"bastet/media/m_thumbs/",
     "baseUtilitiesThumbPath":"bastet/media/u_thumbs/",
+    "baseCustomizablesThumbPath":"bastet/media/c_thumbs/",
     "baseArtworksModelsPath": "bastet/models/proto_collection/artworks/",
     "baseUtilitiesModelsPath": "bastet/models/proto_collection/utilities/",
+    "baseCustomizablesModelsPath": "bastet/models/proto_collection/customizables/",
+    "models":{
     "artworks":
     [
         {
@@ -82,13 +85,6 @@
             "thumb":"bench.jpg"
         },
         {
-            "id": "5_monitor",
-            "nodeId":"Monitor",
-            "path": "Monitor/Monitor.gltf",
-            "title": "Monitor",
-            "thumb":"monitor.jpg"
-        },
-        {
             "id": "6_standA",
             "nodeId":"Stand 1",
             "path": "StandA/scene.gltf",
@@ -105,9 +101,27 @@
         {
             "id": "8_room",
             "nodeId":"Room",
-            "path": "Room/Room.gltf",
+            "path": "Room/baked/room.gltf",
             "title": "Room",
             "thumb":"room.jpg"
         }
+    ],
+    "customizables":
+    [
+        {
+            "id": "1_interactiveTotem",
+            "nodeId":"Interactive Totem",
+            "path": "Interactive Totem/interactive_totem.gltf",
+            "title": "Interactive Totem",
+            "thumb":"thumbnail_interactive_totem.png"
+        },
+        {
+            "id": "2_stand",
+            "nodeId":"Stand",
+            "path": "Stand/scene.gltf",
+            "title": "Info Stand",
+            "thumb":"stand.jpg"
+        }
     ]
+}
 }

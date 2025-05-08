@@ -2,6 +2,7 @@ import {UI} from '../../uitoolkit/js/uitoolkit.js';
 import {editor} from './editor.js';
 
 let APP = ATON.App.realize();
+APP.requireFlares(["prototyper"]);
 
 APP.url_base = window.location.origin + "/a/atonstudio/";
 APP.url_dashboard = APP.url_base+"dashboard/";
@@ -19,6 +20,10 @@ APP.setup = async()=>{
 		
 		window.APP = APP;
 		APP.loadConfig(APP.editor.init);
+
+		/*
+		ATON.on("AllFlaresReady",()=>{
+		});*/
 }
 	  
 

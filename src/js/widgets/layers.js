@@ -16,7 +16,8 @@ const layers_OnChangePropFromInspector=(evt)=>{
 }
 
 
-const layers_createBtnClicked_original=()=>{
+//Original version:
+const original_layers_createBtnClicked=()=>{
 
     console.log("Create new Layer");
 
@@ -88,7 +89,7 @@ const layers_createBtnClicked_original=()=>{
         //2 create SummaryDialog:
         let _summary = UI.summarize(UI.parseInFolders( models , onModelItemClicked ));
         _summary.cssText+="text-align:left";
-         APP.uikit.showModal(
+         UI.showModal(
             {
                 header: "Select a model",
                 body:_summary}
@@ -101,8 +102,14 @@ const layers_createBtnClicked_original=()=>{
 const layers_createBtnClicked=()=>{
 
 
-    var onModelItemClicked = async ({url,id})=>{
+    var onModelItemClicked = async ({url,id,type})=>{
         
+        console.log("Create new Layer");
+        console.log(url);
+        console.log(id);
+        console.log(type);
+
+      
         //Original: Prompt node Name
         //const promptResponse = await UI.promptDialog({header:"Layer Name", inputs:[{name:"newNodeName", labelText:"Node Name",type:"text"}]});
         //if(!promptResponse) {ATON.UI.hideModal(); console.log("NO PROMPT"); return;}
@@ -117,8 +124,7 @@ const layers_createBtnClicked=()=>{
             
             console.log(1);
             console.log(nodeName)
-            //Focus on currentNode
-            widgetsHub.focusOnItem_base({ id:nodeName, wid:APP.widgetsHub.widgets.layers.id});
+            
             
             console.log(2);
             //Update currentScene locally:
@@ -130,8 +136,19 @@ const layers_createBtnClicked=()=>{
             if(!_edges) { _edges = {".":[nodeName]}}
             else{_edges["."].push(nodeName)}
             editor.currScene.scenegraph.edges = _edges;
+            if(type=="customizables"){
+                //texturized
+                editor.currScene.texturized = editor.currScene.texturized? editor.currScene.texturized : {};
+                editor.currScene.texturized[nodeName] = {"imageScreenPath":""};
+            }
             console.log(3);
-            layers_composePatch_add(nodeName,newSceneGraphNode);
+            layers_composePatch_add(nodeName,newSceneGraphNode,type);
+           
+        
+            //Focus on currentNode
+            widgetsHub.focusOnItem_base({ id:nodeName, wid:APP.widgetsHub.widgets.layers.id});
+
+
             console.log(4);
             
             APP.ui.editor_updateHierarchy();
@@ -145,7 +162,6 @@ const layers_createBtnClicked=()=>{
             ATON.getRootScene().assignLightProbesByProximity();
             ATON.updateLightProbes();
         }).setPosition(0,0,0).attachToRoot();
-
     }
 
     //1 get Gallery:
@@ -153,8 +169,47 @@ const layers_createBtnClicked=()=>{
 }
 
 
+//TEXTURIZED LAYERS:
+//MediaPicker:
+const layers_getMediaPickerForTexturizedLayers = ()=>APP.uikit.createMediaGallery({
+
+    onMediaItemClicked:onSelectTextureFromMedia,
+
+    onAddFileBtnClicked:(evt)=>{
+        APP.db.openFileDialog({callback:layers_getMediaPickerForTexturizedLayers});
+    }
+});
 
 
+const onSelectTextureFromMedia=(item)=>{    
+    const _url = item.url;
+
+    ATON.UI.hideModal();
+    
+    //Update localgraph:
+    editor.currScene.texturized = editor.currScene.texturized? editor.currScene.texturized : {};
+    let node = APP.editor.activeNode;
+    if(!node) throw("no node to texturize");
+    
+    let nid = node.nid;
+    editor.currScene.texturized[nid] = {"imageScreenPath":_url};
+    
+    //Live Update the object:
+    ATON.Flares.Prototyper_flare.parse(editor.currScene.texturized);
+    widgetsHub.focusOnItem_base({ id:nid, wid:APP.widgetsHub.widgets.layers.id});
+    
+    //Send Patch:
+    let _patch = editor.patch? editor.patch : {};
+    _patch.texturized = {};
+    _patch.texturized[nid] = {"imageScreenPath":_url};
+
+    editor.patch = _patch;
+    editor.modePatch = ATON.SceneHub.MODE_ADD;
+    editor.OnPatchChanged();
+
+
+
+}
 
 const layers_GizmoHandler=(evt)=>{
 
@@ -240,18 +295,26 @@ const layers_delete=(nid)=>{
     //Compose and send patch:
     if(!nid) throw("error deleting layer");
     let nodes = {}; nodes[nid]={};
-    editor.patch = { scenegraph:{nodes} };
+    let texturized = {}; texturized[nid] = {};
+    editor.patch = { scenegraph:{nodes}, texturized };
     editor.modePatch = ATON.SceneHub.MODE_DEL;
     editor.OnPatchChanged();
 }
 
 
-const layers_composePatch_add=( nid , nodeBody )=>{
+const layers_composePatch_add=( nid , nodeBody, type )=>{
 
     var _patch = editor.patch? editor.patch : {scenegraph:{nodes:{}}};
     if(_patch.scenegraph.nodes[nid]) {throw(nid + " node ID is already used."); }
     _patch.scenegraph.nodes[nid] = nodeBody;
     _patch.scenegraph.edges = editor.currScene.scenegraph.edges;
+
+    if(type=="customizables"){
+       
+        let texturized = editor.currScene.texturized? editor.currScene.texturized : {};
+        if(!texturized[nid]) texturized[nid] = {"imageScreenPath":""};
+        _patch.texturized = texturized;
+    }
 
     editor.patch = _patch;
     editor.modePatch = ATON.SceneHub.MODE_ADD;
@@ -260,7 +323,7 @@ const layers_composePatch_add=( nid , nodeBody )=>{
 }
 
 
-let _layers_widget = () => widgetsHub.widget({
+let widget_options = {
     id:"layers",
     hierarchy:true,
     itemBtn:(id,item)=>{
@@ -290,6 +353,20 @@ let _layers_widget = () => widgetsHub.widget({
         editor.udpateGizmoOnMouseUpListener(layers_GizmoHandler);
     },
     props:{
+        "screen":{
+            inspectorBlock:(node)=>{
+                if(editor.currScene.texturized===undefined) return null;
+                if(editor.currScene.texturized[node.nid]===undefined) return null;
+
+                return APP.uikit.TextureSelectorBlock(
+                    editor.currScene.texturized[node.nid].imageScreenPath,
+                    layers_getMediaPickerForTexturizedLayers);
+            },
+            get:()=>{
+                let node = APP.editor.activeNode;
+                return editor.currScene.texturized[node.nid].imageScreenPath;
+            }
+        },
         "position":{
             inspectorBlock:(node)=>{
                 return widgetsHub.parsers.vector3({
@@ -342,7 +419,9 @@ let _layers_widget = () => widgetsHub.widget({
     components:{
         "delete":{ inspectorBlock:(node)=>{ return APP.uikit.deleteButton({icon:"trash",text:"Remove"/*,attr:{"data-id":node.nid}*/,onClick:()=>layers_delete(node.nid)}) }}
     }
-})
+}
+
+let _layers_widget = () => widgetsHub.widget(widget_options);
 
 let layers_widget = {
     create: (_APP) => {
@@ -351,7 +430,9 @@ let layers_widget = {
         editor = _APP.editor;
         gizmoManager = _APP.gizmoManager;
         return _layers_widget()
-    }
+    },
+
+    options: widget_options
 }
 
 export {layers_widget};

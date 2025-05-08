@@ -1,6 +1,7 @@
 import { gizmoManager } from '../src/js/gizmo.js';
 import { utils } from "../src/js/utility.js";
 import { db } from '../src/js/db.js';
+import {uikit} from "../src/js/uikit.js";
 
 let APP, UI;
 
@@ -63,14 +64,14 @@ ui.removeDashboard = ()=>{
 }
 
 ui.scenesPage = ()=>{
-    const newSceneBtn = UI.button({text:"Create new scene",
+    const newSceneBtn = uikit.createButton({text:"Create new scene",
         onClick:()=>{console.log("CLICKED"); utils.createNewScene()}})    
 
-    return UI.createEl({id:"scenesPage", className:"dash_page", content:["#SCENESPAGE .dash_page",
+    return UI.createEl({id:"scenesPage", className:"dash_page", content:[ //"#SCENESPAGE .dash_page",
         
         /*Scenes page header*/
         UI.createEl({id:"scenesHead",className:"dash_pageHeader",content:[
-            `<div>Title .dash_pageHeader</div>`,
+           // `<div>Title .dash_pageHeader</div>`,
             newSceneBtn
         ]}),
         
@@ -83,7 +84,9 @@ ui.scenesPage = ()=>{
         }),
         
         /*Scenes page footer*/
-        UI.createEl({id:"scenesFooter",className:"dash_pageFooter",content:`<div>Footer .dash_pageFooter</div>`}),
+        UI.createEl({id:"scenesFooter",className:"dash_pageFooter",
+          //  content:`<div>Footer .dash_pageFooter</div>`
+        }),
         ]
     })
 }
@@ -94,17 +97,18 @@ ui.dash_sideMenu=()=>{
             className:"dash_sideMenu_Content",
             content:[
                 dashboard.ui.avatarItem(),
+                /*
                 UI.button({icon:"add",text:"Btn1"}),
                 UI.button({icon:"add",text:"Btn1"}),
                 UI.button({icon:"add",text:"Btn1"}),
-                UI.button({icon:"add",text:"Btn1"}),
+                UI.button({icon:"add",text:"Btn1"}),*/
             ]            
         })
     ]});
 }
 
 ui.dash_topBar = ()=>{
-    return UI.createEl({id:"IDdash_topBar",className:"dash_topBar",content:"dash_topBar"})
+    return UI.createEl({id:"IDdash_topBar",className:"dash_topBar",content: uikit.createElfromString("<h5 class='dash_topNavTitle'>Dashboard</h5>")})
 }
 
 ui.sceneItem = (s)=>{
@@ -123,8 +127,9 @@ ui.sceneItem = (s)=>{
         links:[
            // UI.button({text:"Load",onClick:()=>dashboard.utils.loadScene(s.sid)}),
            UI.button({text:"Open", onClick: ()=>utils.openSceneIn3DEditor(s.sid)}),
+           /*
            UI.button({text:"Duplicate"}),
-           UI.button({text:"Delete"}),
+           UI.button({text:"Delete"}),*/
            UI.button({text:"open in hathor", onClick: ()=>utils.goToHathorScene(s.sid)}),
         ],
         onClick: ()=>utils.openSceneIn3DEditor(s.sid)

@@ -55,8 +55,8 @@ const viewpoints_createBtnClicked = async() => {
     ]
 
     let dataPOV = await UI.promptDialog({inputs:[
-        {type:"text", name:"id", legendText:"pov ID", value:newGeneratedId},
-        {type:"checkbox", name:"fromCurrView", legendText:"Set from Current View"}],
+        {type:"text", name:"id", legendText:"View Point ID", value:newGeneratedId, required:true},
+        {type:"checkbox", name:"fromCurrView", legendText:"Orientation", labelText:"Set from current View",checked:"checked"}],
         title:"Add new ViewPoint"
     });
     if(!dataPOV) return;
@@ -74,13 +74,13 @@ const viewpoints_createBtnClicked = async() => {
     if(!vp) vp = {};
     vp[dataPOV.id] = bodyPov;
     editor.currScene.viewpoints = vp;
-    //Update WidgetMainPanel
-    editor.activeWidget = widgetsHub.widgets.viewpoints; //TODO:FIX THIS
-    APP.ui.editor_updateWidgetMainPanel();
     //focus:
     widgetsHub.focusOnItem_base({ id:dataPOV.id , wid:APP.widgetsHub.widgets.viewpoints.id });
     //Patch:
     viewpoints_composePatch_add(dataPOV.id,bodyPov);
+    //Update WidgetMainPanel
+    editor.activeWidget = widgetsHub.widgets.viewpoints; //TODO:FIX THIS
+    APP.ui.editor_updateWidgetMainPanel();
 }
 
 const viewpointGizmoHandlers={
@@ -380,7 +380,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
                 let _inspectorBlock = UI.createEl(
                     {className:"inspector_Block",
                     content:[
-                        UI.button({text:"position",onClick:()=>{
+                        APP.uikit.createButton({text:"position",onClick:()=>{
                             console.log("Position clicked");
                             editor.setGizmoByNode(pos);
                             editor.udpateGizmoOnMouseUpListener(viewpointGizmoHandlers.position)
@@ -411,7 +411,7 @@ let _viewpoints_widget = ()=> widgetsHub.widget({
             let inspectorBlock = UI.createEl(
                 {className:"inspector_Block",
                 content:[
-                    UI.button({text:"target", onClick:()=>{
+                    APP.uikit.createButton({text:"target", onClick:()=>{
                         console.log("Target clicked");
                         editor.setGizmoByNode(povTarget);
                         editor.udpateGizmoOnMouseUpListener(viewpointGizmoHandlers.target)

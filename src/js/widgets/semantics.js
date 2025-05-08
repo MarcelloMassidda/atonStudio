@@ -66,6 +66,15 @@ convexShapeManager.completeConvexShape=()=>{
 
 convexShapeManager.stopCurrentConvex=()=>{
     ATON.SemFactory.stopCurrentConvex();
+    
+    /*#ToReport:
+    ATON.SemFactory.stopCurrentConvex() return if (!SemFactory.bConvexBuilding).
+    It  means that if I stop before the mesh is created the orange dots remain.*/
+    ATON.SemFactory.convexPoints = [];
+    ATON.SemFactory.currSemNode.removeChildren();
+    ATON.SUI.gPoints.removeChildren();
+    //Added here.
+
     convexShapeManager.setIsBuilding(false);
 }
 
@@ -119,6 +128,10 @@ const semUtils=
 
 
 const semantics_createBtnClicked= async()=>{
+
+    gizmoManager.detachGizmo();
+    APP.ui.toggle_sideRightMenu(false);
+    APP.editor.activeNode = null;
 
     //FORM:
     const onShapeModeClicked=(e)=>{
@@ -236,14 +249,28 @@ const onConvexShapeAbortBtnClicked=()=>{
 
 }
 
-const semantics_ConvexShape_HelperContent=()=>{
+const OLD_semantics_ConvexShape_HelperContent=()=>{ //Replaced with simil-toast bootstrap layout
 
-    const head = convexShapeManager._currentSemId + ": Convex Shape Building";
-    const completeBtn =   APP.uikit.createButton({id:"completeShape" ,tooltip:"Complete the current convex shape", onClick:()=>onConvexShapeCompleteBtnClicked(), text:"Complete Shape"});
-    const abortBtn = APP.uikit.createButton({id:"abortShape" ,tooltip:"Abort the current convex shape", onClick:()=>onConvexShapeAbortBtnClicked(), text:"Abort Shape"});
+    const head = convexShapeManager._currentSemId + ": Convex Shape Building: Tap to any surface to create a polygonal mesh";
+    const completeBtn =   APP.uikit.createButton({variant:"primary",id:"completeShape" ,tooltip:"Complete the current convex shape", onClick:()=>onConvexShapeCompleteBtnClicked(), text:"Complete Shape"});
+    const abortBtn = APP.uikit.createButton({id:"cancelShape" ,tooltip:"Cancel the current convex shape", onClick:()=>onConvexShapeAbortBtnClicked(), text:"Cancel Shape"});
     const btns = UI.flexBox({content:[completeBtn,abortBtn]});
     const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
     return UI.flexBox({content});
+}
+
+const semantics_ConvexShape_HelperContent=()=>{
+
+
+    const title = convexShapeManager._currentSemId + ": Convex Shape Building";
+    const description = "Tap to any surface to create a polygonal mesh";
+    const completeBtn =   APP.uikit.createButton({variant:"primary",id:"completeShape" ,tooltip:"Complete the current convex shape", onClick:()=>onConvexShapeCompleteBtnClicked(), text:"Complete Shape"});
+    const abortBtn = APP.uikit.createButton({id:"cancelShape" ,tooltip:"Cancel the current convex shape", onClick:()=>onConvexShapeAbortBtnClicked(), text:"Cancel Shape"});
+    //const btns = UI.flexBox({content:[completeBtn,abortBtn]});
+    //const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
+    
+    const content = APP.ui.wrapInToast({title,description,btns:[completeBtn,abortBtn]})
+    return content;
 }
 
 
@@ -371,19 +398,15 @@ let _semantics_widget = ()=> widgetsHub.widget({
     },
     returnItem:(nid)=>{return ATON.getSemanticNode(nid)},
     setupGizmo:(id)=>{ 
-        
-        if(getSemanticsType(id)!="sphere"){
-            APP.ui.editor_setGizmoToolbox([]);
-            return;}
+        if(getSemanticsType(id)!="sphere"){ gizmoManager.detachGizmo(); return; /*No gizmo assigned for convex shapes; detached to free prev object attached to gizmo*/ }
 
         let node = ATON.getSemanticNode(id);
-        editor.setGizmoByNode(node.children[0]); //Only return first sphere of semantic node, TODO: mulitple items and convex shape case
-        APP.ui.editor_setGizmoToolbox();
+        editor.setGizmoByNode(node.children[0], "translate"); //TODO: For now only first sphere of sem node is managed. To add nested spheres control.
+       // APP.ui.editor_setGizmoToolbox(["translate"]); //Only translate mode is available for shpere shapes, no need to toolbox with only 1 button.
         editor.udpateGizmoOnMouseUpListener(semantics_GizmoHandler);
     },
     createBtnOptions:{text:"Add new Annotation",icon:"add", onClick: ()=>semantics_createBtnClicked()},
     props:{
-        //SPHERE: (convex to add)
         "position":{            
             inspectorBlock:(node)=>{
 

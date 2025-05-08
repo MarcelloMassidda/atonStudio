@@ -1,3 +1,5 @@
+import {webdavManager} from './webdav.js';
+
 let db ={};
 
 db.data = {};
@@ -12,7 +14,7 @@ db.getModels=(callback=null)=>db.get("c/models",callback);
 db.getMedia=(callback=null)=>{
   db.getUser((user)=>{
     if(!user) throw("NO USER LOGGED"); //To implement redirect to login
-    db.get(`v2/items/${user.username}/media`,callback)
+    db.get(`v2/items/${user.username}/media`, callback)
   });
 }
 
@@ -25,6 +27,25 @@ db.getUser=(callback=null)=>{
   }
   else return user;
   */
+}
+
+
+db.initUser=()=>{
+  db.getUser( async(user)=>{
+    db.user = user;
+
+    webdavManager.setConfig({
+      baseURL: "http://localhost:8081/",
+      username: user.username,
+      password: user.username //USERS WITH SAME PASSWORD FOR TESTING
+    });
+
+    console.log("WebDAV config:", webdavManager.config);
+
+    return;
+    let basePath = "tmp-collection/" + db.user.username + "/";
+    await webdavManager.ensureFoldersExist([basePath, basePath+"media", basePath+"models", basePath+"pano"]);
+  });
 }
 
 db.get = (endpoint,onReceive) => {
@@ -52,7 +73,7 @@ db.get = (endpoint,onReceive) => {
     });
 };
 
-db.post = (endpoint, content, onComplete) => { //NOT TESTED?
+db.post = (endpoint, content, onComplete) => { //NOT TESTED OR USED.
 
     const url = ATON.PATH_RESTAPI + endpoint;
     fetch(url, {
@@ -105,6 +126,23 @@ db.setSceneVisibility=(sid,vis,callback=null)=>{
     }    
 }
 
+
+db.webdav = webdavManager; //WebDAV manager
+
+db.openFileDialog = (o=null)=>{
+  /*
+  Format/Size limit validation? TODO
+  o.tagetPath = "media" // "pano" // "models"
+  */
+
+  if(!o) o = {};
+  let p = o.targetPath || "media"; //Default path
+  let targetPath = db.user.username + "-collection/" + p + "/";
+
+  let _callback = o.callback || (()=>{});
+
+  webdavManager.openFileDialog(targetPath,_callback);
+}
 
 
 export {db};

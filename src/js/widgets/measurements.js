@@ -82,13 +82,23 @@ const onMeasureAbortBtnClicked=()=>{
     APP.ui.editor_removeCentralHelperPanel(); 
 }
 
-const measurements_HelperContent=()=>{
+const OLD_measurements_HelperContent=()=>{ //Replaced with simil-toast bootstrap layout
 
     const head = "Adding measurements: Click on any surface to add POINT A and POINT B"; 
     const abortBtn = APP.uikit.createButton({id:"abortMeasurement", tooltip:"Abort the current mesaurement", onClick:()=>onMeasureAbortBtnClicked(), text:"Abort Shape"});
     const btns = UI.flexBox({content:[abortBtn]});
     const content = UI.createEl({id:"convexShapeHelperContent",content:[head,btns]});
     return UI.flexBox({content});
+}
+
+const measurements_HelperContent=()=>{
+
+    const title = "Adding measurements"; 
+    const description = "Click on any surface to add START and END point of the measure.";
+    const abortBtn = APP.uikit.createButton({id:"abortMeasurement", tooltip:"Cancel the current mesaurement", onClick:()=>onMeasureAbortBtnClicked(), text:"Cancel measure"});
+    const content = APP.ui.wrapInToast({title,description,btns:[abortBtn]})
+
+    return content
 }
 
 const removeAllMeasurements=()=>{
@@ -275,7 +285,7 @@ let _measurements_widget = ()=> widgetsHub.widget({
             let inspectorBlock = UI.createEl(
                 {className:"inspector_Block",
                 content:[
-                    UI.button({text:"Point A",onClick:()=>{
+                   APP.uikit.createButton({text:"Point A",onClick:()=>{
                         editor.setGizmoByNode(a);
                         editor.udpateGizmoOnMouseUpListener(measurementsGizmoHandlers.pointA);
                     }}),
@@ -302,7 +312,7 @@ let _measurements_widget = ()=> widgetsHub.widget({
             let inspectorBlock = UI.createEl(
                 {className:"inspector_Block",
                 content:[
-                    UI.button({text:"Point B",onClick:()=>{
+                    APP.uikit.createButton({text:"Point B",onClick:()=>{
                         editor.setGizmoByNode(b);
                         editor.udpateGizmoOnMouseUpListener(measurementsGizmoHandlers.pointB);
                     }}),

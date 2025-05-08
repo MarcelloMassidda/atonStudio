@@ -3,6 +3,8 @@ import {measurements_widget} from './widgets/measurements.js';
 import {semantics_widget} from './widgets/semantics.js';
 import {layers_widget} from './widgets/layers.js';
 
+
+
 import {uikit}  from "./uikit.js";
 
 /*Global References:*/
@@ -21,7 +23,7 @@ widgetsHub.init=()=>{
     widgetsHub.registerWidget(viewpoints_widget.create(APP));
     widgetsHub.registerWidget(measurements_widget.create(APP));
     widgetsHub.registerWidget(semantics_widget.create(APP));
-    
+
     /*Init Widgets:*/
     for (const [wId, w] of Object.entries(widgets)) {
         if(w.init) w.init();
@@ -31,6 +33,7 @@ widgetsHub.init=()=>{
 }
 
 widgetsHub.registerWidget=(widget)=>{
+    console.log(widget)
     widgets[widget.id]= widget;
 }
 
@@ -62,9 +65,13 @@ widgetsHub.onClicked_itemBtn_base=(btnClicked)=>{
     let wid = target.dataset.wid;
 
     widgetsHub.focusOnItem_base({id,wid});
+    APP.ui.setStyleOfActiveBtn(btnClicked);
 }
 
 widgetsHub.focusOnItem_base=({id,wid})=>{
+
+    console.log(id);
+    console.log(wid);
 
     let widgets = widgetsHub.widgets;
     let w = widgets[wid];
@@ -131,12 +138,14 @@ widgetsHub.deleteItem_base=({id,wid})=>{ //TODO
 /*Widget Factory*/
 widgetsHub.widget = (o)=>{
 
+    console.log(o)
     if(!o.id){throw("ID is required for widget")}
 
     if(!o.mainBtn) {
         if(o.mainBtnOptions){
             let _mainBtnOptions = o.mainBtnOptions;
             _mainBtnOptions.attr={"data-id":o.id};
+            console.log("added in mainBtnOptions, dataset.id "  + o.id);
             o.mainBtn=()=>{return widgetsHub.mainBtn_base(o.mainBtnOptions)}
         }
     }
@@ -203,7 +212,6 @@ widgetsHub.widget = (o)=>{
             return `${id}`
         }
     }
-
 
     //TO ADD OTHERS METHODS...
 

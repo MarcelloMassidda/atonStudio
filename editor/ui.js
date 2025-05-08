@@ -57,11 +57,13 @@ ui.editorUI_Setup=(s=null)=>{
 }
 
 ui.CreateMenuBtn=()=>{
-    let btn = ATON.UI.createButton({id:"toggleMenuBtn", icon: ui.baseIcons+"burgerMenuIcon.svg"});
+    let btn = ATON.UI.createButton({icon: ui.baseIcons+"burgerMenuIcon.svg"});
+    btn.id="toggleMenuBtn";
     btn.classList.add("position-absolute", "toggleBtnOffCanvas", "aton-std-bg", "p-2", "mt-2", "ms-2", "rounded-circle");
     btn.setAttribute("data-bs-toggle","offcanvas");
     btn.setAttribute("data-bs-target","#"+ APP.uikit.offcanvas_start._element.id);
     document.body.prepend(btn);
+    ui.sideMenuBtn = btn;
 }
 
 ui.toggle= (id, b)=>{
@@ -82,11 +84,11 @@ ui.toggle_sideMenus=(b)=>{
     let s = APP.uikit.offcanvas_start;
     let e = APP.uikit.offcanvas_end;
     if(!b){
-       if(s) s.hide();
+       if(s){ s.hide(); ui.toggle(ui.sideMenuBtn.id,false);}
        if(e) e.hide();
     }
     else{
-        if(s) s.show();
+        if(s) {s.show();ui.toggle(ui.sideMenuBtn.id,true);}
        if(e) e.show();
     }
 }
@@ -96,6 +98,13 @@ ui.toggle_sideMenu=(b)=>{
     if(!s) return;
     if(b){ s.show();}
     else{s.hide();}
+}
+
+ui.toggle_sideRightMenu=(b)=>{
+    let e = APP.uikit.offcanvas_end;
+    if(!e) return;
+    if(b){ e.show();}
+    else{e.hide();}
 }
 
 ui.toggle_secondSideMenu=(b)=>{
@@ -223,14 +232,13 @@ ui.editor_topBar = (s=null)=>{
 
     let backBtn = uikit.createButton({icon:"back",onClick:()=> window.location.href = APP.url_dashboard});
     let saveSceneBtn = uikit.createButton({id: ui.IDeditor_saveSceneBtn, text:"SAVE CHANGES", onClick: editor.onSaveSceneBtnIsClicked, classList:"hidden"})
-    let openInHathorBtn = uikit.createButton({icon:"play",title:"Open scene in HATHOR front end", text:"Play Prototype", onClick: ()=>utils.goToHathorScene(_sid)})
+    let openInHathorBtn = uikit.createButton({icon:"play", title:"Open scene in HATHOR front end", text:"Play Prototype", onClick: ()=>utils.goToHathorScene(_sid)})
     let vrBtn = UI.button({text:"vr",onClick:()=> ATON.XR.toggle("immersive-vr")})
     let topBarContent = UI.flexBox({dir:"row",content:[
         backBtn,
         titleTopBar,
         saveSceneBtn,
-        openInHathorBtn,
-    //    vrBtn
+        openInHathorBtn
     ]});
    //OLD
    // return UI.createEl({id:"IDeditor_topBar",classList:["aton-std-bg","dash_topBar"],content: topBarContent})
@@ -243,15 +251,15 @@ ui.editor_topBar = (s=null)=>{
     return l;
    }
 
-   let _navBar = UI.createNavbar({
-    id:"IDeditor_topBar",
-    brand:{title:"You are editing: "+ s.title},
-    links:[ 
-        //wrapInLI(titleTopBar),
-        //wrapInLI(saveSceneBtn),
-        //wrapInLI(openInHathorBtn)
-    ],
-    form: UI.flexBox({content:[saveSceneBtn,openInHathorBtn]})
+    let _navBar = UI.createNavbar({
+        id:"IDeditor_topBar",
+        brand:{title:"You are editing: "+ s.title},
+        links:[ 
+            //wrapInLI(titleTopBar),
+            //wrapInLI(saveSceneBtn),
+            //wrapInLI(openInHathorBtn)
+        ],
+        form: UI.flexBox({content:[saveSceneBtn,openInHathorBtn]})
    });
 
    return _navBar;
@@ -379,6 +387,18 @@ ui.editor_updateWidgetMainPanel=()=>{
      if(!w) return;
      let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
      if(APP.editor.activeTab == APP.ui.ID_editorSideMenu_Widget) APP.ui.openSecondSideMenu(widgetMainPanel);
+
+
+     //Set style to active ItemBtn by activeNode:
+     var a = APP.editor.activeNode
+     if(a && w){
+        const targetBtn = document.querySelector(`[data-id="${a.name}"][data-wid="${w.id}"]`);
+        console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        console.log(a.name);
+        console.log(w.id);
+        console.log(targetBtn)
+        if(targetBtn) ui.setStyleOfActiveBtn(targetBtn);
+     }
 }
 
 ui.editor_widgetsListPanel=()=>{
@@ -406,9 +426,11 @@ ui.editor_widgetsListPanel=()=>{
 
     for (const [wId, w] of Object.entries(widgets)) {
         if(w.mainBtn){
-            let widgetButton = w.mainBtn();
-            widgetButton.addEventListener("click",function(){onWidgetMainButtonClicked(this)});
-            widgetsBtnList.push(widgetButton)
+            if(wId!="layers"){ //TODO: temporary NOT double models in scene and widget tabs
+                let widgetButton = w.mainBtn();
+                widgetButton.addEventListener("click",function(){onWidgetMainButtonClicked(this)});
+                widgetsBtnList.push(widgetButton)
+            }
         }
     }
     
@@ -479,6 +501,52 @@ ui.editor_setCentralHelperPanel=(content)=>{
 ui.editor_removeCentralHelperPanel=()=>{
     let centralHelper = document.getElementById(ui.IDeditor_centralToolBoxContainer);
     if(centralHelper) centralHelper.remove();
+}
+
+ui.wrapInToast=(o)=>{
+
+    let s =`
+   
+        <div role="alert" aria-live="assertive" aria-atomic="true">
+            
+            <div class="toast-header">
+                <strong class="me-auto">${o.title}</strong>
+            </div>
+
+            <div class="toast-body">
+                ${o.description}
+                <div id="btnsContainer" class="mt-2 pt-2 border-top">
+               
+                </div>
+            </div>
+        </div>
+ 
+  `
+
+    let el = uikit.createElfromString(s);
+
+    if(!o.btns) return el;
+    //Append btns
+    let btnsContainer = el.querySelector('#btnsContainer');
+
+    o.btns.forEach(btn => {
+        btnsContainer.appendChild(btn);
+    });
+
+    return el;
+}
+
+
+ui.setStyleOfActiveBtn=(target)=>{
+    //Clean others active elements:
+    ui.resetStyleOfActiveBtns();
+    //Set the new active btn:
+    target.classList.add("currentlyActive_ItemBtn");
+}
+
+ui.resetStyleOfActiveBtns=()=>{
+    const activeBtns = document.querySelectorAll('.currentlyActive_ItemBtn');
+    activeBtns.forEach(btn => btn.classList.remove("currentlyActive_ItemBtn"));
 }
 
 export { ui };

@@ -2,6 +2,8 @@
 ===============================
 */
 
+
+
 :root{
     --top-bar-size: 60px;
     --dash-side-menu-width: 15vw;
@@ -33,7 +35,7 @@
 /*Main Container*/
 .dash_mainContainer{
     overflow: hidden;
-    background-color: hotpink;
+    /*background-color: hotpink;*/
     position: absolute;
     top: 0;
     left: 0;
@@ -44,13 +46,19 @@
 
 /*topBar*/
 .dash_topBar{
-height: var(--top-bar-size);
-background-color: blue;
+    height: var(--top-bar-size);
+    background: #2c2c2c;
+    border-right-style: solid;
+}
+
+.dash_topNavTitle{ /*Temporary style for top nav title*/
+
+    padding: 15px;
 }
 
 /*body*/
 .dash_body{
-    background-color: aquamarine;
+   /* background-color: aquamarine;*/
     height: calc(100vh - var(--top-bar-size) );
     display: flex;
 }
@@ -64,6 +72,10 @@ background-color: blue;
     flex-direction: column;
     gap: var(--spacing-sm);
     overflow-y: hidden;
+
+    background: #2c2c2c;
+    border-right-style: solid;
+
 }
 
 .WidgetMainPanel_Container
@@ -119,14 +131,14 @@ background-color: blue;
 
 /*PageContainer*/
 .dash_mainPageContainer{
-    background-color: rgb(85, 85, 37);
+    /*background-color: rgb(85, 85, 37);*/
     width: var(--dash-main-width)
 }
 
 
 /*Page*/
 .dash_page{
-    background-color: brown;
+    /*background-color: brown;*/
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -134,27 +146,27 @@ background-color: blue;
 }
 
 .dash_pageHeader{
-    background-color: blueviolet;
+   /* background-color: blueviolet;*/
     padding: var(--spacing-md);
     text-align: center;
 }
 
 .dash_pageBody{
-    background-color: darksalmon;
+   /* background-color: darksalmon;*/
     padding: var(--spacing-md);
     flex-grow: 1;
     overflow-y:auto;
 }
 
 .dash_pageFooter{
-    background-color:darkgoldenrod;
+   /* background-color:darkgoldenrod;*/
     padding: var(--spacing-md);
 }
 
 /*Dash list*/
 
 .dash_listContainer{
-    background-color:peru;
+    /*background-color:peru;*/
 }
 
 .dash_listContainer .listItem_container{
@@ -164,7 +176,16 @@ background-color: blue;
 }
 
 
-/*3D Editor*/
+/*3D Editor
+////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+
+.currentlyActive_ItemBtn{
+    background-color: rgb(255, 255, 255);
+    color: black;
+}
+
+
 .editorContainer_dash_topBar{
     position:absolute;
     top: 0px;
@@ -225,6 +246,13 @@ background-color: blue;
    /*color: black;*/
 }
 
+
+.inspector_Block{
+    border-bottom: #7d7d7d;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    margin-bottom: 12px;
+}
 
 fieldset{
     /*
