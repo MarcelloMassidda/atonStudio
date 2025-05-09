@@ -102,7 +102,7 @@ utils.createNewScene=async()=>{
     ///////////////////////
     //BRUTAL SITEM SETTINGS:
     o.data.environment = {
-        mainpano:{url:"bastet/pano/defsky-sand.jpg"},
+        mainpano:{url:"samples/pano/defsky-sand.jpg"},
         lightprobes:{auto:true},
         mainlight:{
             direction:[-0.6158569204732198,-0.7689435899866076,-0.1715983942924587],

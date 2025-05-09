@@ -36,33 +36,36 @@ db.getOnlyUserMedia=(callback=null)=>{
   });
 }
 
-db.getUser=(callback=null)=>{
-  ATON.Utils.checkAuth((_user) => { callback(_user)});
 
-  /*
-  if (Object.keys(_user).length === 0) {
-    return null;
-  }
-  else return user;
-  */
-}
-
-
-db.initUser=()=>{
-  
-  db.getUser( async(user)=>{
-    db.user = user;
-
-    webdavManager.setConfig({
-      baseURL: "http://localhost:8082/", //My alternative WebDAV server
-      username: db.user.username,
-      password: ""
-    });
-
-    return;
-   // let basePath = "tmp-collection/" + db.user.username + "/";
-   // await webdavManager.ensureFoldersExist([basePath, basePath+"media", basePath+"models", basePath+"pano"]);
+//db.getUser=(callback=null)=>{ ATON.Utils.checkAuth((_user) => { callback(_user)});}
+/*db.getUser = () => {
+  return new Promise((resolve) => {
+    ATON.Utils.checkAuth((user) => resolve(user));
   });
+};*/
+db.getUser = (callback = null) => {
+  return new Promise((resolve) => {
+    ATON.Utils.checkAuth((user) => {
+      if (callback) callback(user);  // fire callback if provided
+      resolve(user);                 // always resolve the Promise
+    });
+  });
+};
+
+db.initWebDavUser = async ()=>{
+  
+  const user = await db.getUser();
+  db.user = user;
+
+  if(!user) throw("NO USER LOGGED"); //To implement Error handling
+  webdavManager.setConfig({
+    baseURL: "http://localhost:8082/", //My alternative WebDAV server
+    username: db.user.username,
+    password: "",
+    APP
+  });
+
+  console.log("WebDAV initialized for:", user.username);
 }
 
 db.get = (endpoint,onReceive) => {
@@ -146,11 +149,15 @@ db.setSceneVisibility=(sid,vis,callback=null)=>{
 
 db.webdav = webdavManager; //WebDAV manager
 
-db.openFileDialog = (o=null)=>{
+db.openFileDialog = async (o=null)=>{
   /*
   Format/Size limit validation? TODO
   o.tagetPath = "media" // "pano" // "models"
   */
+
+  if(db.user === undefined) {
+    await db.initWebDavUser(); //Initialize user if not done yet.
+  }
 
   if(!o) o = {};
   let p = o.targetPath || "media"; //Default path

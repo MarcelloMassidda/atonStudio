@@ -313,7 +313,12 @@ uikit.TextureSelectorBlock=(imgPath,onBtnClicked)=>{
 
     const btn = (click)=> uikit.createButton({text:"🛠️ Change content",onClick:click});
 
-    return UI.flexBox({content:[imageThumb(imgPath),btn(onBtnClicked)], alignItems:"center"});
+    return UI.flexBox({content:[imageThumb(imgPath),btn(onBtnClicked)], alignItems:"center", classList:"mb-4"});
+}
+
+uikit.setLoadingCursor=(isLoading)=>{
+    if(isLoading) document.body.style.cursor = "wait";
+    else document.body.style.cursor = "default";
 }
 
 

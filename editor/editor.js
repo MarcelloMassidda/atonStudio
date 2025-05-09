@@ -26,7 +26,7 @@ editor.initialize=()=>{
     if(!params) throw new Error("No params found");
     const sid = params.get('s');
     db.data.currSID = sid;
-    db.initUser();
+    db.initWebDavUser();
 
     //Load Scene:
     utils.loadScene(sid,()=>{

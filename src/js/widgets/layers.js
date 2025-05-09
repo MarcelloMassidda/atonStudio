@@ -194,10 +194,11 @@ const layers_createBtnClicked=()=>{
 //the callback seems recursive, but it's recalling the MediaPicker again after the user has uploaded a new file.
 const layers_getMediaPickerForTexturizedLayers =  ()=>{
     
-    const delaytedUpdateGalleryCallback= async()=>{
-        await setTimeout(() => {
-            layers_getMediaPickerForTexturizedLayers();
-          }, 600); // 300ms is often enough
+    const delaytedUpdateGalleryCallback= ()=>{
+        
+        console.log("updating media picker gallery");
+        layers_getMediaPickerForTexturizedLayers();
+        window.APP.uikit.setLoadingCursor(false);
     }
 
     console.log("getMediaPickerForTexturizedLayers");
