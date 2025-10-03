@@ -1,0 +1,27 @@
+ Customizables.
+    {
+            "id": "1_interactiveTotem",
+            "nodeId":"Interactive Totem",
+            "path": "Interactive Totem/interactive_totem.gltf",
+            "title": "Interactive Totem",
+            "thumb":"thumbnail_interactive_totem.png",
+            "textureDefaultPath":"interactive_totem.png"
+        },
+
+ 
+ Artworks:
+ 
+ {
+            "id": "14_IseumMaquette-2025",
+            "nodeId":"IseumMaquette-2025",
+            "path": "IseumMaquette-2025/IseumMaquette-2025.gltf",
+            "title": "Iseum Maquette 2025",
+            "thumb":"IseumMaquette2025.png"
+        },
+         {
+            "id": "15_IseumMaquette-Reconstruction",
+            "nodeId":"Iseum Maquette (reconstruct.)",
+            "path": "IseumMaquette-Reconstruction/IseumMaquette-Reconstruction.gltf",
+            "title": "Maquette Reconstruction",
+            "thumb":"MaquetteReconstruction.png"
+        },

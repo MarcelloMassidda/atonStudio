@@ -56,10 +56,11 @@ db.initWebDavUser = async ()=>{
   
   const user = await db.getUser();
   db.user = user;
-
+  let _baseUrl ="https://" + window.location.hostname + ":8082" + "/";
   if(!user) throw("NO USER LOGGED"); //To implement Error handling
   webdavManager.setConfig({
-    baseURL: "http://localhost:8082/", //My alternative WebDAV server
+
+    baseURL: _baseUrl, //https://172.16.150.97:8082/", //My alternative WebDAV server
     username: db.user.username,
     password: "",
     APP

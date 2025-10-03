@@ -101,6 +101,10 @@ utils.createNewScene=async()=>{
 
     ///////////////////////
     //BRUTAL SITEM SETTINGS:
+
+    //old const urlRoom = "samples/prototyper/models/proto_collection/utilities/Room/baked/room.gltf";
+    const urlRoom = "samples/prototyper/models/proto_collection/utilities/MannRooms/baked/bakedRooms.gltf";
+
     o.data.environment = {
         mainpano:{url:"samples/pano/defsky-sand.jpg"},
         lightprobes:{auto:true},
@@ -111,7 +115,7 @@ utils.createNewScene=async()=>{
         exposure:0.9
     };
 
-    o.data.scenegraph.nodes["room"] = {urls:["samples/prototyper/models/proto_collection/utilities/Room/baked/room.gltf"],transform:{position:[0,0,0]}};
+    o.data.scenegraph.nodes["room"] = {urls:[urlRoom],transform:{position:[0,0,0]}};
     o.data.scenegraph.edges["."].push("room");
     //END SITEM SETTINGS
 

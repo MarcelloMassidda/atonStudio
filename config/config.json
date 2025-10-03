@@ -10,9 +10,8 @@
     "baseCustomizablesModelsPath": "samples/prototyper/models/proto_collection/customizables/",
     "baseCustomizablesDefaultTexturesPath": "samples/media/prototyper/textures/",
     "models":{
-    "artworks":
-    [
-        {
+        "oldArtworks:":[
+             {
             "id": "1_amphora",
             "nodeId":"Black Amphora",
             "path": "attic_black_figure_amphora/converted/scene.gltf",
@@ -54,6 +53,102 @@
             "title": "Old Drunkard",
             "thumb":"old_drunkard.jpg"
         }
+    ],
+    "artworks":
+    [
+       
+        {
+            "id": "7_altar",
+            "nodeId":"Altar",
+            "path": "Altar/Altar.gltf",
+            "title": "Altar",
+            "thumb":"Altar.png"
+        },
+          {
+            "id": "8_drawingWithFrescos",
+            "nodeId":"drawingFrescos",
+            "path": "DrawingWithFrescoes/DrawingWithFrescoes.gltf",
+            "title": "DrawingWithFrescoes",
+            "thumb":"DrawingWithFrescoes.png"
+        },
+         {
+            "id": "9_FrescoAboveRegister",
+            "nodeId":"FrescoAboveRegister",
+            "path": "FrescoAboveRegister/FrescoAboveRegister.gltf",
+            "title": "FrescoAboveRegister",
+            "thumb":"FrescoAboveRegister.png"
+        },
+         {
+            "id": "10_FrescoBelowRegister",
+            "nodeId":"FrescoBelowRegister",
+            "path": "FrescoBelowRegister/FrescoBelowRegister.gltf",
+            "title": "FrescoBelowRegister",
+            "thumb":"FrescoBelowRegister.png"
+        },
+         {
+            "id": "11_FrescoCentralPanel",
+            "nodeId":"FrescoCentralPanel",
+            "path": "FrescoCentralPanel/FrescoCentralPanel.gltf",
+            "title": "FrescoCentralPanel",
+            "thumb":"FrescoCentralPanel.png"
+        },
+         {
+            "id": "12_FrescoSmallPanel",
+            "nodeId":"FrescoSmallPanel",
+            "path": "FrescoSmallPanel/FrescoSmallPanel.gltf",
+            "title": "FrescoSmallPanel",
+            "thumb":"SmallPanel-Priest.png"
+        },
+         {
+            "id": "13_FrescoSmallPanel-PriestwithMask",
+            "nodeId":"FrescoSmallPanel-PriestwithMask",
+            "path": "FrescoSmallPanel-PriestwithMask/FrescoPriestWithMask.gltf",
+            "title": "FrescoSmallPanel-PriestwithMask",
+            "thumb":"SmallPanel-PriestWithMask.png"
+        },
+        
+        {
+            "id": "16_IsisHead",
+            "nodeId":"IsisHead",
+            "path": "IsisHead/IsisHead.gltf",
+            "title": "IsisHead",
+            "thumb":"IsisHead_thumbnail.png"
+        },{
+            "id": "17_IsisWithSistro",
+            "nodeId":"IsisWithSistro",
+            "path": "IsisWithSistro/IsisWithSistro.gltf",
+            "title": "Isis with Sistro",
+            "thumb":"IsisThumbnail.png"
+        },
+        {
+            "id": "18_Sistrum",
+            "nodeId":"Sistrum",
+            "path": "Sistrum/Sistrum.gltf",
+            "title": "Sistrum",
+            "thumb":"sistrum.png"
+        },
+         {
+            "id": "19_Stele",
+            "nodeId":"Stele",
+            "path": "Stele/Stele.gltf",
+            "title": "Stele",
+            "thumb":"stele.png"
+        },
+         {
+            "id": "20_TempleColumn",
+            "nodeId":"TempleColumn",
+            "path": "TempleColumn/Column.gltf",
+            "title": "Column",
+            "thumb":"Column.png"
+        },
+         {
+            "id": "21_VenusAnadyomene",
+            "nodeId":"VenusAnadyomene",
+            "path": "VenusAnadyomene/VenusAnadyomene.gltf",
+            "title": "Venus Anadyomene",
+            "thumb":"VenusAnadyomene.png"
+        }
+        
     ],
     "utilities":
     [
@@ -102,21 +197,157 @@
         {
             "id": "8_room",
             "nodeId":"Room",
-            "path": "Room/baked/room.gltf",
+            "oldpath": "Room/baked/room.gltf",
+            "path":"MannRooms/baked/bakedRooms.gltf",
             "title": "Room",
             "thumb":"room.jpg"
-        }
+        },
+        {
+    "id": "1_Arrow",
+    "nodeId":"Arrow",
+    "path": "Arrow/arrow.gltf",
+    "title": "Arrow",
+    "thumb":"thumbnail_arrow.png"
+    },
+{
+    "id": "2_CabinetWGlass",
+    "nodeId":"CabinetWGlass",
+    "path": "CabinetWGlass/cabinet_with_glass.gltf",
+    "title": "Cabinet With Glass",
+    "thumb":"thumbnail_cabinet_with_glass.png"
+    },
+{
+    "id": "3_CabinetWTGlass",
+    "nodeId":"CabinetWTGlass",
+    "path": "CabinetWTGlass/cabinet_without_glass.gltf",
+    "title": "Cabinet Without Glass",
+    "thumb":"thumbnail_cabinet_without_glass.png"
+    },
+
+{
+    "id": "4_Chair",
+    "nodeId":"Chair",
+    "path": "Chair/chair.gltf",
+    "title": "Chair",
+    "thumb":"thumbnail_chair.png"
+    },
+
+{
+    "id": "5_ChildSilhouette",
+    "nodeId":"ChildSilhouette",
+    "path": "ChildSilhouette/ChildSilhouette.gltf",
+    "title": "Child Silhouette",
+    "thumb":"ChildSilhouette.png"
+    },
+{
+    "id": "6_ControllerVR",
+    "nodeId":"ControllerVR",
+    "path": "ControllerVR/controller_vr.gltf",
+    "title": "Controller VR",
+    "thumb":"thumbnail_controller_vr.png"
+    },
+{
+    "id": "7_DisplayTable",
+    "nodeId":"DisplayTable",
+    "path": "DisplayTable/display_table.gltf",
+    "title": "Display Table",
+    "thumb":"thumbnail_display_table.png"
+    },
+{
+    "id": "8_DisplayTableWGlass",
+    "nodeId":"DisplayTableWGlass",
+    "path": "DisplayTableWGlass/display_table_with_glass.gltf",
+    "title": "Display Table With Glass",
+    "thumb":"thumbnail_display_table_with_glass.png"
+},
+{
+    "id": "9_HDMVR",
+    "nodeId":"HDMVR",
+    "path": "HDMVR/hdm_vr.gltf",
+    "title": "HDM VR",
+    "thumb":"thumbnail_hdm_vr.png"
+},
+{
+    "id": "10_Headphones",
+    "nodeId":"Headphones",
+    "path": "Headphones/headphones.gltf",
+    "title": "Headphones",
+    "thumb":"thumbnail_headphones.png"
+},
+{
+    "id": "11_LongThrowProjector",
+    "nodeId":"LongThrowProjector",
+    "path": "LongThrowProjector/projector_long_throw.gltf",
+    "title": "LongThrow Projector",
+    "thumb":"thumbnail_long_throw_projector.png"
+},
+{
+    "id": "12_ManSilhouette",
+    "nodeId":"ManSilhouette",
+    "path": "ManSilhouette/ManSilhouette.gltf",
+    "title": "Man Silhouette",
+    "thumb":"ManSilhouette.png"
+},
+{
+    "id": "13_MuseumSpacers",
+    "nodeId":"MuseumSpacers",
+    "path": "MuseumSpacers/museum_spacers.gltf",
+    "title": "Museum Spacers",
+    "thumb":"museumSpacers_thumb.png"
+}, 
+{
+    "id": "14_ShortThrowProjector",
+    "nodeId":"ShortThrowProjector",
+    "path": "ShortThrowProjector/projector.gltf",
+    "title": "ShortThrow Projector",
+    "thumb":"thumbnail_projector.png"
+},
+{
+    "id": "15_Speaker",
+    "nodeId":"Speaker",
+    "path": "Speaker/speaker.gltf",
+    "title": "Speaker",
+    "thumb":"thumbnail_speaker.png"
+},
+{
+    "id": "16_StatueSupportPedestal",
+    "nodeId":"StatueSupportPedestal",
+    "path": "StatueSupportPedestal/StatueSupportPedestal.gltf",
+    "title": "Statue Support Pedestal",
+    "thumb":"StatueSupportPedestal.png"
+},
+{
+    "id": "17_Stool",
+    "nodeId":"Stool",
+    "path": "Stool/stool.gltf",
+    "title": "Stool",
+    "thumb":"thumbnail_stool.png"
+},
+{
+    "id": "18_Table",
+    "nodeId":"Table",
+    "path": "Table/table.gltf",
+    "title": "Table",
+    "thumb":"thumbnail_table.png"
+},
+{
+    "id": "19_Truss",
+    "nodeId":"Truss",
+    "path": "Truss/Truss.gltf",
+    "title": "Truss",
+    "thumb":"Truss.png"
+},
+{
+    "id": "20_WomanSilhouette",
+    "nodeId":"WomanSilhouette",
+    "path": "WomanSilhouette/WomanSilhouette.gltf",
+    "title": "Woman Silhouette",
+    "thumb":"WomanSilhouette.png"
+}
     ],
     "customizables":
     [
-        {
-            "id": "1_interactiveTotem",
-            "nodeId":"Interactive Totem",
-            "path": "Interactive Totem/interactive_totem.gltf",
-            "title": "Interactive Totem",
-            "thumb":"thumbnail_interactive_totem.png",
-            "textureDefaultPath":"interactive_totem.png"
-        },
+     
         {
             "id": "2_stand",
             "nodeId":"Stand",
@@ -124,7 +355,89 @@
             "title": "Info Stand",
             "thumb":"stand.jpg",
             "textureDefaultPath":"perceive1.jpg"
-        }
+        },
+        {
+    "id": "1_GraphicPanelWTexture",
+    "nodeId":"GraphicPanelWTexture",
+    "path": "GraphicPanelWTexture/graphic_panel_image_texture.gltf",
+    "title": "Graphic Panel",
+    "thumb":"thumbnail_graphic_panel.png",
+    "textureDefaultPath":"statua2.png"
+    },
+{
+    "id": "2_InfoPanelWTexture",
+    "nodeId":"InfoPanelWTexture",
+    "path": "InfoPanelWTexture/info_panel_with_texture.gltf",
+    "title": "Info Panel",
+    "thumb":"thumbnail_info_panel.png",
+    "textureDefaultPath":"text.png"
+    },
+{
+    "id": "3_InteractiveTotem",
+    "nodeId":"InteractiveTotem",
+    "path": "InteractiveTotem/interactivetotem.gltf",
+    "title": "Interactive Totem",
+    "thumb":"totem_thumbs.png",
+    "textureDefaultPath":"Screenshot 2025-04-04 153719.png"
+    },
+
+{
+    "id": "4_ProjectorScreen",
+    "nodeId":"ProjectorScreen",
+    "path": "ProjectorScreen/screen_projector.gltf",
+    "title": "ProjectorScreen",
+    "thumb":"screen_projector_thumb.png",
+    "textureDefaultPath":"Screenshot 2025-04-04 153719.png"
+    },
+
+{
+    "id": "5_Smartphone",
+    "nodeId":"Smartphone",
+    "path": "Smartphone/flipped/smartphone.gltf",
+    "title": "Smartphone",
+    "thumb":"thumbnail_smartphone.png",
+    "textureDefaultPath":"Wallpaper_baseColor.jpg"
+    },
+{
+    "id": "6_StandFrontSensor",
+    "nodeId":"StandFrontSensor",
+    "path": "StandFrontSensor/StandFrontSensor.gltf",
+    "title": "Stand with Front Sensor",
+    "thumb":"StandFrontSensor.png",
+    "textureDefaultPath":"StandFrontSensorIMG.jpg"
+    },
+{
+    "id": "7_Tablet",
+    "nodeId":"Tablet",
+    "path": "Tablet/tablet.gltf",
+    "title": "Tablet",
+    "thumb":"c_thumbs/thumbnail_tablet.png",
+    "textureDefaultPath":"image-screen_baseColor.jpg"
+    },
+{
+    "id": "8_TouchTable",
+    "nodeId":"TouchTable",
+    "path": "TouchTable/touch_table.gltf",
+    "title": "TouchTable",
+    "thumb":"thumbnail_touch_table.png",
+    "textureDefaultPath":"Material_54_diffuse.jpg"
+},
+{
+    "id": "9_TouchTableWSmartObjects",
+    "nodeId":"TouchTableWSmartObjects",
+    "path": "TouchTableWSmartObjects/touch_table_with_smart_objects.gltf",
+    "title": "TouchTable With Smart Objects",
+    "thumb":"thumbnail_touch_table_with_smart_objects.png",
+    "textureDefaultPath":"Material_54_diffuse.jpg"
+},
+{
+    "id": "10_WallScreen",
+    "nodeId":"WallScreen",
+    "path": "WallScreen/wall_screen.gltf",
+    "title": "Wall Screen",
+    "thumb":"wall_screen_thumbs.png",
+    "textureDefaultPath":"Screenshot 2025-04-03 090824.png"
+}
     ]
 }
 }

@@ -241,8 +241,10 @@ ui.editor_topBar = (s=null)=>{
         openInHathorBtn
     ]});
    //OLD
-   // return UI.createEl({id:"IDeditor_topBar",classList:["aton-std-bg","dash_topBar"],content: topBarContent})
+   // return UI.createEl({id:"IDeditor_topBar",classList:["aton-std-bg","dash_topBar"],content: topBarContent}) 
 
+   let sceneName = backBtn + "You are editing: "+ s.title ;
+   
    //Bootstrap navbar:
 
    const wrapInLI = (c)=>{
@@ -255,6 +257,7 @@ ui.editor_topBar = (s=null)=>{
         id:"IDeditor_topBar",
         brand:{title:"You are editing: "+ s.title},
         links:[ 
+        //    backBtn, sceneName
             //wrapInLI(titleTopBar),
             //wrapInLI(saveSceneBtn),
             //wrapInLI(openInHathorBtn)
