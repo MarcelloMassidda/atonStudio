@@ -303,7 +303,11 @@ margin-top: 0.3rem;
 
 
 
-/*FIX ATON LABELS:*/
+/*FIX ATON:*/
+
+.aton-btn{
+    height: auto;
+}
 
 .atonPopupLabelContainer {
     position: fixed;

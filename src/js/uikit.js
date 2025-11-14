@@ -10,8 +10,18 @@ uikit.createButton=(options)=>{
 
     let el = UI.button(options);
 
-    if (options.badge){ 
-        el.append( uikit.createElfromString("<span class='badge text-bg-secondary'>"+options.badge+"</span>"));
+    // Handle multiple badges
+    if (options.badges && Array.isArray(options.badges)) {
+        options.badges.forEach(badge => {
+            const badgeEl = uikit.createElfromString(
+                `<span class='badge text-bg-${badge.type || 'secondary'} ms-1'>${badge.text}</span>`
+            );
+            el.append(badgeEl);
+        });
+    }
+    // Keep backward compatibility with single badge
+    else if (options.badge) {
+        el.append(uikit.createElfromString("<span class='badge text-bg-secondary ms-1'>" + options.badge + "</span>"));
     }
     ///Set variant:
     let _variant = options.variant || uikit.default_buttonVariant;

@@ -330,7 +330,10 @@ ui.editor_setGizmoToolbox = ( modes = null ) => {
 
 ui.editor_scenehierarchy=()=>{
 
-    let content = ui.editor_widgetMainPanel(APP.widgetsHub.widgets.layers);
+    // resolve layers widget whether widgets store is Map or plain object
+    const widgetsStore = APP.widgetsHub.widgets;
+    const layersWidget = (widgetsStore instanceof Map) ? widgetsStore.get("layers") : widgetsStore["layers"];
+    let content = ui.editor_widgetMainPanel(layersWidget);
     //Remove title:
     let _title = content.querySelector("#mainTitle");
     if(_title) _title.remove();
@@ -360,27 +363,52 @@ ui.editor_widgetMainPanel=(w)=>{
     let mainPanelItemList = [];
 
     //Title:
-    if(w.mainPanelOptions){
-        if(w.mainPanelOptions.title) mainPanelItemList.push(ui.editor_widgetMainPanel_Title(w.mainPanelOptions.title))
+    // Title (support both old and new widget option paths)
+    const mainPanelOptions = w.mainPanelOptions || w.options?.mainPanelOptions;
+    if (mainPanelOptions && mainPanelOptions.title) {
+        mainPanelItemList.push(ui.editor_widgetMainPanel_Title(mainPanelOptions.title));
     }
-    //Items:
-    if(w.items && w.itemBtn){
-    console.log("MAIN PANEL CREATION OF " + w.id);
-        let _items = w.items();
-        w._items = _items;
-        console.log(_items);
-        if(_items){
-            for (const [_id, _item] of Object.entries(_items)){
-                let itemBtn = w.itemBtn(_id,_item);
-               // itemBtn.addEventListener("click",function(){onItemBtnClicked(this)});
-               mainPanelItemList.push(itemBtn);
-            }
+
+    // Items: resolve via getItems() if available, otherwise fallback to old items()
+    const resolveItems = (widget) => {
+        if (!widget) return null;
+        if (typeof widget.getItems === 'function') return widget.getItems();
+        if (typeof widget.items === 'function') return widget.items();
+        if (widget.items) return widget.items;
+        return widget._items || null;
+    }
+
+    const resolveItemButton = (widget, id, item) => {
+        if (!widget) return null;
+        if (typeof widget.getItemButton === 'function') return widget.getItemButton(id, item);
+        if (typeof widget.itemBtn === 'function') return widget.itemBtn(id, item);
+        return null;
+    }
+
+    const resolveCreateBtn = (widget) => {
+        if (!widget) return null;
+        if (typeof widget.getCreateButton === 'function') return widget.getCreateButton();
+        if (typeof widget.createBtn === 'function') return widget.createBtn();
+        return widget.createBtn || null;
+    }
+
+    console.log("MAIN PANEL CREATION OF " + (w.id || w.options?.id));
+    const _items = resolveItems(w);
+    // keep old reference for other code that expects _items
+    if (w) w._items = _items;
+    console.log(_items);
+    if (_items) {
+        for (const [_id, _item] of Object.entries(_items)){
+            const itemBtn = resolveItemButton(w, _id, _item);
+            if (itemBtn) mainPanelItemList.push(itemBtn);
         }
     }
-    //Add New Item BTN:
-    if(w.createBtn) mainPanelItemList.push(w.createBtn());   
+
+    // Add New Item BTN:
+    const createBtn = resolveCreateBtn(w);
+    if (createBtn) mainPanelItemList.push(createBtn);
     let _panel = UI.createEl({classList:["WidgetMainPanel_Container","d-grid", "gap-2"],content:mainPanelItemList});
-    console.log(_panel)
+    console.log()
     return _panel;
 }
 
@@ -406,37 +434,47 @@ ui.editor_updateWidgetMainPanel=()=>{
 
 ui.editor_widgetsListPanel=()=>{
 
-    let widgets = APP.widgetsHub.widgets;
-    
+    const widgetsStore = APP.widgetsHub.widgets;
     let widgetsBtnList = [];
 
-    const onWidgetMainButtonClicked=(target)=>{
+    const resolveWidgetById = (id) => {
+        if (widgetsStore instanceof Map) return widgetsStore.get(id);
+        return widgetsStore[id];
+    }
 
+    const onWidgetMainButtonClicked = (target) => {
         //Reset preview opened tools and panels:
         editor.onCloseInspectorBtnClicked();
-        
         ui.editor_removeGizmoToolBox();
 
-        console.log(target);
-        if(!target.dataset.id) throw("Issues with: " + target);
-        let w = widgets[target.dataset.id];
-        console.log("Im properly wrapping: " + w.id );
-        
+        if (!target.dataset || !target.dataset.id) throw("Issues with: " + target);
+        const w = resolveWidgetById(target.dataset.id);
+        console.log("Im properly wrapping: " + (w?.id || w?.options?.id));
+
         //Compose widget Panel:
         let widgetMainPanel = ui.editor_widgetMainPanel(w);
         ui.openSecondSideMenu(widgetMainPanel)
     }
 
-    for (const [wId, w] of Object.entries(widgets)) {
-        if(w.mainBtn){
-            if(wId!="layers"){ //TODO: temporary NOT double models in scene and widget tabs
-                let widgetButton = w.mainBtn();
-                widgetButton.addEventListener("click",function(){onWidgetMainButtonClicked(this)});
-                widgetsBtnList.push(widgetButton)
+    // Iterate over widgets whether Map or plain object
+    const entries = (widgetsStore instanceof Map) ? widgetsStore.entries() : Object.entries(widgetsStore);
+    for (const [wId, w] of entries) {
+        // resolve main button via new API or old one
+        let mainBtn = null;
+        if (typeof w.getMainButton === 'function') mainBtn = w.getMainButton();
+        else if (typeof w.mainBtn === 'function') mainBtn = w.mainBtn();
+        else mainBtn = w.mainBtn || null;
+
+        if (mainBtn) {
+            if (wId !== "layers") { // TODO: temporary: don't duplicate models in scene and widget tabs
+                // ensure dataset.id exists for backward compatibility
+                if (!mainBtn.dataset || !mainBtn.dataset.id) mainBtn.setAttribute("data-id", wId);
+                mainBtn.addEventListener("click", function(){ onWidgetMainButtonClicked(this); });
+                widgetsBtnList.push(mainBtn);
             }
         }
     }
-    
+
     return widgetsBtnList;
 }
 

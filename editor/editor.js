@@ -3,23 +3,27 @@ import {uikit} from "../src/js/uikit.js";
 import {utils} from "../src/js/utility.js";
 import {gizmoManager} from "../src/js/gizmo.js";
 import { db } from '../src/js/db.js';
-import { widgetsHub } from '../src/js/widgetHub.js';
+import { ModernWidgetHub } from '../src/js/ModernWidgetHub.js';
+import { ExhibitionTemplate } from '../src/js/templates/ExhibitionTemplate.js';
 
 let APP;
 
-let editor = {db}
+let editor = {db};
 
 editor.init = ()=>{
     editor.checkUser((user)=>editor.initialize());
 }
 
-editor.initialize=()=>{
+editor.initialize = () => {
     APP = window.APP;
     APP.db = db;
     APP.gizmoManager = gizmoManager;
     APP.ui = ui;
     APP.uikit = uikit;
-    APP.widgetsHub = widgetsHub;
+    APP.UI = UI;
+    APP.editor = editor;
+    APP.widgetsHub = new ModernWidgetHub(APP);
+    editor.widgetsHub = APP.widgetsHub;
 
     //get sid
     const params = new URLSearchParams(window.location.search);
@@ -29,9 +33,9 @@ editor.initialize=()=>{
     db.initWebDavUser();
 
     //Load Scene:
-    utils.loadScene(sid,()=>{
+    utils.loadScene(sid, async () => {
         db.data.currScene = ATON.SceneHub.currData;
-        editor.setupFromScene(db.data.currScene);
+        await editor.setupFromScene(db.data.currScene);
         editor.TestCustomEventsSetup();
         editor.showWelcomeModal();
     });
@@ -82,31 +86,22 @@ editor.focusOnItemByQueryDataScene=(o)=>{
     let {widgetKey,item} = editor.findIteminWidgets(lastParent.name);
     if(!widgetKey) {console.log("no widget!"); return}
 
-    APP.widgetsHub.focusOnItem_base({id:lastParent.name, wid: widgetKey})
+    APP.widgetsHub.focusOnItem({id:lastParent.name, wid: widgetKey})
 }
 
 editor.findIteminWidgets = (name) => {
-    let w = null;
-    let i = null;
-
-    for (const [key, widget] of Object.entries(APP.widgetsHub.widgets)) {
-        console.log(key);
-        console.log(widget._items);
-
-        if (widget._items) {
-            console.log(widget._items[name]);
-            if (widget._items[name] !== undefined) {
-                i = widget._items[name];
-                w = key;
-                // Return early with both values
-                console.log(`Found in widget: ${w}, item:`, i);
-                return { widgetKey: w, item: i };
-            }
+    for (const [key, widget] of APP.widgetsHub.widgets.entries()) {
+        const items = widget.getItems();
+        if (items && items[name] !== undefined) {
+            return { 
+                widgetKey: key, 
+                item: items[name] 
+            };
         }
     }
-
+    
     console.log("Widget not found");
-    return null; // Return null if not found
+    return null;
 };
 
 
@@ -164,13 +159,15 @@ editor.checkUser=(callback)=>{
 
 
 
-editor.setupFromScene=(s=null)=>{
-    
+editor.setupFromScene = async (s=null) => {
     //setup:
     editor.currScene = db.data.currScene;
     editor.currSID = db.data.currSID;
     editor.autoSaveMode = true;
-    widgetsHub.init();
+
+    // Use exhibition template for now
+    const template = new ExhibitionTemplate(APP);
+    await template.applyToEditor(editor);
 
     //Setup UI:
     ui.editorUI_Setup(db.data.currScene);
@@ -178,8 +175,26 @@ editor.setupFromScene=(s=null)=>{
     //SETUP 3D HELPERS:
     const size = 10;
     const divisions = 10;
-    editor.gridHelper = new THREE.GridHelper( size, divisions );
- //   ATON.getRootScene().add( editor.gridHelper );
+    editor.gridHelper = new THREE.GridHelper(size, divisions);
+    //ATON.getRootScene().add(editor.gridHelper);
+}
+
+/**
+ * Register all available widgets for the editor
+ */
+/**
+ * Get appropriate template based on scene configuration
+ */
+editor.getTemplateForScene = (scene) => {
+    const { createFreeTemplate, createExhibitionTemplate } = require('../src/js/templates/templates.js');
+    
+    // Example: choose template based on scene configuration
+    if (scene.type === 'exhibition') {
+        return createExhibitionTemplate(APP);
+    }
+    
+    // Default to free template
+    return createFreeTemplate(APP);
 }
 
 //GIZMO HANDLERS:
