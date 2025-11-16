@@ -30,12 +30,20 @@ export class Widget {
     /**
      * Get capabilities for a specific item by checking scene JSON structure
      */
-    getItemCapabilities(id,item) {
+    getItemCapabilities(id, item) {
         const scene = this.getCurrentScene();
-        if (!scene.capabilities) return [];
+        if (!scene.capabilities) {
+            console.log(`No capabilities in scene`);
+            return [];
+        }
 
-        // If no item ID, return empty
-        if (!item) return [];
+        // Get the actual item ID - could be passed as first param or from item.nid
+        const itemId = id || (item && item.nid);
+        
+        if (!itemId) {
+            console.log(`No item ID provided to getItemCapabilities`);
+            return [];
+        }
 
         // Get capabilities for this item
         const itemCapabilities = [];
@@ -43,13 +51,39 @@ export class Widget {
         // Check each capability type in scene.capabilities
         Object.entries(scene.capabilities).forEach(([capabilityId, capabilityData]) => {
             // If this item has data for this capability
-            console.log(`Checking capability ${capabilityId} for item ${id}`);
-            if (capabilityData[id]) {
+            console.log(`Checking capability ${capabilityId} for item ${itemId}:`, capabilityData[itemId]);
+            if (capabilityData[itemId]) {
+                console.log(`  ✅ Found capability data for ${capabilityId}`);
                 itemCapabilities.push(capabilityId);
             }
         });
-        console.log(`Item ${id} has capabilities:`, itemCapabilities);
+        console.log(`✅ Item ${itemId} has ${itemCapabilities.length} capabilities:`, itemCapabilities);
         return itemCapabilities;
+    }
+
+    /**
+     * Get capabilities available to add to an item
+     * Returns visible capabilities that are not yet attached to the item
+     */
+    getAvailableCapabilities(item) {
+        if (!item) return [];
+
+        const itemCapabilities = this.getItemCapabilities(item.nid, item);
+        const availableCapabilities = [];
+
+        // Check all registered capabilities
+        for (const [capId, capability] of this.capabilities.entries()) {
+            // Only include visible capabilities not already attached
+            if (capability.isVisible && !itemCapabilities.includes(capId)) {
+                availableCapabilities.push({
+                    id: capId,
+                    name: capability.name,
+                    capability: capability
+                });
+            }
+        }
+
+        return availableCapabilities;
     }
 
     // Data management methods moved to Capability class
@@ -77,6 +111,42 @@ export class Widget {
         }
 
         this.app.ui.editor_updateWidgetMainPanel();
+        return this;
+    }
+
+    /**
+     * Add a capability to an item (attach, patch, and update UI)
+     */
+    addCapabilityToItem(item, capabilityId) {
+        const capability = this.capabilities.get(capabilityId);
+        if (!capability) {
+            throw new Error(`Capability ${capabilityId} not found`);
+        }
+
+        console.log(`Adding capability ${capabilityId} to item ${item.nid}`);
+
+        // Get initial data from capability
+        const initialData = capability.getInitialData ? 
+            capability.getInitialData(item) : 
+            {};
+
+        // Use setItemData from capability to store and patch
+        capability.setItemData(item, this, initialData);
+
+        // Let capability perform any additional setup
+        if (capability.equip) {
+            capability.equip(item, this);
+        }
+
+        // Update hierarchy to refresh item buttons with new decorations
+        this.app.ui.editor_updateHierarchy();
+        
+        // Update the main panel
+        this.app.ui.editor_updateWidgetMainPanel();
+
+        // Update the inspector for the current item
+        this.app.widgetsHub.focusOnItem({ id: item.nid, wid: this.id });
+
         return this;
     }
 
@@ -360,5 +430,33 @@ export class Widget {
      */
     addItemToScene(id, item) {
         // To be implemented by child classes
+    }
+
+    /**
+     * Get the "Add Capability" button for the inspector
+     * Returns null if no capabilities are available to add
+     */
+    getAddCapabilityButton(item) {
+        if (!item) return null;
+
+        const availableCapabilities = this.getAvailableCapabilities(item);
+        
+        // No button if no capabilities available
+        if (availableCapabilities.length === 0) return null;
+
+        // Create dropdown items
+        const dropdownItems = availableCapabilities.map(cap => ({
+            text: cap.name,
+            onClick: () => {
+                this.addCapabilityToItem(item, cap.id);
+            }
+        }));
+
+        // Create and return the dropdown button
+        return this.app.uikit.createDropdownButton({
+            text: ' Add Capability',
+            variant: 'success',
+            items: dropdownItems
+        });
     }
 }

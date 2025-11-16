@@ -127,6 +127,15 @@ export class ModernWidgetHub {
             }
         }
 
+        // Add capability button before components if there are available capabilities
+        if (item && widget.getAddCapabilityButton) {
+            const capabilityButton = widget.getAddCapabilityButton(item);
+            if (capabilityButton) {
+                blocks.push(this.app.uikit.inspectorSeparator());
+                blocks.push(capabilityButton);
+            }
+        }
+
         // Add separator before components
         blocks.push(this.app.uikit.inspectorSeparator());
 
@@ -212,7 +221,7 @@ export class ModernWidgetHub {
      */
     createBaseButton(options) {
 
-
+        console.log("Creating base button with options:", options);
         const button = this.app.uikit.createButton(options);
         if (options.variant === "primary") {
             button.classList.add("btn-primary");

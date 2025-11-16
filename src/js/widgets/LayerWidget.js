@@ -28,7 +28,7 @@ export class LayerWidget extends Widget {
                 return scene.scenegraph.nodes;
             },
             // item button renderer (backwards-compatible)
-            itemBtn: (id, item) => {
+            old_itemBtn: (id, item) => {
                 const objNum = item.urls ? item.urls.length : 0;
                 let _itemName = id;
                 // Badge handling moved to ScreenOverrideCapability.decorateItemBtn
@@ -87,7 +87,9 @@ export class LayerWidget extends Widget {
             const nodeName = ATON.Utils.generateID(id);
 
             // Add in scene
+            console.log("Loading model for new layer:", nodeName, url);
             ATON.createSceneNode(nodeName)
+                .setCloneOnLoadHit(true)  // Force fresh load with independent materials
                 .load(url, () => {
                     this.updateEditorOnModelAdded(nodeName, url, type);
                     ATON.getRootScene().assignLightProbesByProximity();

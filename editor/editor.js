@@ -5,6 +5,7 @@ import {gizmoManager} from "../src/js/gizmo.js";
 import { db } from '../src/js/db.js';
 import { ModernWidgetHub } from '../src/js/ModernWidgetHub.js';
 import { ExhibitionTemplate } from '../src/js/templates/ExhibitionTemplate.js';
+import { createFreeTemplate } from '../src/js/templates/templates.js';
 
 let APP;
 
@@ -166,7 +167,9 @@ editor.setupFromScene = async (s=null) => {
     editor.autoSaveMode = true;
 
     // Use exhibition template for now
-    const template = new ExhibitionTemplate(APP);
+    //const template = new ExhibitionTemplate(APP);
+    //await template.applyToEditor(editor);
+    const template = createFreeTemplate(APP);
     await template.applyToEditor(editor);
 
     //Setup UI:
