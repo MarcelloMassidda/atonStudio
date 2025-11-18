@@ -76,33 +76,87 @@ export class LayerWidget extends Widget {
   // No texturizable features in base LayerWidget
 
   /**
-   * Open model gallery and create a new layer when selected
+   * Open collection-based model selector and create a new layer when selected
+   * Uses ATON DB API to get models from user's collection
    */
   createBtnClicked() {
-    const onModelItemClicked = async ({ url, id, type }) => {
-      if (!url || !id) {
-        console.error("Invalid model data");
+    console.log("Create new Layer");
+
+    const onModelItemClicked = async (e) => {
+      const url = e.target.parentNode.dataset.path;
+
+      // Prompt node Name
+      const promptResponse = await this.app.UI.promptDialog({
+        header: "Layer Name",
+        inputs: [{ name: "newNodeName", labelText: "Node Name", type: "text" }],
+      });
+
+      if (!promptResponse) {
+        ATON.UI.hideModal();
+        console.log("NO PROMPT");
         return;
       }
 
-      ATON.UI.hideModal();
-      const nodeName = ATON.Utils.generateID(id);
+      console.log(promptResponse);
+      const nodeName = promptResponse.newNodeName;
+
+      const updateEditorOnModelAdded = () => {
+        // Focus on currentNode
+        this.app.widgetsHub.focusOnItem({ id: nodeName, wid: this.id });
+
+        // Update scenegraph
+        const newSceneGraphNode = { urls: [url] };
+        const scene = this.getCurrentScene();
+        scene.scenegraph.nodes[nodeName] = newSceneGraphNode;
+
+        // Update edges
+        let _edges = scene.scenegraph.edges;
+        if (!_edges) {
+          _edges = { ".": [nodeName] };
+        } else {
+          _edges["."].push(nodeName);
+        }
+        scene.scenegraph.edges = _edges;
+
+        // Compose patch for the addition
+        this.composePatch({
+          scenegraph: {
+            nodes: {
+              [nodeName]: newSceneGraphNode,
+            },
+            edges: _edges,
+          },
+        });
+
+        this.app.ui.editor_updateHierarchy();
+        this.app.ui.editor_updateWidgetMainPanel();
+      };
 
       // Add in scene
-      console.log("Loading model for new layer:", nodeName, url);
       ATON.createSceneNode(nodeName)
-        .setCloneOnLoadHit(false) // Clone materials to prevent sharing between instances
+        .setCloneOnLoadHit(true)
         .load(url, () => {
-          this.updateEditorOnModelAdded(nodeName, url, type);
           ATON.getRootScene().assignLightProbesByProximity();
           ATON.updateLightProbes();
+          updateEditorOnModelAdded();
         })
         .setPosition(0, 0, 0)
         .attachToRoot();
     };
 
-    // Show model gallery
-    this.app.uikit.createModelGallery({ onModelItemClicked });
+    // Get models from ATON DB and create summary dialog
+    this.app.db.getModels((models) => {
+      this.models = models;
+      // Create summary dialog with folder structure
+      const summary = this.app.UI.summarize(
+        this.app.UI.parseInFolders(models, onModelItemClicked)
+      );
+      summary.cssText += "text-align:left";
+      ATON.UI.showModal({
+        header: "Select a model",
+        body: summary,
+      });
+    });
   }
 
   /**

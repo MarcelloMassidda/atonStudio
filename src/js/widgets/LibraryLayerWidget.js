@@ -58,7 +58,7 @@ export class LibraryLayerWidget extends LayerWidget {
 
     // Add in scene
     ATON.createSceneNode(nodeName)
-      .setCloneOnLoadHit(false) // Clone materials to prevent sharing between instances
+      .setCloneOnLoadHit(true) // Clone materials to prevent sharing between instances
       .load(url, () => {
         this.updateEditorOnModelAdded(nodeName, url, type);
         ATON.getRootScene().assignLightProbesByProximity();
