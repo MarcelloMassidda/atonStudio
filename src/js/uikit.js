@@ -341,14 +341,21 @@ uikit.createContainer = (options) => {
     return el;
 };
 
-uikit.TextureSelectorBlock=(imgPath,onBtnClicked)=>{
+uikit.TextureSelectorBlock=(imgPath,onBtnClicked, materialName)=>{
 
     const imageThumb=(path)=>{
        let icon = ATON.Utils.resolveCollectionURL(path);
        return UI.image(icon,"sm");
     }
 
-    const btn = (click)=> uikit.createButton({text:"🛠️ Change content",onClick:click});
+    const btn = (click)=> uikit.createButton({text:"🖼️ Change texture",onClick:click});
+    
+    // If material name provided, show it above
+    if (materialName) {
+        const nameLabel = uikit.createElfromString(`<div class="material-name-label" style="font-weight:bold; margin-bottom:5px;">${materialName}</div>`);
+        const textureRow = UI.flexBox({content:[imageThumb(imgPath),btn(onBtnClicked)], alignItems:"center", classList:"mb-2"});
+        return uikit.createContainer({content: [nameLabel, textureRow]});
+    }
 
     return UI.flexBox({content:[imageThumb(imgPath),btn(onBtnClicked)], alignItems:"center", classList:"mb-4"});
 }

@@ -29,6 +29,7 @@ export class Widget {
 
     /**
      * Get capabilities for a specific item by checking scene JSON structure
+     * or using custom capability detection methods
      */
     getItemCapabilities(id, item) {
         const scene = this.getCurrentScene();
@@ -45,18 +46,44 @@ export class Widget {
             return [];
         }
 
+        // ALWAYS get the actual ATON node for capability checks
+        // The 'item' parameter might be the JSON scene object, not the node
+        const atonNode = this.getItem(itemId);
+        if (!atonNode) {
+            console.log(`Could not get ATON node for ${itemId}`);
+            return [];
+        }
+
         // Get capabilities for this item
         const itemCapabilities = [];
         
-        // Check each capability type in scene.capabilities
-        Object.entries(scene.capabilities).forEach(([capabilityId, capabilityData]) => {
-            // If this item has data for this capability
-            console.log(`Checking capability ${capabilityId} for item ${itemId}:`, capabilityData[itemId]);
-            if (capabilityData[itemId]) {
-                console.log(`  ✅ Found capability data for ${capabilityId}`);
-                itemCapabilities.push(capabilityId);
+        // Check registered capabilities using their detection logic
+        for (const [registeredCapId, capability] of this.capabilities.entries()) {
+            console.log(`Checking capability ${registeredCapId} for item ${itemId}`);
+            // If capability has custom detection method, use it
+            if (capability.hasCapabilityForItem) {
+                console.log(`Using custom detection for capability ${registeredCapId}`);    
+                const hasCapability = capability.hasCapabilityForItem(atonNode, this);
+                console.log(hasCapability);
+
+                
+                // null means "use default check"
+                if (hasCapability === null) {
+                    // Fall back to standard JSON check
+                    if (scene.capabilities[capability.id]?.[itemId]) {
+                        itemCapabilities.push(registeredCapId);
+                    }
+                } else if (hasCapability === true) {
+                    itemCapabilities.push(registeredCapId);
+                }
+            } else {
+                // Standard check: look in scene.capabilities[capability.id][itemId]
+                if (scene.capabilities[capability.id]?.[itemId]) {
+                    itemCapabilities.push(registeredCapId);
+                }
             }
-        });
+        }
+        
         console.log(`✅ Item ${itemId} has ${itemCapabilities.length} capabilities:`, itemCapabilities);
         return itemCapabilities;
     }
@@ -64,6 +91,7 @@ export class Widget {
     /**
      * Get capabilities available to add to an item
      * Returns visible capabilities that are not yet attached to the item
+     * and are compatible with the item (via canEquip check)
      */
     getAvailableCapabilities(item) {
         if (!item) return [];
@@ -75,11 +103,18 @@ export class Widget {
         for (const [capId, capability] of this.capabilities.entries()) {
             // Only include visible capabilities not already attached
             if (capability.isVisible && !itemCapabilities.includes(capId)) {
-                availableCapabilities.push({
-                    id: capId,
-                    name: capability.name,
-                    capability: capability
-                });
+                // Check if capability is compatible with this item
+                const canEquip = capability.canEquip ? 
+                    capability.canEquip(item, this) : 
+                    true; // Default to true if canEquip not implemented
+
+                if (canEquip) {
+                    availableCapabilities.push({
+                        id: capId,
+                        name: capability.name,
+                        capability: capability
+                    });
+                }
             }
         }
 
@@ -117,7 +152,7 @@ export class Widget {
     /**
      * Add a capability to an item (attach, patch, and update UI)
      */
-    addCapabilityToItem(item, capabilityId) {
+    addCapabilityToItem(item, capabilityId, skipFocus = false) {
         const capability = this.capabilities.get(capabilityId);
         if (!capability) {
             throw new Error(`Capability ${capabilityId} not found`);
@@ -144,8 +179,10 @@ export class Widget {
         // Update the main panel
         this.app.ui.editor_updateWidgetMainPanel();
 
-        // Update the inspector for the current item
-        this.app.widgetsHub.focusOnItem({ id: item.nid, wid: this.id });
+        // Update the inspector for the current item (but skip if called from auto-equip to avoid loop)
+        if (!skipFocus) {
+            this.app.widgetsHub.focusOnItem({ id: item.nid, wid: this.id });
+        }
 
         return this;
     }
@@ -203,16 +240,19 @@ export class Widget {
         };
 
         // Allow registered capabilities to decorate the button
-        console.log("Decorating item button via capabilities for item:", id, item);
+        console.log("🎨 Decorating item button via capabilities for item:", id, item);
         const itemCaps = this.getItemCapabilities(id,item);
-        console.log("Item capabilities found:",id, itemCaps);
+        console.log("   Item capabilities found:", itemCaps);
         itemCaps.forEach(capId => {
             const capability = this.capabilities.get(capId);
-            console.log("Applying capability decoration:", capId, capability);
+            console.log("   Checking capability:", capId, "has decorateItemBtn?", !!capability?.decorateItemBtn);
             if (capability?.decorateItemBtn) {
+                console.log("   Before decoration, badges:", btnOptions.badges);
                 btnOptions = capability.decorateItemBtn(btnOptions, item, this);
+                console.log("   After decoration, badges:", btnOptions.badges);
             }
         });
+        console.log("   Final btnOptions before rendering:", btnOptions);
 
         // Allow widget-specific button customization last
         if (this.options.itemBtn) {
@@ -271,11 +311,61 @@ export class Widget {
             return;
         }
 
+        // Check for auto-equip capabilities
+        this.checkAutoEquipCapabilities(node);
+
         if (this.options.focusItem) {
             return this.options.focusItem(node);
         }
 
         ATON.Nav.requestPOVbyNode(node, 0.3);
+    }
+
+    /**
+     * Check and auto-equip capabilities that have autoEquip=true
+     */
+    checkAutoEquipCapabilities(item) {
+        if (!item) return;
+
+        console.log(`🔍 Checking auto-equip capabilities for item: ${item.nid}`);
+
+        // Get current capabilities for this item
+        const currentCapabilities = this.getItemCapabilities(item.nid, item);
+        console.log(`   Current capabilities:`, currentCapabilities);
+
+        // Check all registered capabilities for auto-equip
+        for (const [capId, capability] of this.capabilities.entries()) {
+            console.log(`   Checking capability: ${capId}, autoEquip=${capability.autoEquip}`);
+            
+            // Skip if already equipped
+            if (currentCapabilities.includes(capId)) {
+                console.log(`   ⏭️  Skipping ${capId} - already equipped`);
+                continue;
+            }
+
+            // Skip if not auto-equip
+            if (!capability.autoEquip) {
+                console.log(`   ⏭️  Skipping ${capId} - autoEquip is false`);
+                continue;
+            }
+
+            // Check if can be equipped
+            const canEquip = capability.canEquip ? 
+                capability.canEquip(item, this) : 
+                true;
+
+            console.log(`   canEquip result for ${capId}:`, canEquip);
+
+            if (canEquip) {
+                console.log(`🔧 Auto-equipping capability ${capId} to item ${item.nid}`);
+                // Pass skipFocus=true to prevent infinite loop
+                this.addCapabilityToItem(item, capId, true);
+                
+                // Verify it was equipped
+                const updatedCapabilities = this.getItemCapabilities(item.nid, item);
+                console.log(`   ✅ After equipping, capabilities:`, updatedCapabilities);
+            }
+        }
     }
 
     /**

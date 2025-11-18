@@ -6,7 +6,8 @@ export class Capability {
         this.id = options.id;
         this.name = options.name;
         this.isVisible = options.isVisible ?? true;
-        this.config = options.config ?? {};
+        this.autoEquip = options.autoEquip ?? false;
+        this.config = options.config || {};
     }
 
     /**
@@ -96,6 +97,31 @@ export class Capability {
      */
     getInitialData(item) {
         return {};
+    }
+
+    /**
+     * Check if this capability can be equipped to an item
+     * Override this in subclasses to implement specific compatibility checks
+     * @param {Object} item - The item to check compatibility for
+     * @param {Widget} widget - The widget managing the item
+     * @returns {boolean} True if capability can be equipped, false otherwise
+     */
+    canEquip(item, widget) {
+        // Default: capability can be equipped to any item
+        return true;
+    }
+
+    /**
+     * Custom detection method for checking if item has this capability
+     * Override this in subclasses to provide custom capability detection logic
+     * If not overridden, Widget will use default JSON structure check
+     * @param {Object} item - The item to check
+     * @param {Widget} widget - The widget managing the item
+     * @returns {boolean} True if item has this capability, false otherwise
+     */
+    hasCapabilityForItem(item, widget) {
+        // Default: use standard JSON structure check (implemented in Widget)
+        return null; // Returning null means "use default check"
     }
 
     /**
