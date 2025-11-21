@@ -493,4 +493,15 @@ uikit.POV_3Dicon = (position, target) => {
   return UI.POV_3Dicon(position, target);
 };
 
+/**
+ * Create a 3D measurement icon with two points
+ * Wrapper for UI.MEASURE_3Dicon from uitoolkit
+ * @param {Array} pointA - Start point [x, y, z]
+ * @param {Array} pointB - End point [x, y, z]
+ * @returns {THREE.Group} The measurement icon group
+ */
+uikit.MEASURE_3Dicon = (pointA, pointB) => {
+  return UI.MEASURE_3Dicon(pointA, pointB);
+};
+
 export { uikit };

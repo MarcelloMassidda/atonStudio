@@ -2,6 +2,7 @@ import { Template } from "./Template.js";
 import { LayerWidget } from "../widgets/LayerWidget.js";
 import { LibraryLayerWidget } from "../widgets/LibraryLayerWidget.js";
 import { PointOfViewWidget } from "../widgets/PointOfViewWidget.js";
+import { MeasurementsWidget } from "../widgets/MeasurementsWidget.js";
 import { OverrideCapability } from "../capabilities/OverrideCapability.js";
 import { ScreenOverrideCapability } from "../capabilities/ScreenOverrideCapability.js";
 
@@ -22,6 +23,10 @@ export const createFreeTemplate = (app) => {
   // Create point of view widget
   const povWidget = new PointOfViewWidget(app);
   template.registerWidget(povWidget);
+
+  // Create measurements widget
+  const measurementsWidget = new MeasurementsWidget(app);
+  template.registerWidget(measurementsWidget);
 
   return template;
 };
