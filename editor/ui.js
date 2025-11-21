@@ -1,552 +1,681 @@
-import {UI} from '../../uitoolkit/js/uitoolkit.js';
-import {utils} from "../src/js/utility.js";
-import {uikit}  from "../src/js/uikit.js";
+import { UI } from "../../uitoolkit/js/uitoolkit.js";
+import { utils } from "../src/js/utility.js";
+import { uikit } from "../src/js/uikit.js";
 
 let APP, editor, widgetsHub, gizmoManager;
 
 let ui = {
+  //Editor
+  IDeditor_saveSceneBtn: "IDeditor_saveSceneBtn",
+  //Editor - SideMenu
+  ID_MainSideMenu: "ID_MainSideMenu",
+  ID_editorSideMenu_Scene: "ID_editorSideMenu_Scene",
+  ID_editorSideMenu_Widget: "ID_editorSideMenu_Widget",
+  ID_SecondSideMenuCurrentlyActive: "ID_SecondSideMenuCurrentlyActive",
+  //EDitor- Widget Panels
+  ID_widget_viewPoints: "ID_widget_viewPoints",
 
-     //Editor
-     IDeditor_saveSceneBtn: "IDeditor_saveSceneBtn",
-     //Editor - SideMenu
-     ID_MainSideMenu: "ID_MainSideMenu",
-     ID_editorSideMenu_Scene: "ID_editorSideMenu_Scene",
-     ID_editorSideMenu_Widget: "ID_editorSideMenu_Widget",
-     ID_SecondSideMenuCurrentlyActive:"ID_SecondSideMenuCurrentlyActive",
-     //EDitor- Widget Panels
-     ID_widget_viewPoints:"ID_widget_viewPoints",
- 
-     //Editor - Inspector components:
-     IDeditor_Inspector: "IDeditor_Inspector",
- 
-     IDeditor_inspectorTransform_pos: "IDeditor_inspectorTransform_pos",
-     IDeditor_inspectorTransform_rot: "IDeditor_inspectorTransform_rot",
-     IDeditor_inspectorTransform_scale: "IDeditor_inspectorTransform_scale",
-     
-     IDeditor_inspectorTransform_target:"IDeditor_inspectorTransform_target",
- 
-     //Editor - center Toolbox Container:
-     IDeditor_centralToolBoxContainer: "IDeditor_centralToolBoxContainer",
-     //Editor - Gizmo
-     IDeditor_gizmoToolbox: "IDeditor_gizmoToolbox"
+  //Editor - Inspector components:
+  IDeditor_Inspector: "IDeditor_Inspector",
+
+  IDeditor_inspectorTransform_pos: "IDeditor_inspectorTransform_pos",
+  IDeditor_inspectorTransform_rot: "IDeditor_inspectorTransform_rot",
+  IDeditor_inspectorTransform_scale: "IDeditor_inspectorTransform_scale",
+
+  IDeditor_inspectorTransform_target: "IDeditor_inspectorTransform_target",
+
+  //Editor - center Toolbox Container:
+  IDeditor_centralToolBoxContainer: "IDeditor_centralToolBoxContainer",
+  //Editor - Gizmo
+  IDeditor_gizmoToolbox: "IDeditor_gizmoToolbox",
 };
 
 ui.baseIcons = "../src/icons/";
 
-ui.editorUI_Setup=(s=null)=>{
-    APP = window.APP;
-    editor = APP.editor;
-    widgetsHub = APP.widgetsHub;
-    gizmoManager = APP.gizmoManager;
-    
+ui.editorUI_Setup = (s = null) => {
+  APP = window.APP;
+  editor = APP.editor;
+  widgetsHub = APP.widgetsHub;
+  gizmoManager = APP.gizmoManager;
 
-    if(!s) {alert("S = null, void Editor isn't implemented yet."); return}
+  if (!s) {
+    alert("S = null, void Editor isn't implemented yet.");
+    return;
+  }
 
-            let sidemenu = ui.editor_sideMenu();
-            let topBar = ui.editor_topBar(s);
-            let inspector = ui.editor_createInspector();
-            let gizmoToolBox =  ui.editor_gizmoControlToolbox();
-            
-            //document.body.appendChild(UI.createEl({id:ui.ID_MainSideMenu, className:"editorContainer_dash_sideMenu", content: sidemenu}));
-            document.body.appendChild(sidemenu);
-            document.body.appendChild(UI.createEl({className:"editorContainer_dash_topBar", content: topBar}));
-            document.body.appendChild(UI.createEl({className:"editorContainer_inspector", content: inspector}));
-            document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox","hidden"]}));
+  let sidemenu = ui.editor_sideMenu();
+  let topBar = ui.editor_topBar(s);
+  let inspector = ui.editor_createInspector();
+  let gizmoToolBox = ui.editor_gizmoControlToolbox();
 
-            ui.CreateMenuBtn();
-}
+  //document.body.appendChild(UI.createEl({id:ui.ID_MainSideMenu, className:"editorContainer_dash_sideMenu", content: sidemenu}));
+  document.body.appendChild(sidemenu);
+  document.body.appendChild(
+    UI.createEl({ className: "editorContainer_dash_topBar", content: topBar })
+  );
+  document.body.appendChild(
+    UI.createEl({ className: "editorContainer_inspector", content: inspector })
+  );
+  document.body.appendChild(
+    UI.createEl({
+      id: ui.IDeditor_centralToolBoxContainer,
+      content: gizmoToolBox,
+      classList: ["editorContainer_centerToolbox", "hidden"],
+    })
+  );
 
-ui.CreateMenuBtn=()=>{
-    let btn = ATON.UI.createButton({icon: ui.baseIcons+"burgerMenuIcon.svg"});
-    btn.id="toggleMenuBtn";
-    btn.classList.add("position-absolute", "toggleBtnOffCanvas", "aton-std-bg", "p-2", "mt-2", "ms-2", "rounded-circle");
-    btn.setAttribute("data-bs-toggle","offcanvas");
-    btn.setAttribute("data-bs-target","#"+ APP.uikit.offcanvas_start._element.id);
-    document.body.prepend(btn);
-    ui.sideMenuBtn = btn;
-}
+  ui.CreateMenuBtn();
+};
 
-ui.toggle= (id, b)=>{
-    let el = document.getElementById(id);
-    let _display = b? "block" : "none";
-    if(el) el.style.display = _display;
-}
+ui.CreateMenuBtn = () => {
+  let btn = ATON.UI.createButton({ icon: ui.baseIcons + "burgerMenuIcon.svg" });
+  btn.id = "toggleMenuBtn";
+  btn.classList.add(
+    "position-absolute",
+    "toggleBtnOffCanvas",
+    "aton-std-bg",
+    "p-2",
+    "mt-2",
+    "ms-2",
+    "rounded-circle"
+  );
+  btn.setAttribute("data-bs-toggle", "offcanvas");
+  btn.setAttribute(
+    "data-bs-target",
+    "#" + APP.uikit.offcanvas_start._element.id
+  );
+  document.body.prepend(btn);
+  ui.sideMenuBtn = btn;
+};
 
-ui.getSideActiveTab=()=>{
-    let activeTab = editor.activeTab;
-    let aTab = ""; 
-    if(activeTab==ui.ID_editorSideMenu_Scene) aTab="scene";
-    if(activeTab==ui.ID_editorSideMenu_Widget) aTab="widgets";
-    return aTab;
-}
+ui.toggle = (id, b) => {
+  let el = document.getElementById(id);
+  let _display = b ? "block" : "none";
+  if (el) el.style.display = _display;
+};
 
-ui.toggle_sideMenus=(b)=>{
-    let s = APP.uikit.offcanvas_start;
-    let e = APP.uikit.offcanvas_end;
-    if(!b){
-       if(s){ s.hide(); ui.toggle(ui.sideMenuBtn.id,false);}
-       if(e) e.hide();
+ui.getSideActiveTab = () => {
+  let activeTab = editor.activeTab;
+  let aTab = "";
+  if (activeTab == ui.ID_editorSideMenu_Scene) aTab = "scene";
+  if (activeTab == ui.ID_editorSideMenu_Widget) aTab = "widgets";
+  return aTab;
+};
+
+ui.toggle_sideMenus = (b) => {
+  let s = APP.uikit.offcanvas_start;
+  let e = APP.uikit.offcanvas_end;
+  if (!b) {
+    if (s) {
+      s.hide();
+      ui.toggle(ui.sideMenuBtn.id, false);
     }
-    else{
-        if(s) {s.show();ui.toggle(ui.sideMenuBtn.id,true);}
-       if(e) e.show();
+    if (e) e.hide();
+  } else {
+    if (s) {
+      s.show();
+      ui.toggle(ui.sideMenuBtn.id, true);
     }
-}
+    if (e) e.show();
+  }
+};
 
-ui.toggle_sideMenu=(b)=>{
-    let s = APP.uikit.offcanvas_start;
-    if(!s) return;
-    if(b){ s.show();}
-    else{s.hide();}
-}
+ui.toggle_sideMenu = (b) => {
+  let s = APP.uikit.offcanvas_start;
+  if (!s) return;
+  if (b) {
+    s.show();
+  } else {
+    s.hide();
+  }
+};
 
-ui.toggle_sideRightMenu=(b)=>{
-    let e = APP.uikit.offcanvas_end;
-    if(!e) return;
-    if(b){ e.show();}
-    else{e.hide();}
-}
+ui.toggle_sideRightMenu = (b) => {
+  let e = APP.uikit.offcanvas_end;
+  if (!e) return;
+  if (b) {
+    e.show();
+  } else {
+    e.hide();
+  }
+};
 
-ui.toggle_secondSideMenu=(b)=>{
-    ui.toggle(ui.ID_SecondSideMenuCurrentlyActive, b);
-}
+ui.toggle_secondSideMenu = (b) => {
+  ui.toggle(ui.ID_SecondSideMenuCurrentlyActive, b);
+};
 
-ui.OLD_editor_sideMenu=()=>{
-    
-    //TODO: "_tabLink" suffix is garbage (it's because otherwise tab and content have same id)  
+ui.OLD_editor_sideMenu = () => {
+  //TODO: "_tabLink" suffix is garbage (it's because otherwise tab and content have same id)
 
-    //Init with scene tab active:
-    if(!editor.activeTab) editor.activeTab = ui.ID_editorSideMenu_Scene;
+  //Init with scene tab active:
+  if (!editor.activeTab) editor.activeTab = ui.ID_editorSideMenu_Scene;
 
-    const tabs=[
-        {
-            //Scene
-            title: "Scene",
-            content: UI.createEl({
-                id:ui.ID_editorSideMenu_Scene,
-                className:"dash_sideMenu_Content",
-                content: ui.editor_scenehierarchy()
-            }),
-            isActive:true
-        },
-        {
-            //Widgets tab:
-            text:"Widgets",
-            tab: UI.createEl({
-                id: ui.ID_editorSideMenu_Widget,
-                className:"dash_sideMenu_Content",
-                content:ui.editor_widgetsListPanel()
-            })
-        }
-    ]
+  const tabs = [
+    {
+      //Scene
+      title: "Scene",
+      content: UI.createEl({
+        id: ui.ID_editorSideMenu_Scene,
+        className: "dash_sideMenu_Content",
+        content: ui.editor_scenehierarchy(),
+      }),
+      isActive: true,
+    },
+    {
+      //Widgets tab:
+      text: "Widgets",
+      tab: UI.createEl({
+        id: ui.ID_editorSideMenu_Widget,
+        className: "dash_sideMenu_Content",
+        content: ui.editor_widgetsListPanel(),
+      }),
+    },
+  ];
 
-    const onClickTabLink=(evt, id)=>{
-        ui.closeSecondSideMenu();
-        editor.activeTab = id;
-        
-        tabs.forEach(t => {
-            //toggle content
-            var isActive = t.tab.id == id;
-            let _display = isActive? "block" : "none";
-            t.tab.style.display =_display;
-            //toggle btns:
-            let _tabLink = document.getElementById(t.tab.id+"_tabLink")
-            if(isActive) {_tabLink.classList.add("tabActive")}
-            else{_tabLink.classList.remove("tabActive")} 
-        });
-    }   
+  const onClickTabLink = (evt, id) => {
+    ui.closeSecondSideMenu();
+    editor.activeTab = id;
 
-
-    let TabLinks = [];
-    let TabContents = [];
-
-    tabs.forEach(t => {
-        
-        //tab links:
-        TabLinks.push(
-            UI.button({
-            id:t.tab.id+"_tabLink",
-            text:t.text,
-            className: t.isActive? "tabActive" : "",
-            onClick:(evt)=>onClickTabLink(evt, t.tab.id)
-        }));
-
-        //tab contents:
-        t.tab.style.display = t.isActive? "block" : "none";    
-        TabContents.push(t.tab);
+    tabs.forEach((t) => {
+      //toggle content
+      var isActive = t.tab.id == id;
+      let _display = isActive ? "block" : "none";
+      t.tab.style.display = _display;
+      //toggle btns:
+      let _tabLink = document.getElementById(t.tab.id + "_tabLink");
+      if (isActive) {
+        _tabLink.classList.add("tabActive");
+      } else {
+        _tabLink.classList.remove("tabActive");
+      }
     });
+  };
 
-    let main = UI.createEl({
-        id:"myMainTabbedContainer",
-        className:"tabbedMainContaner",
-        content:[
-            UI.createEl({className:"tabLinksContainer",content:TabLinks}),
-            UI.createEl({className:"tabContentsContainer",content:TabContents})
-        ]
-    });
-    
-    return main;
-}
+  let TabLinks = [];
+  let TabContents = [];
 
+  tabs.forEach((t) => {
+    //tab links:
+    TabLinks.push(
+      UI.button({
+        id: t.tab.id + "_tabLink",
+        text: t.text,
+        className: t.isActive ? "tabActive" : "",
+        onClick: (evt) => onClickTabLink(evt, t.tab.id),
+      })
+    );
 
-ui.editor_sideMenu=()=>{
-    
-    //Init with scene tab active:
-    if(!editor.activeTab) editor.activeTab = ui.ID_editorSideMenu_Scene; 
+    //tab contents:
+    t.tab.style.display = t.isActive ? "block" : "none";
+    TabContents.push(t.tab);
+  });
 
-    const onClickTab=(id)=>{
-        ui.closeSecondSideMenu();
-        console.log(id)
-        editor.activeTab = id;
-    }
+  let main = UI.createEl({
+    id: "myMainTabbedContainer",
+    className: "tabbedMainContaner",
+    content: [
+      UI.createEl({ className: "tabLinksContainer", content: TabLinks }),
+      UI.createEl({ className: "tabContentsContainer", content: TabContents }),
+    ],
+  });
 
-    const items=[
-        {
-            //Scene
-            title: "Scene",
-            onClick: ()=>onClickTab(ui.ID_editorSideMenu_Scene),
-            content: ui.editor_scenehierarchy()
-        },
-        {
-            //Widgets tab:
-            title:"Widgets",
-            onClick: ()=>onClickTab(ui.ID_editorSideMenu_Widget),
-            content: UI.createEl({classList:["d-grid", "gap-2"], content:ui.editor_widgetsListPanel()})
-        }
-    ];
-    let sideMenuContent = uikit.createTabsGroup({items, justified:true});
-    sideMenuContent.id = ui.ID_MainSideMenu;
-    let sideMenu = uikit.createOffCanvas({content:sideMenuContent, title:"Prototyper Tools"});
-    
-    return sideMenu;
-}
+  return main;
+};
 
-ui.editor_topBar = (s=null)=>{
+ui.editor_sideMenu = () => {
+  //Init with scene tab active:
+  if (!editor.activeTab) editor.activeTab = ui.ID_editorSideMenu_Scene;
 
-    let titleTopBar = "ATON STUDIO";
-    let _sid;
-    if(s){
-        _sid = APP.db.data.currSID;
-        titleTopBar += s.title? `${s.title} / ${_sid}` : _sid;
-    }
+  const onClickTab = (id) => {
+    ui.closeSecondSideMenu();
+    console.log(id);
+    editor.activeTab = id;
+  };
 
-    let backBtn = uikit.createButton({icon:"back",onClick:()=> window.location.href = APP.url_dashboard});
-    let saveSceneBtn = uikit.createButton({id: ui.IDeditor_saveSceneBtn, text:"SAVE CHANGES", onClick: editor.onSaveSceneBtnIsClicked, classList:"hidden"})
-    let openInHathorBtn = uikit.createButton({icon:"play", title:"Open scene in HATHOR front end", text:"Play Prototype", onClick: ()=>utils.goToHathorScene(_sid)})
-    let vrBtn = UI.button({text:"vr",onClick:()=> ATON.XR.toggle("immersive-vr")})
-    let topBarContent = UI.flexBox({dir:"row",content:[
-        backBtn,
-        titleTopBar,
-        saveSceneBtn,
-        openInHathorBtn
-    ]});
-   //OLD
-   // return UI.createEl({id:"IDeditor_topBar",classList:["aton-std-bg","dash_topBar"],content: topBarContent}) 
+  const items = [
+    {
+      //Scene
+      title: "Scene",
+      onClick: () => onClickTab(ui.ID_editorSideMenu_Scene),
+      content: ui.editor_scenehierarchy(),
+    },
+    {
+      //Widgets tab:
+      title: "Widgets",
+      onClick: () => onClickTab(ui.ID_editorSideMenu_Widget),
+      content: UI.createEl({
+        classList: ["d-grid", "gap-2"],
+        content: ui.editor_widgetsListPanel(),
+      }),
+    },
+  ];
+  let sideMenuContent = uikit.createTabsGroup({ items, justified: true });
+  sideMenuContent.id = ui.ID_MainSideMenu;
+  let sideMenu = uikit.createOffCanvas({
+    content: sideMenuContent,
+    title: "Prototyper Tools",
+  });
 
-   let sceneName = backBtn + "You are editing: "+ s.title ;
-   
-   //Bootstrap navbar:
+  return sideMenu;
+};
 
-   const wrapInLI = (c)=>{
+ui.editor_topBar = (s = null) => {
+  let titleTopBar = "ATON STUDIO";
+  let _sid;
+  if (s) {
+    _sid = APP.db.data.currSID;
+    titleTopBar += s.title ? `${s.title} / ${_sid}` : _sid;
+  }
+
+  let backBtn = uikit.createButton({
+    icon: "back",
+    onClick: () => (window.location.href = APP.url_dashboard),
+  });
+  let saveSceneBtn = uikit.createButton({
+    id: ui.IDeditor_saveSceneBtn,
+    text: "SAVE CHANGES",
+    onClick: editor.onSaveSceneBtnIsClicked,
+    classList: "hidden",
+  });
+  let openInHathorBtn = uikit.createButton({
+    icon: "play",
+    title: "Open scene in HATHOR front end",
+    text: "Play Prototype",
+    onClick: () => utils.goToHathorScene(_sid),
+  });
+  let vrBtn = UI.button({
+    text: "vr",
+    onClick: () => ATON.XR.toggle("immersive-vr"),
+  });
+  let topBarContent = UI.flexBox({
+    dir: "row",
+    content: [backBtn, titleTopBar, saveSceneBtn, openInHathorBtn],
+  });
+  //OLD
+  // return UI.createEl({id:"IDeditor_topBar",classList:["aton-std-bg","dash_topBar"],content: topBarContent})
+
+  let sceneName = backBtn + "You are editing: " + s.title;
+
+  //Bootstrap navbar:
+
+  const wrapInLI = (c) => {
     let l = uikit.createElfromString("<li class='nav-item'></li>");
     l.append(c);
     return l;
-   }
+  };
 
-    let _navBar = UI.createNavbar({
-        id:"IDeditor_topBar",
-        brand:{title:"You are editing: "+ s.title},
-        links:[ 
-        //    backBtn, sceneName
-            //wrapInLI(titleTopBar),
-            //wrapInLI(saveSceneBtn),
-            //wrapInLI(openInHathorBtn)
-        ],
-        form: UI.flexBox({content:[saveSceneBtn,openInHathorBtn]})
-   });
+  let _navBar = UI.createNavbar({
+    id: "IDeditor_topBar",
+    brand: { title: "You are editing: " + s.title },
+    links: [
+      //    backBtn, sceneName
+      //wrapInLI(titleTopBar),
+      //wrapInLI(saveSceneBtn),
+      //wrapInLI(openInHathorBtn)
+    ],
+    form: UI.flexBox({ content: [saveSceneBtn, openInHathorBtn] }),
+  });
 
-   return _navBar;
-}
+  return _navBar;
+};
 
-ui.OLD_editor_createInspector=(content=null)=>{
-    let contentInspector = content? content :"My default Inpsector content";
-    let objInspector = UI.createEl({id:ui.IDeditor_Inspector,className:"editor_inspector", content:contentInspector});
+ui.OLD_editor_createInspector = (content = null) => {
+  let contentInspector = content ? content : "My default Inpsector content";
+  let objInspector = UI.createEl({
+    id: ui.IDeditor_Inspector,
+    className: "editor_inspector",
+    content: contentInspector,
+  });
 
-    var container = document.querySelector(".editorContainer_inspector");
-    if(!container){ container = UI.createEl({className:"editorContainer_inspector"});}
-    container.innerHTML = "";
-   
-    UI.addContent(container,objInspector); 
-}
+  var container = document.querySelector(".editorContainer_inspector");
+  if (!container) {
+    container = UI.createEl({ className: "editorContainer_inspector" });
+  }
+  container.innerHTML = "";
 
-ui.editor_createInspector=(options = null)=>{
-    if(!options) return;
-    let {title, blocks} = options;
-    let content = blocks? UI.createEl({classList:["editor_inspector"], content:blocks}) : "";
-    document.body.append(uikit.createOffCanvas({pos:"end", content, title, onOffCanvasClose: editor.onCloseInspectorBtnClicked})); return;
-}
+  UI.addContent(container, objInspector);
+};
+
+ui.editor_createInspector = (options = null) => {
+  if (!options) return;
+  let { title, blocks } = options;
+  let content = blocks
+    ? UI.createEl({ classList: ["editor_inspector"], content: blocks })
+    : "";
+  document.body.append(
+    uikit.createOffCanvas({
+      pos: "end",
+      content,
+      title,
+      onOffCanvasClose: editor.onCloseInspectorBtnClicked,
+    })
+  );
+  return;
+};
 
 //GIZMO UI:
-ui.editor_gizmoControlToolbox = (modes=null)=>{
+ui.editor_gizmoControlToolbox = (modes = null) => {
+  if (!modes) modes = ["translate", "rotate", "scale"];
 
-    if(!modes) modes=["translate","rotate","scale"];
+  const isSelected = (mode) => {
+    if (!gizmoManager.control) return "";
+    if (gizmoManager._currentMode == mode) return "selected";
 
-    const isSelected=(mode)=>{
-        
-        if(!gizmoManager.control) return "";
-        if(gizmoManager._currentMode ==mode) return "selected";
-        
-        //if (!ATON._gizmo )return "";
-        //if(ATON._gizmo.mode == mode) return "selected"
-        
-    }
+    //if (!ATON._gizmo )return "";
+    //if(ATON._gizmo.mode == mode) return "selected"
+  };
 
-    const gizmotoolboxBtns={
-        "translate": ()=>  UI.button({id:"translateGizmoBtn", icon:ui.baseIcons+"translate.svg",tooltip:"translate", onClick:()=>onGizmoModeBtnClicked("translate"), attr:{"data-gizmomode":"translate"}, classList:isSelected("translate")}),
-        "rotate": ()=>  UI.button({icon:ui.baseIcons+"rotate.svg",tooltip:"rotate",onClick:()=>onGizmoModeBtnClicked("rotate"), attr:{"data-gizmomode":"rotate"}, classList:isSelected("rotate")}),
-        "scale": ()=> UI.button({icon:ui.baseIcons+"scale.svg",tooltip:"scale",onClick:()=>onGizmoModeBtnClicked("scale"), attr:{"data-gizmomode":"scale"}, classList:isSelected("scale")}),
-    }
+  const gizmotoolboxBtns = {
+    translate: () =>
+      UI.button({
+        id: "translateGizmoBtn",
+        icon: ui.baseIcons + "translate.svg",
+        tooltip: "translate",
+        onClick: () => onGizmoModeBtnClicked("translate"),
+        attr: { "data-gizmomode": "translate" },
+        classList: isSelected("translate"),
+      }),
+    rotate: () =>
+      UI.button({
+        icon: ui.baseIcons + "rotate.svg",
+        tooltip: "rotate",
+        onClick: () => onGizmoModeBtnClicked("rotate"),
+        attr: { "data-gizmomode": "rotate" },
+        classList: isSelected("rotate"),
+      }),
+    scale: () =>
+      UI.button({
+        icon: ui.baseIcons + "scale.svg",
+        tooltip: "scale",
+        onClick: () => onGizmoModeBtnClicked("scale"),
+        attr: { "data-gizmomode": "scale" },
+        classList: isSelected("scale"),
+      }),
+  };
 
-    const onGizmoModeBtnClicked=(mode)=>{
-            gizmoManager.setMode(mode); //ATON._gizmo.setMode(mode);
-            //change selected Style:
-            var _container = document.getElementById(ui.IDeditor_gizmoToolbox);
-            Array.from(_container.children).forEach(c => {
-                console.log("mode is"+mode);
-                console.log("mode of c is"+c.dataset.gizmoMode);
-                if(c.dataset.gizmomode==mode){ c.classList.add("selected");}
-                else{c.classList.remove("selected");}
-            });
-    }
+  const onGizmoModeBtnClicked = (mode) => {
+    gizmoManager.setMode(mode); //ATON._gizmo.setMode(mode);
+    //change selected Style:
+    var _container = document.getElementById(ui.IDeditor_gizmoToolbox);
+    Array.from(_container.children).forEach((c) => {
+      console.log("mode is" + mode);
+      console.log("mode of c is" + c.dataset.gizmoMode);
+      if (c.dataset.gizmomode == mode) {
+        c.classList.add("selected");
+      } else {
+        c.classList.remove("selected");
+      }
+    });
+  };
 
-    return UI.flexBox({id:ui.IDeditor_gizmoToolbox, classList:["aton-std-bg","rounded","p-2"],content: modes.map( m => gizmotoolboxBtns[m]() )})
-}
-ui.editor_setGizmoToolbox = ( modes = null ) => {
-    let actualEl = document.getElementById( ui.IDeditor_centralToolBoxContainer); if(actualEl) actualEl.remove();
+  return UI.flexBox({
+    id: ui.IDeditor_gizmoToolbox,
+    classList: ["aton-std-bg", "rounded", "p-2"],
+    content: modes.map((m) => gizmotoolboxBtns[m]()),
+  });
+};
+ui.editor_setGizmoToolbox = (modes = null) => {
+  let actualEl = document.getElementById(ui.IDeditor_centralToolBoxContainer);
+  if (actualEl) actualEl.remove();
 
-    let gizmoToolBox = ui.editor_gizmoControlToolbox(modes);
-    document.body.appendChild(UI.createEl({id: ui.IDeditor_centralToolBoxContainer, content: gizmoToolBox, classList:["editorContainer_centerToolbox"]}));
-}
+  let gizmoToolBox = ui.editor_gizmoControlToolbox(modes);
+  document.body.appendChild(
+    UI.createEl({
+      id: ui.IDeditor_centralToolBoxContainer,
+      content: gizmoToolBox,
+      classList: ["editorContainer_centerToolbox"],
+    })
+  );
+};
 
-ui.editor_scenehierarchy=()=>{
+ui.editor_scenehierarchy = () => {
+  // resolve layers widget whether widgets store is Map or plain object
+  const widgetsStore = APP.widgetsHub.widgets;
+  const layersWidget =
+    widgetsStore instanceof Map
+      ? widgetsStore.get("layers")
+      : widgetsStore["layers"];
+  let content = ui.editor_widgetMainPanel(layersWidget);
+  //Remove title:
+  let _title = content.querySelector("#mainTitle");
+  if (_title) _title.remove();
+  content.id = ui.ID_editorSideMenu_Scene;
+  return content;
+};
 
-    // resolve layers widget whether widgets store is Map or plain object
-    const widgetsStore = APP.widgetsHub.widgets;
-    const layersWidget = (widgetsStore instanceof Map) ? widgetsStore.get("layers") : widgetsStore["layers"];
-    let content = ui.editor_widgetMainPanel(layersWidget);
-    //Remove title:
-    let _title = content.querySelector("#mainTitle");
-    if(_title) _title.remove();
-    content.id = ui.ID_editorSideMenu_Scene;
-    return content;
-}
+ui.editor_updateHierarchy = () => {
+  var HierarchyContainer = document.getElementById(ui.ID_editorSideMenu_Scene);
+  console.log(HierarchyContainer);
+  HierarchyContainer.innerHTML = "";
+  var _c = ui.editor_scenehierarchy();
+  console.log(_c);
+  UI.addContent(HierarchyContainer, _c);
+};
 
-ui.editor_updateHierarchy=()=>{
-    var HierarchyContainer = document.getElementById(ui.ID_editorSideMenu_Scene);
-    console.log(HierarchyContainer)
-    HierarchyContainer.innerHTML = "";
-    var _c = ui.editor_scenehierarchy();
-    console.log(_c);
-    UI.addContent(HierarchyContainer,_c);
-}
-
-ui.editor_widgetMainPanel_Title=(_title)=> {
-    let _header = `
+ui.editor_widgetMainPanel_Title = (_title) => {
+  let _header = `
     <div id="mainTitle" class="offcanvas-header">
         <h5 class="offcanvas-title" id="offcanvasLabel">${_title}</h5>
-    </div>`
-    return uikit.createElfromString(_header);
-}
+    </div>`;
+  return uikit.createElfromString(_header);
+};
 
-ui.editor_widgetMainPanel=(w)=>{
-    
-    let mainPanelItemList = [];
+ui.editor_widgetMainPanel = (w) => {
+  let mainPanelItemList = [];
 
-    //Title:
-    // Title (support both old and new widget option paths)
-    const mainPanelOptions = w.mainPanelOptions || w.options?.mainPanelOptions;
-    if (mainPanelOptions && mainPanelOptions.title) {
-        mainPanelItemList.push(ui.editor_widgetMainPanel_Title(mainPanelOptions.title));
+  //Title:
+  // Title (support both old and new widget option paths)
+  const mainPanelOptions = w.mainPanelOptions || w.options?.mainPanelOptions;
+  if (mainPanelOptions && mainPanelOptions.title) {
+    mainPanelItemList.push(
+      ui.editor_widgetMainPanel_Title(mainPanelOptions.title)
+    );
+  }
+
+  // Items: resolve via getItems() if available, otherwise fallback to old items()
+  const resolveItems = (widget) => {
+    if (!widget) return null;
+    if (typeof widget.getItems === "function") return widget.getItems();
+    if (typeof widget.items === "function") return widget.items();
+    if (widget.items) return widget.items;
+    return widget._items || null;
+  };
+
+  const resolveItemButton = (widget, id, item) => {
+    if (!widget) return null;
+    if (typeof widget.getItemButton === "function")
+      return widget.getItemButton(id, item);
+    if (typeof widget.itemBtn === "function") return widget.itemBtn(id, item);
+    return null;
+  };
+
+  const resolveCreateBtn = (widget) => {
+    if (!widget) return null;
+    if (typeof widget.getCreateButton === "function")
+      return widget.getCreateButton();
+    if (typeof widget.createBtn === "function") return widget.createBtn();
+    return widget.createBtn || null;
+  };
+
+  console.log("MAIN PANEL CREATION OF " + (w.id || w.options?.id));
+  const _items = resolveItems(w);
+  // keep old reference for other code that expects _items
+  if (w) w._items = _items;
+  console.log(_items);
+  if (_items) {
+    for (const [_id, _item] of Object.entries(_items)) {
+      const itemBtn = resolveItemButton(w, _id, _item);
+      if (itemBtn) mainPanelItemList.push(itemBtn);
     }
+  }
 
-    // Items: resolve via getItems() if available, otherwise fallback to old items()
-    const resolveItems = (widget) => {
-        if (!widget) return null;
-        if (typeof widget.getItems === 'function') return widget.getItems();
-        if (typeof widget.items === 'function') return widget.items();
-        if (widget.items) return widget.items;
-        return widget._items || null;
-    }
+  // Add New Item BTN:
+  const createBtn = resolveCreateBtn(w);
+  if (createBtn) mainPanelItemList.push(createBtn);
+  let _panel = UI.createEl({
+    classList: ["WidgetMainPanel_Container", "d-grid", "gap-2"],
+    content: mainPanelItemList,
+  });
+  console.log();
+  return _panel;
+};
 
-    const resolveItemButton = (widget, id, item) => {
-        if (!widget) return null;
-        if (typeof widget.getItemButton === 'function') return widget.getItemButton(id, item);
-        if (typeof widget.itemBtn === 'function') return widget.itemBtn(id, item);
-        return null;
-    }
+ui.editor_updateWidgetMainPanel = () => {
+  //Update widgetMainPanel:
+  var w = APP.editor.activeWidget;
+  if (!w) return;
+  let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
+  if (APP.editor.activeTab == APP.ui.ID_editorSideMenu_Widget)
+    APP.ui.openSecondSideMenu(widgetMainPanel);
 
-    const resolveCreateBtn = (widget) => {
-        if (!widget) return null;
-        if (typeof widget.getCreateButton === 'function') return widget.getCreateButton();
-        if (typeof widget.createBtn === 'function') return widget.createBtn();
-        return widget.createBtn || null;
-    }
-
-    console.log("MAIN PANEL CREATION OF " + (w.id || w.options?.id));
-    const _items = resolveItems(w);
-    // keep old reference for other code that expects _items
-    if (w) w._items = _items;
-    console.log(_items);
-    if (_items) {
-        for (const [_id, _item] of Object.entries(_items)){
-            const itemBtn = resolveItemButton(w, _id, _item);
-            if (itemBtn) mainPanelItemList.push(itemBtn);
-        }
-    }
-
-    // Add New Item BTN:
-    const createBtn = resolveCreateBtn(w);
-    if (createBtn) mainPanelItemList.push(createBtn);
-    let _panel = UI.createEl({classList:["WidgetMainPanel_Container","d-grid", "gap-2"],content:mainPanelItemList});
-    console.log()
-    return _panel;
-}
-
-ui.editor_updateWidgetMainPanel=()=>{
-     //Update widgetMainPanel:
-     var w = APP.editor.activeWidget;
-     if(!w) return;
-     let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
-     if(APP.editor.activeTab == APP.ui.ID_editorSideMenu_Widget) APP.ui.openSecondSideMenu(widgetMainPanel);
-
-
-     //Set style to active ItemBtn by activeNode:
-     var a = APP.editor.activeNode
-     if(a && w){
-        const targetBtn = document.querySelector(`[data-id="${a.name}"][data-wid="${w.id}"]`);
-        console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+  //Set style to active ItemBtn by activeNode:
+  var a = APP.editor.activeNode;
+  if (a && w) {
+    const targetBtn = document.querySelector(
+      `[data-id="${a.name}"][data-wid="${w.id}"]`
+    );
+    /*console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         console.log(a.name);
         console.log(w.id);
-        console.log(targetBtn)
-        if(targetBtn) ui.setStyleOfActiveBtn(targetBtn);
-     }
-}
+        console.log(targetBtn)*/
+    if (targetBtn) ui.setStyleOfActiveBtn(targetBtn);
+  }
+};
 
-ui.editor_widgetsListPanel=()=>{
+ui.editor_widgetsListPanel = () => {
+  const widgetsStore = APP.widgetsHub.widgets;
+  let widgetsBtnList = [];
 
-    const widgetsStore = APP.widgetsHub.widgets;
-    let widgetsBtnList = [];
+  const resolveWidgetById = (id) => {
+    if (widgetsStore instanceof Map) return widgetsStore.get(id);
+    return widgetsStore[id];
+  };
 
-    const resolveWidgetById = (id) => {
-        if (widgetsStore instanceof Map) return widgetsStore.get(id);
-        return widgetsStore[id];
+  const onWidgetMainButtonClicked = (target) => {
+    //Reset preview opened tools and panels:
+    editor.onCloseInspectorBtnClicked();
+    ui.editor_removeGizmoToolBox();
+
+    if (!target.dataset || !target.dataset.id) throw "Issues with: " + target;
+    const w = resolveWidgetById(target.dataset.id);
+    console.log("Im properly wrapping: " + (w?.id || w?.options?.id));
+
+    //Compose widget Panel:
+    let widgetMainPanel = ui.editor_widgetMainPanel(w);
+    ui.openSecondSideMenu(widgetMainPanel);
+  };
+
+  // Iterate over widgets whether Map or plain object
+  const entries =
+    widgetsStore instanceof Map
+      ? widgetsStore.entries()
+      : Object.entries(widgetsStore);
+  for (const [wId, w] of entries) {
+    // resolve main button via new API or old one
+    let mainBtn = null;
+    if (typeof w.getMainButton === "function") mainBtn = w.getMainButton();
+    else if (typeof w.mainBtn === "function") mainBtn = w.mainBtn();
+    else mainBtn = w.mainBtn || null;
+
+    if (mainBtn) {
+      if (wId !== "layers") {
+        // TODO: temporary: don't duplicate models in scene and widget tabs
+        // ensure dataset.id exists for backward compatibility
+        if (!mainBtn.dataset || !mainBtn.dataset.id)
+          mainBtn.setAttribute("data-id", wId);
+        mainBtn.addEventListener("click", function () {
+          onWidgetMainButtonClicked(this);
+        });
+        widgetsBtnList.push(mainBtn);
+      }
     }
+  }
 
-    const onWidgetMainButtonClicked = (target) => {
-        //Reset preview opened tools and panels:
-        editor.onCloseInspectorBtnClicked();
-        ui.editor_removeGizmoToolBox();
+  return widgetsBtnList;
+};
 
-        if (!target.dataset || !target.dataset.id) throw("Issues with: " + target);
-        const w = resolveWidgetById(target.dataset.id);
-        console.log("Im properly wrapping: " + (w?.id || w?.options?.id));
+ui.inspectorHeader = (headContent) => {
+  //OLD
 
-        //Compose widget Panel:
-        let widgetMainPanel = ui.editor_widgetMainPanel(w);
-        ui.openSecondSideMenu(widgetMainPanel)
-    }
+  return UI.flexBox({
+    dir: "row",
+    justifyContent: "space-between",
+    wrap: "nowrap",
+    content: [
+      UI.createEl({ content: headContent }),
+      UI.button({ icon: "cancel", onClick: editor.onCloseInspectorBtnClicked }),
+    ],
+  });
+};
 
-    // Iterate over widgets whether Map or plain object
-    const entries = (widgetsStore instanceof Map) ? widgetsStore.entries() : Object.entries(widgetsStore);
-    for (const [wId, w] of entries) {
-        // resolve main button via new API or old one
-        let mainBtn = null;
-        if (typeof w.getMainButton === 'function') mainBtn = w.getMainButton();
-        else if (typeof w.mainBtn === 'function') mainBtn = w.mainBtn();
-        else mainBtn = w.mainBtn || null;
+ui.updateVector3UI = (idContainer, _v) => {
+  console.log(idContainer);
+  console.log(_v);
+  document.querySelector(`#${idContainer} [name="x"]`).value = _v.x;
+  document.querySelector(`#${idContainer} [name="y"]`).value = _v.y;
+  document.querySelector(`#${idContainer} [name="z"]`).value = _v.z;
+};
 
-        if (mainBtn) {
-            if (wId !== "layers") { // TODO: temporary: don't duplicate models in scene and widget tabs
-                // ensure dataset.id exists for backward compatibility
-                if (!mainBtn.dataset || !mainBtn.dataset.id) mainBtn.setAttribute("data-id", wId);
-                mainBtn.addEventListener("click", function(){ onWidgetMainButtonClicked(this); });
-                widgetsBtnList.push(mainBtn);
-            }
-        }
-    }
+ui.headerPanel = (title, btn = null) => {
+  return UI.flexBox({
+    dir: "row",
+    content: [title, btn],
+    justifyContent: "space-between",
+  });
+};
 
-    return widgetsBtnList;
-}
+ui.closeSecondSideMenu = (id = null) => {
+  var _id = id ? id : ui.ID_SecondSideMenuCurrentlyActive;
+  if (!_id) return;
+  var secondSidePanel = document.getElementById(_id);
+  if (secondSidePanel) secondSidePanel.remove();
+};
 
-ui.inspectorHeader=(headContent)=>{ //OLD
+ui.openSecondSideMenu = (content) => {
+  //Close existing panel
+  console.log(content);
+  ui.closeSecondSideMenu();
 
-       return UI.flexBox({
-            dir:"row",
-            justifyContent:"space-between",
-            wrap:"nowrap",
-            content:[
-                UI.createEl({content:headContent}),
-                UI.button({icon:"cancel", onClick:editor.onCloseInspectorBtnClicked})
-            ]
-        })
-}
+  const panel = UI.createEl({
+    id: ui.ID_SecondSideMenuCurrentlyActive,
+    classList: ["secondSideMenu", "p-2", "dark_bg", "rounded-2"],
+    content,
+  });
+  document.getElementById(ui.ID_MainSideMenu).appendChild(panel);
+};
 
-ui.updateVector3UI =(idContainer,_v)=>{
-    console.log(idContainer);
-    console.log(_v)
-     document.querySelector(`#${idContainer} [name="x"]`).value = _v.x;
-     document.querySelector(`#${idContainer} [name="y"]`).value = _v.y;
-     document.querySelector(`#${idContainer} [name="z"]`).value = _v.z;
-}
+ui.editor_removeGizmoToolBox = () => {
+  let gizmoToolbox = document.getElementById(
+    ui.IDeditor_centralToolBoxContainer
+  );
+  if (gizmoToolbox) gizmoToolbox.remove();
+};
 
-ui.headerPanel=(title, btn=null)=>{
-    return UI.flexBox({
-        dir: "row",
-        content:[title,btn],
-        justifyContent:"space-between"
+ui.editor_setCentralHelperPanel = (content) => {
+  document.body.appendChild(
+    UI.createEl({
+      id: ui.IDeditor_centralToolBoxContainer,
+      classList: [
+        "editorContainer_centerToolbox",
+        "aton-std-bg",
+        "rounded",
+        "p-2",
+      ],
+      content,
     })
-}
+  );
+  // rounded p-2
+};
 
-ui.closeSecondSideMenu=(id=null)=>{
-    var _id = id? id : ui.ID_SecondSideMenuCurrentlyActive;
-    if(!_id) return;
-    var secondSidePanel = document.getElementById(_id);
-    if(secondSidePanel) secondSidePanel.remove();
-}
+ui.editor_removeCentralHelperPanel = () => {
+  let centralHelper = document.getElementById(
+    ui.IDeditor_centralToolBoxContainer
+  );
+  if (centralHelper) centralHelper.remove();
+};
 
-ui.openSecondSideMenu=(content)=>{
-    //Close existing panel
-    console.log(content)
-    ui.closeSecondSideMenu(); 
-
-    
-    const panel = UI.createEl({
-        id:ui.ID_SecondSideMenuCurrentlyActive,
-        classList:["secondSideMenu","p-2", "dark_bg", "rounded-2"],
-        content
-     });
-    document.getElementById(ui.ID_MainSideMenu).appendChild(panel);
-}
-
-ui.editor_removeGizmoToolBox=()=>{
-    
-    let gizmoToolbox = document.getElementById(ui.IDeditor_centralToolBoxContainer);
-    if(gizmoToolbox) gizmoToolbox.remove();
-}
-
-ui.editor_setCentralHelperPanel=(content)=>{
-    document.body.appendChild(UI.createEl({id:ui.IDeditor_centralToolBoxContainer, classList:["editorContainer_centerToolbox","aton-std-bg","rounded","p-2"],content}));
-    // rounded p-2
-}
-
-ui.editor_removeCentralHelperPanel=()=>{
-    let centralHelper = document.getElementById(ui.IDeditor_centralToolBoxContainer);
-    if(centralHelper) centralHelper.remove();
-}
-
-ui.wrapInToast=(o)=>{
-
-    let s =`
+ui.wrapInToast = (o) => {
+  let s = `
    
         <div role="alert" aria-live="assertive" aria-atomic="true">
             
@@ -562,32 +691,31 @@ ui.wrapInToast=(o)=>{
             </div>
         </div>
  
-  `
+  `;
 
-    let el = uikit.createElfromString(s);
+  let el = uikit.createElfromString(s);
 
-    if(!o.btns) return el;
-    //Append btns
-    let btnsContainer = el.querySelector('#btnsContainer');
+  if (!o.btns) return el;
+  //Append btns
+  let btnsContainer = el.querySelector("#btnsContainer");
 
-    o.btns.forEach(btn => {
-        btnsContainer.appendChild(btn);
-    });
+  o.btns.forEach((btn) => {
+    btnsContainer.appendChild(btn);
+  });
 
-    return el;
-}
+  return el;
+};
 
+ui.setStyleOfActiveBtn = (target) => {
+  //Clean others active elements:
+  ui.resetStyleOfActiveBtns();
+  //Set the new active btn:
+  target.classList.add("currentlyActive_ItemBtn");
+};
 
-ui.setStyleOfActiveBtn=(target)=>{
-    //Clean others active elements:
-    ui.resetStyleOfActiveBtns();
-    //Set the new active btn:
-    target.classList.add("currentlyActive_ItemBtn");
-}
-
-ui.resetStyleOfActiveBtns=()=>{
-    const activeBtns = document.querySelectorAll('.currentlyActive_ItemBtn');
-    activeBtns.forEach(btn => btn.classList.remove("currentlyActive_ItemBtn"));
-}
+ui.resetStyleOfActiveBtns = () => {
+  const activeBtns = document.querySelectorAll(".currentlyActive_ItemBtn");
+  activeBtns.forEach((btn) => btn.classList.remove("currentlyActive_ItemBtn"));
+};
 
 export { ui };

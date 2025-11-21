@@ -44,6 +44,7 @@ editor.initialize = () => {
 
 editor.TestCustomEventsSetup = () => {
   ATON.on("KeyPress", function (k) {
+    console.log("KeyPress event detected: " + k);
     if (k === "x") ATON.fireEvent("myEvent", ATON._queryDataScene);
   });
 

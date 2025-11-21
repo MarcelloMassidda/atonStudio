@@ -3,6 +3,7 @@ import { LayerWidget } from "../widgets/LayerWidget.js";
 import { LibraryLayerWidget } from "../widgets/LibraryLayerWidget.js";
 import { PointOfViewWidget } from "../widgets/PointOfViewWidget.js";
 import { MeasurementsWidget } from "../widgets/MeasurementsWidget.js";
+import { SemanticsWidget } from "../widgets/SemanticsWidget.js";
 import { OverrideCapability } from "../capabilities/OverrideCapability.js";
 import { ScreenOverrideCapability } from "../capabilities/ScreenOverrideCapability.js";
 
@@ -27,6 +28,10 @@ export const createFreeTemplate = (app) => {
   // Create measurements widget
   const measurementsWidget = new MeasurementsWidget(app);
   template.registerWidget(measurementsWidget);
+
+  // Create semantics widget
+  const semanticsWidget = new SemanticsWidget(app);
+  template.registerWidget(semanticsWidget);
 
   return template;
 };
