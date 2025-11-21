@@ -6,6 +6,7 @@ import { MeasurementsWidget } from "../widgets/MeasurementsWidget.js";
 import { SemanticsWidget } from "../widgets/SemanticsWidget.js";
 import { OverrideCapability } from "../capabilities/OverrideCapability.js";
 import { ScreenOverrideCapability } from "../capabilities/ScreenOverrideCapability.js";
+import { BasicSemanticInfo } from "../capabilities/BasicSemanticInfo.js";
 
 /**
  * Free prototyping template with full capabilities
@@ -29,8 +30,9 @@ export const createFreeTemplate = (app) => {
   const measurementsWidget = new MeasurementsWidget(app);
   template.registerWidget(measurementsWidget);
 
-  // Create semantics widget
+  // Create semantics widget with BasicSemanticInfo capability
   const semanticsWidget = new SemanticsWidget(app);
+  semanticsWidget.registerCapability(new BasicSemanticInfo());
   template.registerWidget(semanticsWidget);
 
   return template;

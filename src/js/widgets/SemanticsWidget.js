@@ -84,7 +84,7 @@ export class SemanticsWidget extends Widget {
     const semanticType = this.getSemanticsType(id);
     const icon = semanticType === "sphere" ? "ann-sphere" : "ann-convex";
 
-    const btnOptions = {
+    let btnOptions = {
       icon: icon,
       id: id,
       text: id,
@@ -93,6 +93,15 @@ export class SemanticsWidget extends Widget {
         this.app.widgetsHub.onClicked_itemBtn_base(event.target);
       },
     };
+
+    // Allow registered capabilities to decorate the button (adds badges)
+    const itemCaps = this.getItemCapabilities(id, item);
+    itemCaps.forEach((capId) => {
+      const capability = this.capabilities.get(capId);
+      if (capability?.decorateItemBtn) {
+        btnOptions = capability.decorateItemBtn(btnOptions, item, this);
+      }
+    });
 
     return this.app.widgetsHub.itemBtn_base(btnOptions);
   }
