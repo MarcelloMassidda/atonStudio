@@ -324,4 +324,193 @@ export class ModernWidgetHub {
   getCurrentScene() {
     return this.app.db.data.currScene;
   }
+
+  /**
+   * Assign an action to a semantic node
+   * Shows scrollable list of actions grouped by widget
+   * Stores result in semanticgraph.nodes[nid].events.onSelect
+   */
+  assignActionToNode(node, widget) {
+    // Get template filtering if available
+    const template = this.app.editor.activeTemplate;
+    const allowedActions = template?.allowedActions || {};
+
+    // Collect all available actions from all widgets
+    const actionsByWidget = {};
+
+    // Iterate through all registered widgets
+    for (const [widgetId, w] of this.widgets.entries()) {
+      const actions = w.getActions();
+      if (!actions || actions.length === 0) continue;
+
+      // Apply template filtering if configured
+      let filteredActions = actions;
+      if (allowedActions[widgetId]) {
+        filteredActions = actions.filter((action) =>
+          allowedActions[widgetId].includes(action.id)
+        );
+      }
+
+      if (filteredActions.length > 0) {
+        actionsByWidget[widgetId] = filteredActions;
+      }
+    }
+
+    if (Object.keys(actionsByWidget).length === 0) {
+      window.alert("No actions available");
+      return;
+    }
+
+    // Create action list grouped by widget
+    const bodyContent = document.createElement("div");
+    
+    // Add instruction text
+    const instruction = document.createElement("p");
+    instruction.classList.add("text-muted", "mb-3");
+    instruction.textContent = "Select the action to assign to this semantic node:";
+    bodyContent.appendChild(instruction);
+    
+    // Create list group
+    const listGroup = document.createElement("div");
+    listGroup.classList.add("list-group");
+    bodyContent.appendChild(listGroup);
+
+    for (const [widgetId, actions] of Object.entries(actionsByWidget)) {
+      const widgetObj = this.getWidget(widgetId);
+      const widgetName = widgetObj?.options?.mainBtnOptions?.text || widgetId;
+
+      // Add widget header
+      const header = document.createElement("div");
+      header.classList.add("list-group-item", "list-group-item-secondary", "fw-bold");
+      header.textContent = widgetName;
+      listGroup.appendChild(header);
+
+      // Add action items for this widget
+      actions.forEach((action) => {
+        const actionItem = document.createElement("button");
+        actionItem.type = "button";
+        actionItem.classList.add("list-group-item", "list-group-item-action");
+        actionItem.textContent = action.name;
+        
+        actionItem.addEventListener("click", () => {
+          this.saveActionAssignment(node, widget, action);
+        });
+        
+        listGroup.appendChild(actionItem);
+      });
+    }
+
+    // Show modal with action list
+    ATON.UI.showModal({
+      header: "Assign Action",
+      body: bodyContent,
+      size: "md",
+    });
+  }
+
+  /**
+   * Save action assignment to semantic node
+   */
+  saveActionAssignment(node, widget, action) {
+    const scene = this.getCurrentScene();
+    const nid = node.nid;
+
+    // Initialize structure if needed
+    if (!scene.semanticgraph) scene.semanticgraph = { nodes: {}, edges: {} };
+    if (!scene.semanticgraph.nodes[nid]) scene.semanticgraph.nodes[nid] = {};
+    if (!scene.semanticgraph.nodes[nid].events)
+      scene.semanticgraph.nodes[nid].events = {};
+
+    // Store action assignment
+    scene.semanticgraph.nodes[nid].events.onSelect = {
+      actionId: action.id,
+      widgetId: action.widgetId,
+      args: {}, // TODO: extract args from property inputs
+    };
+
+    // Compose patch
+    const patch = {
+      semanticgraph: {
+        nodes: {
+          [nid]: {
+            events: scene.semanticgraph.nodes[nid].events,
+          },
+        },
+        edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
+      },
+    };
+
+    widget.editor.patch = patch;
+    widget.editor.modePatch = ATON.SceneHub.MODE_ADD;
+    widget.editor.OnPatchChanged();
+
+    console.log(`✅ Assigned action ${action.id} to semantic node ${nid}`);
+
+    // Close modal
+    ATON.UI.hideModal();
+
+    // Update UI to show badge and refresh hierarchy
+    this.app.ui.editor_updateHierarchy();
+    this.app.ui.editor_updateWidgetMainPanel();
+
+    // Refocus to update inspector
+    this.focusOnItem({ id: nid, wid: widget.id });
+  }
+
+  /**
+   * Remove action assignment from semantic node
+   * Deletes only the events.onSelect property, not the semantic node itself
+   * Calls action's onDelete method if provided to clean up action-specific data
+   */
+  removeActionFromNode(node, widget) {
+    const scene = this.getCurrentScene();
+    const nid = node.nid;
+
+    // Get the current action assignment before removing it
+    const actionAssignment = scene.semanticgraph?.nodes?.[nid]?.events?.onSelect;
+    
+    if (actionAssignment) {
+      // Find the action definition
+      const actionWidget = this.getWidget(actionAssignment.widgetId);
+      if (actionWidget) {
+        const actions = actionWidget.getActions();
+        const action = actions.find((a) => a.id === actionAssignment.actionId);
+        
+        // If action has an onDelete method, call it to clean up action-specific data
+        if (action && action.onDelete) {
+          console.log(`🧹 Calling onDelete for action ${action.id}`);
+          action.onDelete({ node, widget, scene });
+        }
+      }
+
+      // Remove action assignment from local scene data
+      delete scene.semanticgraph.nodes[nid].events.onSelect;
+    }
+
+    // Send delete patch - only for the events property
+    const deletePatch = {
+      semanticgraph: {
+        nodes: {
+          [nid]: {
+            events: {
+              onSelect: {},
+            },
+          },
+        },
+      },
+    };
+
+    widget.editor.patch = deletePatch;
+    widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
+    widget.editor.OnPatchChanged();
+
+    console.log(`🗑️ Removed action from semantic node ${nid}`);
+
+    // Update UI to remove badge and refresh hierarchy
+    this.app.ui.editor_updateHierarchy();
+    this.app.ui.editor_updateWidgetMainPanel();
+
+    // Refocus to update inspector (will show Assign Action button)
+    this.focusOnItem({ id: nid, wid: widget.id });
+  }
 }

@@ -403,6 +403,24 @@ uikit.createContainer = (options) => {
   return el;
 };
 
+/**
+ * Create a text element (paragraph or span)
+ * Wrapper for UI.createEl from uitoolkit
+ * @param {Object} options - Configuration object
+ * @param {string} options.text - The text content
+ * @param {Array|string} options.classList - CSS classes to apply
+ * @param {string} options.tag - HTML tag to use (default: 'p')
+ * @returns {Element} The created text element
+ */
+uikit.createText = (options) => {
+  const tag = options.tag || 'p';
+  return UI.createEl({
+    tag: tag,
+    innerHTML: options.text || '',
+    classList: options.classList
+  });
+};
+
 uikit.TextureSelectorBlock = (imgPath, onBtnClicked, materialName) => {
   const imageThumb = (path) => {
     let icon = ATON.Utils.resolveCollectionURL(path);

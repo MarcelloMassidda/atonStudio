@@ -589,4 +589,29 @@ export class Widget {
       items: dropdownItems,
     });
   }
+
+  /**
+   * Get actions for this widget
+   * Returns array of action objects that can be assigned to items at runtime
+   * Override in subclasses to provide widget-specific actions
+   * Capabilities can augment actions via addActions()
+   * @returns {Array} Array of action objects
+   */
+  getActions() {
+    let actions = [];
+
+    // Get actions from all registered capabilities
+    // Note: We get actions from ALL capabilities, not just equipped ones
+    // This is because the action catalog should show what's possible
+    this.capabilities.forEach((capability) => {
+      if (capability?.addActions) {
+        const capActions = capability.addActions(this);
+        if (capActions && Array.isArray(capActions)) {
+          actions = actions.concat(capActions);
+        }
+      }
+    });
+
+    return actions;
+  }
 }

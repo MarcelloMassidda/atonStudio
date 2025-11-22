@@ -6,7 +6,7 @@ import { MeasurementsWidget } from "../widgets/MeasurementsWidget.js";
 import { SemanticsWidget } from "../widgets/SemanticsWidget.js";
 import { OverrideCapability } from "../capabilities/OverrideCapability.js";
 import { ScreenOverrideCapability } from "../capabilities/ScreenOverrideCapability.js";
-import { BasicSemanticInfo } from "../capabilities/BasicSemanticInfo.js";
+import { BasicSemanticInfo_action } from "../capabilities/BasicSemanticInfo_action.js";
 
 /**
  * Free prototyping template with full capabilities
@@ -15,6 +15,12 @@ export const createFreeTemplate = (app) => {
   const template = new Template({
     id: "free",
     name: "Free Prototyping",
+    allowedActions: {
+      layers: ["toggleVisible"],
+      annotations: ["editDescription"],
+      viewpoints: [],
+      measurements: [],
+    },
   });
 
   // Create layer widget with full override capability
@@ -30,9 +36,9 @@ export const createFreeTemplate = (app) => {
   const measurementsWidget = new MeasurementsWidget(app);
   template.registerWidget(measurementsWidget);
 
-  // Create semantics widget with BasicSemanticInfo capability
+  // Create semantics widget with BasicSemanticInfo_action (action-only capability)
   const semanticsWidget = new SemanticsWidget(app);
-  semanticsWidget.registerCapability(new BasicSemanticInfo());
+  semanticsWidget.registerCapability(new BasicSemanticInfo_action());
   template.registerWidget(semanticsWidget);
 
   return template;
@@ -45,6 +51,10 @@ export const createExhibitionTemplate = (app) => {
   const template = new Template({
     id: "exhibition",
     name: "Exhibition Design",
+    allowedActions: {
+      layers: [],
+      annotations: [],
+    },
   });
 
   // Create library widget with screen override capability

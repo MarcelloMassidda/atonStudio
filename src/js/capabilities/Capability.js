@@ -131,4 +131,15 @@ export class Capability {
     modifyPatchData(patch, item, widget) { 
         return patch; 
     }
+
+    /**
+     * Add actions to the widget's action catalog
+     * Override in subclasses to provide capability-specific actions
+     * Actions are widget-level capabilities, not item-specific
+     * @param {Widget} widget - The widget this capability is registered to
+     * @returns {Array} Array of action objects
+     */
+    addActions(widget) {
+        return [];
+    }
 }

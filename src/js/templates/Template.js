@@ -6,6 +6,7 @@ export class Template {
         this.id = options.id;
         this.name = options.name;
         this.widgets = new Map();
+        this.allowedActions = options.allowedActions || {}; // Filter actions by widget {widgetId: [actionIds]}
     }
 
     /**

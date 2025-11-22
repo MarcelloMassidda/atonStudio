@@ -140,7 +140,7 @@ export class OverrideCapability extends Capability {
     if (hasOverride) {
       const undoBtn = widget.app.uikit.createButton({
         text: "Undo Override",
-        icon: "undo",
+        icon: "cancel",
         classList: ["btn-sm", "btn-warning", "mt-2"],
         onClick: () => this.restoreOriginalMaterial(material, item, widget),
       });

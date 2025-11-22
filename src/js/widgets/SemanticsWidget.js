@@ -36,6 +36,9 @@ export class SemanticsWidget extends Widget {
           inspectorBlock: (node) => this.createRadiusInspector(node),
           get: () => this.getRadiusFromNode(),
         },
+        events: {
+          inspectorBlock: (node) => this.createEventsInspector(node),
+        },
       },
       components: {
         delete: {
@@ -94,14 +97,17 @@ export class SemanticsWidget extends Widget {
       },
     };
 
-    // Allow registered capabilities to decorate the button (adds badges)
-    const itemCaps = this.getItemCapabilities(id, item);
-    itemCaps.forEach((capId) => {
-      const capability = this.capabilities.get(capId);
-      if (capability?.decorateItemBtn) {
-        btnOptions = capability.decorateItemBtn(btnOptions, item, this);
-      }
-    });
+    // Check if semantic node has assigned actions - add ⚡ badge
+    const scene = this.getCurrentScene();
+    const semNode = scene.semanticgraph?.nodes?.[id];
+    if (semNode?.events?.onSelect) {
+      btnOptions.badges = btnOptions.badges || [];
+      btnOptions.badges.push({
+        text: "⚡",
+        type: "warning",
+        title: "Has assigned action",
+      });
+    }
 
     return this.app.widgetsHub.itemBtn_base(btnOptions);
   }
@@ -575,6 +581,68 @@ export class SemanticsWidget extends Widget {
       v: node.children[0].scale.x,
       onChange: (evt) => this.onPropertyChange(evt),
     });
+  }
+
+  /**
+   * Create events inspector block
+   * Shows assigned actions and provides "Assign Action" button
+   */
+  createEventsInspector(node) {
+    const scene = this.getCurrentScene();
+    const semNode = scene.semanticgraph?.nodes?.[node.nid];
+    const hasAction = semNode?.events?.onSelect;
+
+    const container = this.app.uikit.createContainer({
+      classList: ["inspector_Block"],
+      content: [],
+    });
+
+    // If no action assigned, show only "Assign Action" button
+    if (!hasAction) {
+      const assignBtn = this.app.uikit.createButton({
+        text: "Assign Action",
+        icon: "add",
+        onClick: () => {
+          this.app.widgetsHub.assignActionToNode(node, this);
+        },
+      });
+      container.appendChild(assignBtn);
+      return container;
+    }
+
+    // If action is assigned, render the action's inspector block
+    const actionWidget = this.app.widgetsHub.getWidget(hasAction.widgetId);
+    if (actionWidget) {
+      const actions = actionWidget.getActions();
+      const action = actions.find((a) => a.id === hasAction.actionId);
+
+      if (action && action.getProperties) {
+        // Get properties from action
+        const props = action.getProperties({ node, widget: this });
+
+        // Render each property's inspector block
+        for (const [propName, propConfig] of Object.entries(props)) {
+          if (propConfig.inspectorBlock) {
+            const block = propConfig.inspectorBlock();
+            if (block) container.appendChild(block);
+          }
+        }
+      }
+    }
+
+    // Add "Remove Action" button at the bottom
+    const removeBtn = this.app.uikit.createButton({
+      text: "Remove Action",
+      icon: "cancel",
+      variant: "warning",
+      classList: ["btn-sm", "mt-2"],
+      onClick: () => {
+        this.app.widgetsHub.removeActionFromNode(node, this);
+      },
+    });
+    container.appendChild(removeBtn);
+
+    return container;
   }
 
   /**

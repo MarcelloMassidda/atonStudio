@@ -4,7 +4,7 @@ import { Widget } from "./base/Widget.js";
  * Widget for managing 3D model layers in the scene
  */
 export class LayerWidget extends Widget {
-  constructor(app) {
+constructor(app) {
     const options = {
       id: "layers",
       hierarchy: true,
@@ -359,6 +359,185 @@ export class LayerWidget extends Widget {
    */
   getTextureForNode(nid) {
     return this.getCurrentScene().texturized?.[nid]?.imageScreenPath;
+  }
+
+  /**
+   * Get actions for this widget
+   * Provides widget-native actions like toggleVisible
+   */
+  getActions() {
+    // Get base actions from capabilities
+    const baseActions = super.getActions();
+
+    // Add widget-specific actions
+    const widgetActions = [
+      {
+        id: "toggleVisible",
+        name: "Toggle Layer Visibility",
+        widgetId: this.id,
+        getProperties: (context) => {
+          const { node } = context;
+          return {
+            visibility: {
+              inspectorBlock: () => this.createLayerSelectionBlock(node),
+            },
+          };
+        },
+        execute: (context) => {
+          // Runtime execution handled by hathor.js
+          // Context: {item: {nid, wid}, args: {...}, app, widget}
+        },
+        onDelete: (context) => {
+          // Clean up targetLayerId when action is removed
+          const { node, widget, scene } = context;
+          const nid = node.nid;
+
+          console.log(`🧹 Cleaning up toggleVisible action for semantic node ${nid}`);
+
+          // Remove targetLayerId from events
+          if (scene.semanticgraph?.nodes?.[nid]?.events?.onSelect?.args?.targetLayerId) {
+            delete scene.semanticgraph.nodes[nid].events.onSelect.args.targetLayerId;
+          }
+        },
+      },
+    ];
+
+    return baseActions.concat(widgetActions);
+  }
+
+  /**
+   * Create layer selection inspector block
+   * Shows selected layer or "Select Layer" button
+   */
+  createLayerSelectionBlock(node) {
+    const scene = this.getCurrentScene();
+    const semNode = scene.semanticgraph?.nodes?.[node.nid];
+    const targetLayerId = semNode?.events?.onSelect?.args?.targetLayerId;
+
+    const container = this.app.uikit.createContainer({
+      classList: ["inspector_Block"],
+      content: [],
+    });
+
+    // If layer is already selected, show it
+    if (targetLayerId) {
+      const layerInfo = this.app.uikit.createText({
+        text: `Target Layer: ${targetLayerId}`,
+        classList: ["text-info", "mb-2"],
+      });
+      container.appendChild(layerInfo);
+
+      const changeBtn = this.app.uikit.createButton({
+        text: "Change Layer",
+        icon: "collection-item",
+        onClick: () => this.openLayerSelectionModal(node),
+      });
+      container.appendChild(changeBtn);
+    } else {
+      // No layer selected yet
+      const selectBtn = this.app.uikit.createButton({
+        text: "Select Layer",
+        icon: "collection-item",
+        onClick: () => this.openLayerSelectionModal(node),
+      });
+      container.appendChild(selectBtn);
+    }
+
+    return container;
+  }
+
+  /**
+   * Open modal to select a layer
+   * Similar to action selection modal
+   */
+  openLayerSelectionModal(node) {
+    const scene = this.getCurrentScene();
+    const layers = scene.scenegraph?.nodes;
+
+    if (!layers || Object.keys(layers).length === 0) {
+      window.alert("No layers available in the scene");
+      return;
+    }
+
+    // Create modal body
+    const bodyContent = document.createElement("div");
+
+    // Add instruction text
+    const instruction = document.createElement("p");
+    instruction.classList.add("text-muted", "mb-3");
+    instruction.textContent = "Select the layer to toggle visibility:";
+    bodyContent.appendChild(instruction);
+
+    // Create list group
+    const listGroup = document.createElement("div");
+    listGroup.classList.add("list-group");
+    bodyContent.appendChild(listGroup);
+
+    // Add layers to list
+    for (const [layerId, layerData] of Object.entries(layers)) {
+      const layerItem = document.createElement("button");
+      layerItem.type = "button";
+      layerItem.classList.add("list-group-item", "list-group-item-action");
+      layerItem.textContent = layerId;
+
+      layerItem.addEventListener("click", () => {
+        this.saveLayerSelection(node, layerId);
+      });
+
+      listGroup.appendChild(layerItem);
+    }
+
+    // Show modal
+    ATON.UI.showModal({
+      header: "Select Target Layer",
+      body: bodyContent,
+      size: "md",
+    });
+  }
+
+  /**
+   * Save layer selection to semantic node
+   */
+  saveLayerSelection(node, targetLayerId) {
+    const scene = this.getCurrentScene();
+    const nid = node.nid;
+
+    // Store targetLayerId in args
+    if (!scene.semanticgraph.nodes[nid].events) {
+      scene.semanticgraph.nodes[nid].events = {};
+    }
+    if (!scene.semanticgraph.nodes[nid].events.onSelect) {
+      scene.semanticgraph.nodes[nid].events.onSelect = {};
+    }
+    if (!scene.semanticgraph.nodes[nid].events.onSelect.args) {
+      scene.semanticgraph.nodes[nid].events.onSelect.args = {};
+    }
+
+    scene.semanticgraph.nodes[nid].events.onSelect.args.targetLayerId = targetLayerId;
+
+    // Compose patch
+    const patch = {
+      semanticgraph: {
+        nodes: {
+          [nid]: {
+            events: scene.semanticgraph.nodes[nid].events,
+          },
+        },
+        edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
+      },
+    };
+
+    this.editor.patch = patch;
+    this.editor.modePatch = ATON.SceneHub.MODE_ADD;
+    this.editor.OnPatchChanged();
+
+    console.log(`✅ Layer ${targetLayerId} assigned to semantic node ${nid}`);
+
+    // Close modal
+    ATON.UI.hideModal();
+
+    // Update inspector to show selected layer
+    this.app.widgetsHub.focusOnItem({ id: nid, wid: "annotations" });
   }
 
   /**
