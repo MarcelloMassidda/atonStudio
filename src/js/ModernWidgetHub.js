@@ -478,10 +478,10 @@ export class ModernWidgetHub {
 
   /**
    * Remove action from semantic node
-   * Removes specific action from the actions array by index
+   * Removes specific action from the actions array by actionId
    * Calls action's onDelete method if provided to clean up action-specific data
    */
-  removeActionFromNode(node, widget, actionIndex = null) {
+  removeActionFromNode(node, widget, actionId = null) {
     const scene = this.getCurrentScene();
     const nid = node.nid;
 
@@ -491,14 +491,14 @@ export class ModernWidgetHub {
     // Convert to array if needed
     let actions = Array.isArray(actionsData) ? actionsData : [actionsData];
     
-    // If no specific index, remove all actions
-    if (actionIndex === null) {
+    // If no specific actionId, remove all actions
+    if (actionId === null) {
       // Call onDelete for all actions
       actions.forEach(actionAssignment => {
         const actionWidget = this.getWidget(actionAssignment.widgetId);
         if (actionWidget) {
           const widgetActions = actionWidget.getActions();
-          const action = widgetActions.find((a) => a.id === actionAssignment.actionId);
+          const action = widgetActions.find((a) => a.id === actionAssignment.actionType);
           
           if (action && action.onDelete) {
             console.log(`🧹 Calling onDelete for action ${action.id}`);
@@ -529,9 +529,11 @@ export class ModernWidgetHub {
 
       console.log(`🗑️ Removed all actions from semantic node ${nid}`);
     } else {
-      // Remove specific action by index
-      if (actionIndex < 0 || actionIndex >= actions.length) {
-        console.warn(`Invalid action index: ${actionIndex}`);
+      // Remove specific action by actionId
+      const actionIndex = actions.findIndex((a) => a.actionId === actionId);
+      
+      if (actionIndex === -1) {
+        console.warn(`Action with ID ${actionId} not found`);
         return;
       }
 
@@ -541,7 +543,7 @@ export class ModernWidgetHub {
       const actionWidget = this.getWidget(actionAssignment.widgetId);
       if (actionWidget) {
         const widgetActions = actionWidget.getActions();
-        const action = widgetActions.find((a) => a.id === actionAssignment.actionId);
+        const action = widgetActions.find((a) => a.id === actionAssignment.actionType);
         
         if (action && action.onDelete) {
           console.log(`🧹 Calling onDelete for action ${action.id}`);
@@ -565,9 +567,8 @@ export class ModernWidgetHub {
           nodes: {
             [nid]: {
               events: scene.semanticgraph.nodes[nid].events,
-            },
-          },
-          edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
+            }
+          }
         },
       };
 

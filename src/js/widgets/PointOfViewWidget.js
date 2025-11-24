@@ -60,6 +60,171 @@ export class PointOfViewWidget extends Widget {
   }
 
   /**
+   * Get actions for this widget
+   * @returns {Array} Array of action definitions
+   */
+  getActions() {
+    const actions = super.getActions();
+
+    actions.push({
+      id: "goToPov",
+      name: "Go to Point of View",
+      widgetId: this.id,
+      getProperties: (context) => {
+        const { node, actionId, args } = context;
+        return {
+          pov: {
+            inspectorBlock: () => this.createPOVSelectionBlock(node, actionId, args),
+          },
+        };
+      },
+      execute: (context) => {
+        // This will be handled by the flare
+      },
+      onDelete: (context) => {
+        const { node, actionId } = context;
+        const scene = ATON.SceneHub.currData;
+        if (!scene) return;
+
+        const nodeData = scene.semanticgraph?.nodes?.[node.nid];
+        if (!nodeData?.events?.onSelect) return;
+
+        const actions = nodeData.events.onSelect;
+        if (!Array.isArray(actions)) return;
+
+        // Find the action and clean up its args
+        const action = actions.find((a) => a.actionId === actionId);
+        if (action && action.args) {
+          delete action.args.targetPOVId;
+        }
+      },
+    });
+
+    return actions;
+  }
+
+  /**
+   * Create POV selection block for action inspector
+   */
+  createPOVSelectionBlock(node, actionId, args) {
+    const container = this.app.uikit.createContainer({ classList: ["inspector_Block"] });
+
+    const selectedPOVId = args?.targetPOVId;
+
+    if (selectedPOVId) {
+      const btnText = `📍 ${selectedPOVId}`;
+      const btn = this.app.uikit.createButton({
+        text: btnText,
+        onClick: () => this.openPOVSelectionModal(node, actionId),
+      });
+      container.appendChild(btn);
+    } else {
+      const btn = this.app.uikit.createButton({
+        text: "Select Point of View",
+        onClick: () => this.openPOVSelectionModal(node, actionId),
+      });
+      container.appendChild(btn);
+    }
+
+    return container;
+  }
+
+  /**
+   * Open modal to select POV
+   */
+  openPOVSelectionModal(node, actionId) {
+    const scene = this.getCurrentScene();
+    if (!scene.viewpoints || Object.keys(scene.viewpoints).length === 0) {
+      ATON.UI.showModal({
+        title: "No Viewpoints Available",
+        body: "There are no viewpoints in the scene. Please create at least one viewpoint first.",
+      });
+      return;
+    }
+
+    const modalContent = this.app.uikit.createContainer({});
+
+    // Add instruction text
+    const instructionText = this.app.uikit.createText({
+      text: "Select a Point of View to navigate to when this semantic node is selected:",
+      classList: ["text-muted", "mb-2"],
+    });
+    modalContent.appendChild(instructionText);
+
+    // Create list group
+    const listGroup = this.app.uikit.createContainer({
+      classList: ["list-group"],
+    });
+
+    for (const [povId, povData] of Object.entries(scene.viewpoints)) {
+      const item = this.app.uikit.createButton({
+        text: `📍 ${povId}`,
+        classList: ["list-group-item", "list-group-item-action"],
+        onClick: () => {
+          this.savePOVSelection(node, actionId, povId);
+          ATON.UI.hideModal();
+        },
+      });
+      listGroup.appendChild(item);
+    }
+
+    modalContent.appendChild(listGroup);
+
+    ATON.UI.showModal({
+      title: "Select Point of View",
+      body: modalContent,
+    });
+  }
+
+  /**
+   * Save POV selection for this action
+   */
+  savePOVSelection(node, actionId, targetPOVId) {
+    const scene = this.getCurrentScene();
+    if (!scene) return;
+
+    const nid = node.nid;
+    const nodeData = scene.semanticgraph?.nodes?.[nid];
+    if (!nodeData?.events?.onSelect) return;
+
+    const actions = nodeData.events.onSelect;
+    if (!Array.isArray(actions)) return;
+
+    // Find the specific action by actionId and update its args
+    const action = actions.find((a) => a.actionId === actionId);
+    if (action) {
+      if (!action.args) action.args = {};
+      action.args.targetPOVId = targetPOVId;
+
+      // Update the local scene data
+      scene.semanticgraph.nodes[nid].events.onSelect = actions;
+
+      // Compose and send patch
+      const patch = {
+        semanticgraph: {
+          nodes: {
+            [nid]: {
+              events: nodeData.events,
+            },
+          },
+          edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
+        },
+      };
+
+      this.editor.patch = patch;
+      this.editor.modePatch = ATON.SceneHub.MODE_ADD;
+      this.editor.OnPatchChanged();
+
+      console.log(`💾 Saved POV selection: ${targetPOVId} for action ${actionId}`);
+
+      // Update the UI
+      this.app.ui.editor_updateHierarchy();
+      this.app.ui.editor_updateWidgetMainPanel();
+      this.app.widgetsHub.focusOnItem({ id: nid, wid: "annotations" });
+    }
+  }
+
+  /**
    * Add a POV item to the 3D scene with visual representation
    */
   addItemToScene(vId, vp) {

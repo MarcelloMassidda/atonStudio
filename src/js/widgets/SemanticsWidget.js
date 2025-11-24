@@ -654,7 +654,7 @@ export class SemanticsWidget extends Widget {
               variant: "warning",
               classList: ["btn-sm", "mt-2"],
               onClick: () => {
-                this.app.widgetsHub.removeActionFromNode(node, this, index);
+                this.app.widgetsHub.removeActionFromNode(node, this, actionData.actionId);
               },
             });
             container.appendChild(removeBtn);

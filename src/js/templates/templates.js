@@ -18,7 +18,7 @@ export const createFreeTemplate = (app) => {
     allowedActions: {
       layers: ["toggleVisible"],
       annotations: ["editDescription"],
-      viewpoints: [],
+      viewpoints: ["goToPov"],
       measurements: [],
     },
   });
