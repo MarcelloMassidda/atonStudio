@@ -100,12 +100,14 @@ export class SemanticsWidget extends Widget {
     // Check if semantic node has assigned actions - add ⚡ badge
     const scene = this.getCurrentScene();
     const semNode = scene.semanticgraph?.nodes?.[id];
-    if (semNode?.events?.onSelect) {
+    const actions = semNode?.events?.onSelect;
+    if (actions && (Array.isArray(actions) ? actions.length > 0 : true)) {
       btnOptions.badges = btnOptions.badges || [];
+      const count = Array.isArray(actions) ? actions.length : 1;
       btnOptions.badges.push({
-        text: "⚡",
+        text: count > 1 ? `⚡${count}` : "⚡",
         type: "warning",
-        title: "Has assigned action",
+        title: `Has ${count} assigned action${count > 1 ? 's' : ''}`,
       });
     }
 
@@ -590,57 +592,76 @@ export class SemanticsWidget extends Widget {
   createEventsInspector(node) {
     const scene = this.getCurrentScene();
     const semNode = scene.semanticgraph?.nodes?.[node.nid];
-    const hasAction = semNode?.events?.onSelect;
+    const actionsData = semNode?.events?.onSelect;
+    const actions = Array.isArray(actionsData) ? actionsData : (actionsData ? [actionsData] : []);
 
     const container = this.app.uikit.createContainer({
       classList: ["inspector_Block"],
       content: [],
     });
 
-    // If no action assigned, show only "Assign Action" button
-    if (!hasAction) {
-      const assignBtn = this.app.uikit.createButton({
-        text: "Assign Action",
-        icon: "add",
-        onClick: () => {
-          this.app.widgetsHub.assignActionToNode(node, this);
-        },
-      });
-      container.appendChild(assignBtn);
-      return container;
-    }
-
-    // If action is assigned, render the action's inspector block
-    const actionWidget = this.app.widgetsHub.getWidget(hasAction.widgetId);
-    if (actionWidget) {
-      const actions = actionWidget.getActions();
-      const action = actions.find((a) => a.id === hasAction.actionId);
-
-      if (action && action.getProperties) {
-        // Get properties from action
-        const props = action.getProperties({ node, widget: this });
-
-        // Render each property's inspector block
-        for (const [propName, propConfig] of Object.entries(props)) {
-          if (propConfig.inspectorBlock) {
-            const block = propConfig.inspectorBlock();
-            if (block) container.appendChild(block);
-          }
-        }
-      }
-    }
-
-    // Add "Remove Action" button at the bottom
-    const removeBtn = this.app.uikit.createButton({
-      text: "Remove Action",
-      icon: "cancel",
-      variant: "warning",
-      classList: ["btn-sm", "mt-2"],
+    // Always show "Add Action" button at top
+    const addBtn = this.app.uikit.createButton({
+      text: "Add Action",
+      icon: "add",
       onClick: () => {
-        this.app.widgetsHub.removeActionFromNode(node, this);
+        this.app.widgetsHub.assignActionToNode(node, this);
       },
     });
-    container.appendChild(removeBtn);
+    container.appendChild(addBtn);
+
+    // If actions are assigned, render each action's inspector block
+    if (actions.length > 0) {
+      actions.forEach((actionData, index) => {
+        const actionWidget = this.app.widgetsHub.getWidget(actionData.widgetId);
+        if (actionWidget) {
+          const widgetActions = actionWidget.getActions();
+          const action = widgetActions.find((a) => a.id === actionData.actionType);
+
+          if (action && action.getProperties) {
+            // Add separator for multiple actions
+            if (index > 0) {
+              container.appendChild(this.app.uikit.inspectorSeparator());
+            }
+
+            // Show action ID header
+            const actionHeader = this.app.uikit.createText({
+              text: `Action: ${actionData.actionId}`,
+              classList: ["text-muted", "small", "mb-2"],
+            });
+            container.appendChild(actionHeader);
+
+            // Get properties from action, passing the unique actionId
+            const props = action.getProperties({ 
+              node, 
+              widget: this, 
+              actionId: actionData.actionId,
+              args: actionData.args 
+            });
+
+            // Render each property's inspector block
+            for (const [propName, propConfig] of Object.entries(props)) {
+              if (propConfig.inspectorBlock) {
+                const block = propConfig.inspectorBlock();
+                if (block) container.appendChild(block);
+              }
+            }
+
+            // Add "Remove This Action" button
+            const removeBtn = this.app.uikit.createButton({
+              text: "Remove This Action",
+              icon: "cancel",
+              variant: "warning",
+              classList: ["btn-sm", "mt-2"],
+              onClick: () => {
+                this.app.widgetsHub.removeActionFromNode(node, this, index);
+              },
+            });
+            container.appendChild(removeBtn);
+          }
+        }
+      });
+    }
 
     return container;
   }

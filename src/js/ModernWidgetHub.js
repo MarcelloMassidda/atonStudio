@@ -410,6 +410,7 @@ export class ModernWidgetHub {
 
   /**
    * Save action assignment to semantic node
+   * Adds action to the actions array with unique ID
    */
   saveActionAssignment(node, widget, action) {
     const scene = this.getCurrentScene();
@@ -421,12 +422,30 @@ export class ModernWidgetHub {
     if (!scene.semanticgraph.nodes[nid].events)
       scene.semanticgraph.nodes[nid].events = {};
 
-    // Store action assignment
-    scene.semanticgraph.nodes[nid].events.onSelect = {
-      actionId: action.id,
+    // Get existing actions or initialize as empty array
+    let actions = scene.semanticgraph.nodes[nid].events.onSelect;
+    if (!actions) {
+      actions = [];
+    }
+    // Actions must be an array
+    if (!Array.isArray(actions)) {
+      console.error("events.onSelect must be an array");
+      actions = [];
+    }
+
+    // Generate unique action ID
+    const uniqueActionId = ATON.Utils.generateID(action.id);
+
+    // Add new action to array with unique ID
+    actions.push({
+      actionId: uniqueActionId,
+      actionType: action.id, // Original action type (e.g., "toggleVisible")
       widgetId: action.widgetId,
-      args: {}, // TODO: extract args from property inputs
-    };
+      args: {}, // Will be populated by action-specific UI
+    });
+
+    // Store actions array
+    scene.semanticgraph.nodes[nid].events.onSelect = actions;
 
     // Compose patch
     const patch = {
@@ -444,7 +463,7 @@ export class ModernWidgetHub {
     widget.editor.modePatch = ATON.SceneHub.MODE_ADD;
     widget.editor.OnPatchChanged();
 
-    console.log(`✅ Assigned action ${action.id} to semantic node ${nid}`);
+    console.log(`✅ Added action ${action.id} (ID: ${uniqueActionId}) to semantic node ${nid}`);
 
     // Close modal
     ATON.UI.hideModal();
@@ -458,59 +477,112 @@ export class ModernWidgetHub {
   }
 
   /**
-   * Remove action assignment from semantic node
-   * Deletes only the events.onSelect property, not the semantic node itself
+   * Remove action from semantic node
+   * Removes specific action from the actions array by index
    * Calls action's onDelete method if provided to clean up action-specific data
    */
-  removeActionFromNode(node, widget) {
+  removeActionFromNode(node, widget, actionIndex = null) {
     const scene = this.getCurrentScene();
     const nid = node.nid;
 
-    // Get the current action assignment before removing it
-    const actionAssignment = scene.semanticgraph?.nodes?.[nid]?.events?.onSelect;
+    let actionsData = scene.semanticgraph?.nodes?.[nid]?.events?.onSelect;
+    if (!actionsData) return;
+
+    // Convert to array if needed
+    let actions = Array.isArray(actionsData) ? actionsData : [actionsData];
     
-    if (actionAssignment) {
-      // Find the action definition
+    // If no specific index, remove all actions
+    if (actionIndex === null) {
+      // Call onDelete for all actions
+      actions.forEach(actionAssignment => {
+        const actionWidget = this.getWidget(actionAssignment.widgetId);
+        if (actionWidget) {
+          const widgetActions = actionWidget.getActions();
+          const action = widgetActions.find((a) => a.id === actionAssignment.actionId);
+          
+          if (action && action.onDelete) {
+            console.log(`🧹 Calling onDelete for action ${action.id}`);
+            action.onDelete({ node, widget, scene });
+          }
+        }
+      });
+
+      // Remove all actions
+      delete scene.semanticgraph.nodes[nid].events.onSelect;
+      
+      // Send delete patch
+      const deletePatch = {
+        semanticgraph: {
+          nodes: {
+            [nid]: {
+              events: {
+                onSelect: {},
+              },
+            },
+          },
+        },
+      };
+
+      widget.editor.patch = deletePatch;
+      widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
+      widget.editor.OnPatchChanged();
+
+      console.log(`🗑️ Removed all actions from semantic node ${nid}`);
+    } else {
+      // Remove specific action by index
+      if (actionIndex < 0 || actionIndex >= actions.length) {
+        console.warn(`Invalid action index: ${actionIndex}`);
+        return;
+      }
+
+      const actionAssignment = actions[actionIndex];
+      
+      // Call onDelete for this action
       const actionWidget = this.getWidget(actionAssignment.widgetId);
       if (actionWidget) {
-        const actions = actionWidget.getActions();
-        const action = actions.find((a) => a.id === actionAssignment.actionId);
+        const widgetActions = actionWidget.getActions();
+        const action = widgetActions.find((a) => a.id === actionAssignment.actionId);
         
-        // If action has an onDelete method, call it to clean up action-specific data
         if (action && action.onDelete) {
           console.log(`🧹 Calling onDelete for action ${action.id}`);
           action.onDelete({ node, widget, scene });
         }
       }
 
-      // Remove action assignment from local scene data
-      delete scene.semanticgraph.nodes[nid].events.onSelect;
-    }
+      // Remove from array
+      actions.splice(actionIndex, 1);
 
-    // Send delete patch - only for the events property
-    const deletePatch = {
-      semanticgraph: {
-        nodes: {
-          [nid]: {
-            events: {
-              onSelect: {},
+      // Update or delete based on remaining actions
+      if (actions.length === 0) {
+        delete scene.semanticgraph.nodes[nid].events.onSelect;
+      } else {
+        scene.semanticgraph.nodes[nid].events.onSelect = actions;
+      }
+
+      // Send patch
+      const patch = {
+        semanticgraph: {
+          nodes: {
+            [nid]: {
+              events: scene.semanticgraph.nodes[nid].events,
             },
           },
+          edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
         },
-      },
-    };
+      };
 
-    widget.editor.patch = deletePatch;
-    widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
-    widget.editor.OnPatchChanged();
+      widget.editor.patch = patch;
+      widget.editor.modePatch = actions.length === 0 ? ATON.SceneHub.MODE_DEL : ATON.SceneHub.MODE_ADD;
+      widget.editor.OnPatchChanged();
 
-    console.log(`🗑️ Removed action from semantic node ${nid}`);
+      console.log(`🗑️ Removed action ${actionAssignment.actionId} from semantic node ${nid}`);
+    }
 
     // Update UI to remove badge and refresh hierarchy
     this.app.ui.editor_updateHierarchy();
     this.app.ui.editor_updateWidgetMainPanel();
 
-    // Refocus to update inspector (will show Assign Action button)
+    // Refocus to update inspector
     this.focusOnItem({ id: nid, wid: widget.id });
   }
 }

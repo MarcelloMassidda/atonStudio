@@ -376,10 +376,10 @@ constructor(app) {
         name: "Toggle Layer Visibility",
         widgetId: this.id,
         getProperties: (context) => {
-          const { node } = context;
+          const { node, actionId, args } = context;
           return {
             visibility: {
-              inspectorBlock: () => this.createLayerSelectionBlock(node),
+              inspectorBlock: () => this.createLayerSelectionBlock(node, actionId, args),
             },
           };
         },
@@ -409,10 +409,8 @@ constructor(app) {
    * Create layer selection inspector block
    * Shows selected layer or "Select Layer" button
    */
-  createLayerSelectionBlock(node) {
-    const scene = this.getCurrentScene();
-    const semNode = scene.semanticgraph?.nodes?.[node.nid];
-    const targetLayerId = semNode?.events?.onSelect?.args?.targetLayerId;
+  createLayerSelectionBlock(node, actionId, args) {
+    const targetLayerId = args?.targetLayerId;
 
     const container = this.app.uikit.createContainer({
       classList: ["inspector_Block"],
@@ -430,7 +428,7 @@ constructor(app) {
       const changeBtn = this.app.uikit.createButton({
         text: "Change Layer",
         icon: "collection-item",
-        onClick: () => this.openLayerSelectionModal(node),
+        onClick: () => this.openLayerSelectionModal(node, actionId),
       });
       container.appendChild(changeBtn);
     } else {
@@ -438,7 +436,7 @@ constructor(app) {
       const selectBtn = this.app.uikit.createButton({
         text: "Select Layer",
         icon: "collection-item",
-        onClick: () => this.openLayerSelectionModal(node),
+        onClick: () => this.openLayerSelectionModal(node, actionId),
       });
       container.appendChild(selectBtn);
     }
@@ -450,7 +448,7 @@ constructor(app) {
    * Open modal to select a layer
    * Similar to action selection modal
    */
-  openLayerSelectionModal(node) {
+  openLayerSelectionModal(node, actionId) {
     const scene = this.getCurrentScene();
     const layers = scene.scenegraph?.nodes;
 
@@ -481,7 +479,7 @@ constructor(app) {
       layerItem.textContent = layerId;
 
       layerItem.addEventListener("click", () => {
-        this.saveLayerSelection(node, layerId);
+        this.saveLayerSelection(node, actionId, layerId);
       });
 
       listGroup.appendChild(layerItem);
@@ -497,23 +495,29 @@ constructor(app) {
 
   /**
    * Save layer selection to semantic node
+   * Finds the specific action by actionId and updates its args
    */
-  saveLayerSelection(node, targetLayerId) {
+  saveLayerSelection(node, actionId, targetLayerId) {
     const scene = this.getCurrentScene();
     const nid = node.nid;
 
-    // Store targetLayerId in args
-    if (!scene.semanticgraph.nodes[nid].events) {
-      scene.semanticgraph.nodes[nid].events = {};
-    }
-    if (!scene.semanticgraph.nodes[nid].events.onSelect) {
-      scene.semanticgraph.nodes[nid].events.onSelect = {};
-    }
-    if (!scene.semanticgraph.nodes[nid].events.onSelect.args) {
-      scene.semanticgraph.nodes[nid].events.onSelect.args = {};
+    // Find the specific action in the array
+    const actions = scene.semanticgraph.nodes[nid]?.events?.onSelect;
+    if (!actions || !Array.isArray(actions)) {
+      console.error("No actions found for node");
+      return;
     }
 
-    scene.semanticgraph.nodes[nid].events.onSelect.args.targetLayerId = targetLayerId;
+    // Find the action with this actionId
+    const action = actions.find(a => a.actionId === actionId);
+    if (!action) {
+      console.error(`Action ${actionId} not found`);
+      return;
+    }
+
+    // Update args for this specific action
+    if (!action.args) action.args = {};
+    action.args.targetLayerId = targetLayerId;
 
     // Compose patch
     const patch = {
@@ -531,7 +535,7 @@ constructor(app) {
     this.editor.modePatch = ATON.SceneHub.MODE_ADD;
     this.editor.OnPatchChanged();
 
-    console.log(`✅ Layer ${targetLayerId} assigned to semantic node ${nid}`);
+    console.log(`✅ Layer ${targetLayerId} assigned to action ${actionId} on semantic node ${nid}`);
 
     // Close modal
     ATON.UI.hideModal();
