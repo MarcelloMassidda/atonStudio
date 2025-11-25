@@ -188,7 +188,7 @@ export class BasicSemanticInfo_action extends Capability {
             semanticgraph: {
               nodes: {
                 [nid]: {
-                  description: "",
+                  description: {},
                 },
               },
             },

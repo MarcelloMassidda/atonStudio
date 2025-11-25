@@ -48,6 +48,61 @@ uikit.inspectorSeparator = () => {
   return uikit.createElfromString(`<div class="p-2"></div>`);
 };
 
+/**
+ * Create a micro-title for inspector sections
+ */
+uikit.microTitle = (text) => {
+  return uikit.createElfromString(
+    `<div class="inspector-micro-title" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6c757d; margin: 1rem 0 0.5rem 0; padding-bottom: 0.25rem; border-bottom: 1px solid #dee2e6;">${text}</div>`
+  );
+};
+
+/**
+ * Create a section container with micro-title
+ */
+uikit.inspectorSection = (title, content) => {
+  const section = uikit.createContainer({
+    classList: ["inspector-section", "mb-3"],
+    content: []
+  });
+  
+  if (title) {
+    section.appendChild(uikit.microTitle(title));
+  }
+  
+  if (Array.isArray(content)) {
+    content.forEach(item => section.appendChild(item));
+  } else if (content) {
+    section.appendChild(content);
+  }
+  
+  return section;
+};
+
+/**
+ * Create an action container for better visual grouping
+ */
+uikit.actionContainer = (actionId, actionType, content) => {
+  const container = uikit.createElfromString(
+    `<div class="action-container" style="border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 0.75rem; margin-bottom: 0.75rem;"></div>`
+  );
+  
+  // Add action type label
+  const label = uikit.createElfromString(
+    `<div class="action-label" style="font-size: 0.7rem; font-weight: 600; color: #495057; margin-bottom: 0.5rem;">⚡ ${actionType}</div>`
+  );
+  container.appendChild(label);
+  
+  // Add content
+  if (Array.isArray(content)) {
+    content.forEach(item => container.appendChild(item));
+  } else if (content) {
+    container.appendChild(content);
+  }
+  
+  return container;
+};
+
 uikit.wrapInGroupList = (options) => {
   //NOT USED:
   let list = uikit.createElfromString(`<div class="list-group"></div>`);
@@ -433,7 +488,7 @@ uikit.TextureSelectorBlock = (imgPath, onBtnClicked, materialName) => {
   // If material name provided, show it above
   if (materialName) {
     const nameLabel = uikit.createElfromString(
-      `<div class="material-name-label" style="font-weight:bold; margin-bottom:5px;">${materialName}</div>`
+      `<div class="material-name-label" style="font-weight:600; margin-bottom:5px; color: #495057;">Material: ${materialName}</div>`
     );
     const textureRow = UI.flexBox({
       content: [imageThumb(imgPath), btn(onBtnClicked)],

@@ -492,7 +492,15 @@ export class Widget {
       const capability = this.capabilities.get(capId);
       if (capability?.getInspectorBlocks) {
         const capBlocks = capability.getInspectorBlocks(item, this);
-        blocks = blocks.concat(capBlocks);
+        
+        // Wrap capability blocks in a section with micro-title
+        if (capBlocks.length > 0) {
+          const capSection = this.app.uikit.inspectorSection(
+            capability.name || capId,
+            capBlocks
+          );
+          blocks.push(capSection);
+        }
       }
     });
 

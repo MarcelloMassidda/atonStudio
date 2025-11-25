@@ -599,10 +599,8 @@ export class SemanticsWidget extends Widget {
     const semNode = scene.semanticgraph?.nodes?.[node.nid];
     const actionsDict = semNode?.events?.onSelect;
 
-    const container = this.app.uikit.createContainer({
-      classList: ["inspector_Block"],
-      content: [],
-    });
+    // Create section with micro-title
+    const actionsContent = [];
 
     // Always show "Add Action" button at top
     const addBtn = this.app.uikit.createButton({
@@ -612,30 +610,20 @@ export class SemanticsWidget extends Widget {
         this.app.widgetsHub.assignActionToNode(node, this);
       },
     });
-    container.appendChild(addBtn);
+    actionsContent.push(addBtn);
 
-    // If actions are assigned, render each action's inspector block
+    // If actions are assigned, render each action in its own container
     if (actionsDict && typeof actionsDict === 'object' && !Array.isArray(actionsDict)) {
       const actionEntries = Object.entries(actionsDict);
       
-      actionEntries.forEach(([actionId, actionData], index) => {
+      actionEntries.forEach(([actionId, actionData]) => {
         const actionWidget = this.app.widgetsHub.getWidget(actionData.widgetId);
         if (actionWidget) {
           const widgetActions = actionWidget.getActions();
           const action = widgetActions.find((a) => a.id === actionData.actionType);
 
           if (action && action.getProperties) {
-            // Add separator for multiple actions
-            if (index > 0) {
-              container.appendChild(this.app.uikit.inspectorSeparator());
-            }
-
-            // Show action ID header
-            const actionHeader = this.app.uikit.createText({
-              text: `Action: ${actionId}`,
-              classList: ["text-muted", "small", "mb-2"],
-            });
-            container.appendChild(actionHeader);
+            const actionContent = [];
 
             // Get properties from action, passing the unique actionId
             const props = action.getProperties({ 
@@ -649,7 +637,7 @@ export class SemanticsWidget extends Widget {
             for (const [propName, propConfig] of Object.entries(props)) {
               if (propConfig.inspectorBlock) {
                 const block = propConfig.inspectorBlock();
-                if (block) container.appendChild(block);
+                if (block) actionContent.push(block);
               }
             }
 
@@ -663,13 +651,22 @@ export class SemanticsWidget extends Widget {
                 this.app.widgetsHub.removeActionFromNode(node, this, actionId);
               },
             });
-            container.appendChild(removeBtn);
+            actionContent.push(removeBtn);
+
+            // Wrap in action container
+            const actionContainer = this.app.uikit.actionContainer(
+              actionId,
+              actionData.actionType,
+              actionContent
+            );
+            actionsContent.push(actionContainer);
           }
         }
       });
     }
 
-    return container;
+    // Wrap everything in inspector section with micro-title
+    return this.app.uikit.inspectorSection("Actions", actionsContent);
   }
 
   /**

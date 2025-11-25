@@ -1,0 +1,758 @@
+================================================================================
+ATON PROTOTYPER PROJECT - COMPREHENSIVE RECAP
+================================================================================
+Last Updated: November 25, 2025
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+ATON is a web-based framework for creating interactive 3D virtual environments
+and digital heritage applications. The Prototyper is an extension that enables
+users to build interactive 3D experiences through a visual editor without coding.
+
+KEY GOALS:
+- Create interactive 3D scenes with semantic annotations
+- Attach actions to 3D objects (e.g., tap object → show layer, navigate to POV)
+- Manage scene elements: 3D layers, viewpoints (POVs), semantic nodes, materials
+- Provide real-time preview and editing capabilities
+- Export/import scenes as JSON with WebDAV synchronization
+
+ARCHITECTURE:
+- Frontend: ATON Studio (wapps/atonStudio/) - Visual editor with widget system
+- Backend: Node.js server (config/flares/prototyper/proto_server.js)
+- Runtime: Prototyper Flare (config/flares/prototyper/public/prototyper.js)
+- Data: Scene JSON files (data/scenes/) with WebDAV sync
+
+
+================================================================================
+2. CORE CONCEPTS & DATA STRUCTURE
+================================================================================
+
+2.1 SCENE JSON STRUCTURE
+-------------------------
+{
+  "scenegraph": {
+    "nodes": { "layerId": { "urls": [...], "transform": {...} } },
+    "edges": { ".": ["layerId1", "layerId2"] }
+  },
+  "semanticgraph": {
+    "nodes": {
+      "semNodeId": {
+        "spheres": [...],
+        "convexshapes": [...],
+        "description": "...",
+        "events": {
+          "onSelect": {
+            "actionId1": { actionType: "goToPov", widgetId: "viewpoints", args: {...} },
+            "actionId2": { actionType: "toggleVisible", widgetId: "layers", args: {...} }
+          }
+        }
+      }
+    },
+    "edges": { ".": ["semNodeId1", "semNodeId2"] }
+  },
+  "viewpoints": {
+    "povId": { "position": [x,y,z], "target": [x,y,z], "fov": 50 }
+  },
+  "capabilities": {
+    "override": {
+      "layerId": {
+        "materials": { "screen": { "texturePath": "..." } }
+      }
+    }
+  }
+}
+
+2.2 KEY ENTITIES
+----------------
+- **Layers**: 3D models (GLTF/GLB) loaded into the scene
+- **Semantic Nodes**: Interactive hotspots (spheres/convex shapes) attached to 3D space
+- **Viewpoints (POVs)**: Camera positions/orientations for navigation
+- **Actions**: Behaviors triggered by events (e.g., onSelect)
+- **Capabilities**: Features that can be equipped on items (e.g., material override)
+
+
+================================================================================
+3. ACTIONS SYSTEM (Core Feature)
+================================================================================
+
+3.1 WHAT ARE ACTIONS?
+----------------------
+Actions are behaviors that can be assigned to semantic nodes and triggered by
+events (currently only "onSelect" when user taps a semantic node).
+
+Example: Tap hotspot A → Show layer B + Navigate to POV C
+
+3.2 DATA STRUCTURE (Dictionary-based)
+--------------------------------------
+**IMPORTANT: Actions are stored as DICTIONARIES, not arrays!**
+
+events.onSelect = {
+  "actionId-unique123": {
+    actionType: "goToPov",        // Template ID
+    widgetId: "viewpoints",       // Which widget owns this action
+    args: { targetPOVId: "pov1" } // Action-specific parameters
+  },
+  "actionId-unique456": {
+    actionType: "toggleVisible",
+    widgetId: "layers",
+    args: { targetLayerId: "layer1" }
+  }
+}
+
+WHY DICTIONARY?
+- Direct key access: actions[actionId] instead of actions.find(...)
+- WebDAV-safe deletions: Can delete specific keys with MODE_DEL
+- No array merging issues with concurrent edits
+- Atomic operations on individual actions
+
+3.3 ACTION LIFECYCLE
+--------------------
+1. **Definition** (in Widget.getActions()):
+   - id: Action template ID (e.g., "goToPov")
+   - getProperties: Returns UI configuration for action parameters
+   - execute: (Optional) Editor-side logic
+   - onDelete: Cleanup when action is removed
+   - onReferencedItemDeleted: Check if action references deleted item
+
+2. **Assignment** (User clicks "Add Action" in editor):
+   - User selects semantic node
+   - Opens action modal with available actions
+   - Assigns action → creates unique actionId
+   - Stored in semanticgraph.nodes[].events.onSelect
+
+3. **Execution** (Runtime in prototyper.js flare):
+   - User taps semantic node in viewer
+   - Prototyper flare loops through actions dictionary
+   - Executes corresponding handler from F.ActionHandlers
+
+3.4 IMPLEMENTED ACTIONS
+-----------------------
+**goToPov** (PointOfViewWidget):
+- Navigate camera to a viewpoint
+- Args: { targetPOVId: "pov-id" }
+- Handler: Creates ATON.POV and calls ATON.Nav.requestPOV()
+
+**toggleVisible** (LayerWidget):
+- Show/hide a 3D layer
+- Args: { targetLayerId: "layer-id" }
+- Handler: Toggles node.visible property
+
+3.5 ACTION CLEANUP SYSTEM
+--------------------------
+Problem: What happens when referenced items (layers/POVs) are deleted?
+Solution: Automatic cleanup with onReferencedItemDeleted hook
+
+FLOW:
+1. User deletes layer/POV
+2. Widget.deleteLayer() / deleteViewpoint() called
+3. Calls WidgetHub.cleanupActionsForDeletedItem()
+4. Scans ALL semantic nodes for actions referencing deleted item
+5. Filters out orphaned actions using onReferencedItemDeleted()
+6. Sends MODE_DEL patch to remove specific action keys
+7. Updates UI
+
+Example:
+```javascript
+// In action definition
+onReferencedItemDeleted: (deletedItemId, actionInstance) => {
+  if (actionInstance.args?.targetLayerId === deletedItemId) {
+    return { shouldRemove: true, reason: "Layer deleted" };
+  }
+  return { shouldRemove: false };
+}
+```
+
+
+================================================================================
+4. CAPABILITIES SYSTEM
+================================================================================
+
+4.1 WHAT ARE CAPABILITIES?
+---------------------------
+Capabilities are features that can be "equipped" on scene items to extend
+their functionality. They're managed through a registration system.
+
+Example: OverrideCapability allows changing material textures on 3D layers
+
+4.2 DATA STRUCTURE
+------------------
+capabilities: {
+  "override": {
+    "layerId": {
+      "materials": {
+        "screen": { "texturePath": "path/to/texture.jpg" }
+      }
+    }
+  }
+}
+
+4.3 CAPABILITY LIFECYCLE
+------------------------
+1. **Registration** (Widget constructor):
+   widget.registerCapability(new OverrideCapability())
+
+2. **Detection** (hasCapabilityForItem):
+   Checks if item has capability data in scene JSON
+
+3. **Equipping** (User clicks "Add Capability"):
+   - Adds capability data to scene.capabilities[capId][itemId]
+   - Sends patch to persist
+
+4. **Usage** (Inspector):
+   - Shows capability-specific UI (e.g., texture selector)
+   - Updates capability data when user makes changes
+
+4.4 IMPLEMENTED CAPABILITIES
+----------------------------
+**OverrideCapability**:
+- Override material properties (textures, colors)
+- Full control over all materials
+- Storage: capabilities.override[itemId]
+
+**ScreenOverrideCapability**:
+- Simplified version for "screen" material only
+- Auto-equips if item has exactly one "screen" material
+- Uses same storage as OverrideCapability (shared namespace)
+
+4.5 CAPABILITY CLEANUP SYSTEM
+------------------------------
+Problem: Orphaned capability data when items are deleted
+Solution: onItemDeleted hook (similar to actions)
+
+FLOW:
+1. User deletes layer/POV
+2. Widget.deleteLayer() / deleteViewpoint() called
+3. Calls WidgetHub.cleanupCapabilitiesForDeletedItem()
+4. Loops through registered capabilities
+5. Calls capability.onItemDeleted(deletedItemId, scene)
+6. Sends MODE_DEL patch to remove capability data
+7. Updates local scene
+
+Example:
+```javascript
+// In Capability base class (default implementation)
+onItemDeleted(deletedItemId, scene) {
+  if (scene.capabilities?.[this.id]?.[deletedItemId]) {
+    return { shouldRemove: true, reason: "Item deleted" };
+  }
+  return { shouldRemove: false };
+}
+```
+
+
+================================================================================
+5. WIDGET SYSTEM
+================================================================================
+
+5.1 WIDGET ARCHITECTURE
+-----------------------
+Widgets are modular UI components that manage specific types of scene entities.
+
+Base Class: Widget (wapps/atonStudio/src/js/widgets/base/Widget.js)
+- Provides common functionality: item management, gizmos, patching
+- Registers capabilities
+- Defines actions
+
+5.2 IMPLEMENTED WIDGETS
+-----------------------
+**LayerWidget**: Manages 3D model layers
+- Create/delete layers
+- Transform editing (position, rotation, scale)
+- Material overrides via capabilities
+- Actions: toggleVisible
+
+**PointOfViewWidget**: Manages camera viewpoints
+- Create/delete POVs
+- Position/target/FOV editing
+- Gizmo-based editing
+- Actions: goToPov
+
+**SemanticsWidget**: Manages semantic annotations
+- Create spheres and convex shapes
+- Assign actions to semantic nodes
+- Description editing
+
+**MeasurementsWidget**: Distance measurements
+- Linear measurements between points
+- Visualization and editing
+
+5.3 WIDGET LIFECYCLE
+--------------------
+1. Initialization (app.js):
+   - Widget created and registered with WidgetHub
+   - Capabilities registered to widget
+   - Actions defined in getActions()
+
+2. Item Creation:
+   - User clicks "Create" button
+   - Widget creates ATON scene node
+   - Composes patch and sends to server
+   - Updates UI hierarchy
+
+3. Item Editing:
+   - User clicks item in hierarchy
+   - Widget focuses on item
+   - Inspector shows properties
+   - Gizmo enables transform editing
+
+4. Item Deletion:
+   - User clicks delete button
+   - Widget.deleteItem() called
+   - Cleanup actions + capabilities
+   - Send MODE_DEL patch
+   - Update UI
+
+
+================================================================================
+6. PATCH SYSTEM & WEBDAV SYNC
+================================================================================
+
+6.1 PATCH MODES
+---------------
+- **MODE_ADD**: Create or update data (merges with existing)
+- **MODE_DEL**: Delete data (removes specific keys)
+
+6.2 PATCH STRUCTURE
+-------------------
+editor.patch = {
+  scenegraph: { nodes: { ... } },
+  semanticgraph: { nodes: { ... } },
+  viewpoints: { ... },
+  capabilities: { ... }
+}
+
+editor.modePatch = ATON.SceneHub.MODE_ADD | MODE_DEL
+editor.OnPatchChanged() // Triggers send
+
+6.3 WEBDAV CHALLENGES & SOLUTIONS
+----------------------------------
+**Problem 1: Array Merging**
+When multiple patches update the same array, WebDAV merges them incorrectly.
+
+Solution: Use DICTIONARIES instead of arrays
+- Before: events.onSelect = [action1, action2]
+- After: events.onSelect = { "id1": action1, "id2": action2 }
+
+**Problem 2: Concurrent Deletions**
+Deleting array items by index is fragile.
+
+Solution: Delete by key with MODE_DEL
+```javascript
+patch = {
+  semanticgraph: {
+    nodes: {
+      [nodeId]: {
+        events: {
+          onSelect: {
+            [actionId]: {} // Delete this specific action
+          }
+        }
+      }
+    }
+  }
+}
+modePatch = MODE_DEL
+```
+
+
+================================================================================
+7. MAJOR REFACTORINGS COMPLETED
+================================================================================
+
+7.1 ACTIONS: ARRAY → DICTIONARY MIGRATION
+------------------------------------------
+Date: November 2025
+Reason: WebDAV array merging issues, atomic deletions needed
+
+CHANGES:
+- prototyper.js: Loop changed from array to Object.entries()
+- ModernWidgetHub: saveActionAssignment creates dictionary
+- ModernWidgetHub: removeActionFromNode deletes by key
+- ModernWidgetHub: cleanupActionsForDeletedItem uses MODE_DEL on keys
+- PointOfViewWidget: savePOVSelection uses dictionary lookup
+- LayerWidget: saveLayerSelection uses dictionary lookup
+- SemanticsWidget: createEventsInspector iterates Object.entries()
+- templates.js: allowedActions still array-based (unchanged)
+
+FILES MODIFIED:
+- config/flares/prototyper/public/prototyper.js
+- wapps/atonStudio/src/js/ModernWidgetHub.js
+- wapps/atonStudio/src/js/widgets/PointOfViewWidget.js
+- wapps/atonStudio/src/js/widgets/LayerWidget.js
+- wapps/atonStudio/src/js/widgets/SemanticsWidget.js
+
+7.2 ACTION CLEANUP SYSTEM
+--------------------------
+Date: November 2025
+Reason: Dangling references when layers/POVs deleted
+
+IMPLEMENTATION:
+- Added onReferencedItemDeleted hook to action definitions
+- Created cleanupActionsForDeletedItem in ModernWidgetHub
+- Widget delete methods call cleanup before deletion
+- Scans all semantic nodes for orphaned actions
+- Sends MODE_DEL patch to remove action keys
+
+7.3 CAPABILITY CLEANUP SYSTEM
+------------------------------
+Date: November 2025
+Reason: Orphaned capability data when items deleted
+
+IMPLEMENTATION:
+- Added onItemDeleted hook to Capability base class
+- Created cleanupCapabilitiesForDeletedItem in ModernWidgetHub
+- Widget delete methods call cleanup after deletion
+- Loops through registered capabilities
+- Sends MODE_DEL patch to remove capability data
+
+7.4 ACTION IDENTIFICATION FIX
+------------------------------
+Date: November 2025
+Reason: removeActionFromNode used weak array index instead of stable ID
+
+CHANGES:
+- Changed from actionIndex parameter to actionId
+- Uses dictionary key lookup instead of findIndex
+- More reliable action removal
+
+7.5 SEMANTIC NODE BADGE FIX
+----------------------------
+Date: November 2025
+Reason: Badge showing even when events={} (empty object)
+
+FIX:
+- Check Object.keys(actions).length > 0
+- Count actions from dictionary size
+- Badge shows correct count (⚡2, ⚡3, etc.)
+
+
+================================================================================
+8. CURRENT ARCHITECTURE PATTERNS
+================================================================================
+
+8.1 CLEANUP PATTERN
+-------------------
+```javascript
+// Widget delete method
+deleteItem(itemId) {
+  // 1. Delete the item
+  this.composePatch({ [itemId]: {} }, MODE_DEL);
+  
+  // 2. Clean up actions referencing this item
+  this.app.widgetsHub.cleanupActionsForDeletedItem({
+    deletedItemId: itemId,
+    widgetId: this.id,
+    actionType: 'toggleVisible'
+  });
+  
+  // 3. Clean up capability data for this item
+  this.app.widgetsHub.cleanupCapabilitiesForDeletedItem({
+    deletedItemId: itemId,
+    widgetId: this.id
+  });
+}
+```
+
+8.2 ACTION DEFINITION PATTERN
+------------------------------
+```javascript
+getActions() {
+  return [{
+    id: "actionType",
+    getProperties: ({ node, widget, actionId, args }) => ({
+      propertyName: {
+        inspectorBlock: () => createUIBlock(node, actionId, args)
+      }
+    }),
+    execute: ({ node, widget, args }) => {
+      // Editor-side execution (optional)
+    },
+    onDelete: ({ node, widget, scene, actionId }) => {
+      // Cleanup when action removed
+    },
+    onReferencedItemDeleted: (deletedItemId, actionInstance) => {
+      if (actionInstance.args?.targetId === deletedItemId) {
+        return { shouldRemove: true, reason: "Item deleted" };
+      }
+      return { shouldRemove: false };
+    }
+  }];
+}
+```
+
+8.3 CAPABILITY PATTERN
+----------------------
+```javascript
+class MyCapability extends Capability {
+  constructor() {
+    super({
+      id: 'myCapability',
+      name: 'My Capability',
+      isVisible: true,
+      autoEquip: false
+    });
+  }
+  
+  getProperties(item, widget) {
+    return {
+      propertyName: {
+        inspectorBlock: (it) => this.createUIBlock(it, widget),
+        get: () => this.getItemData(item, widget)?.value,
+        set: (value) => this.setItemData(item, widget, { value })
+      }
+    };
+  }
+  
+  onItemDeleted(deletedItemId, scene) {
+    if (scene.capabilities?.[this.id]?.[deletedItemId]) {
+      return { shouldRemove: true, reason: "Item deleted" };
+    }
+    return { shouldRemove: false };
+  }
+}
+```
+
+
+================================================================================
+9. RUNTIME EXECUTION (Prototyper Flare)
+================================================================================
+
+9.1 FLARE INITIALIZATION
+------------------------
+File: config/flares/prototyper/public/prototyper.js
+
+On scene load:
+1. F.setupActionHandlers() - Register action handlers
+2. Hook into ATON "Tap" event
+3. When tap occurs and hovering semantic node:
+   - F.executeAction(semNodeId)
+   - Loops through events.onSelect dictionary
+   - Executes corresponding handler
+
+9.2 ACTION HANDLERS
+-------------------
+F.ActionHandlers = {
+  toggleVisible: ({ actionId, args, semNode, nodeData, scene, semNodeId }) => {
+    const layer = ATON.getSceneNode(args.targetLayerId);
+    if (layer) layer.visible = !layer.visible;
+  },
+  
+  goToPov: ({ actionId, args, semNode, nodeData, scene, semNodeId }) => {
+    const povData = scene.viewpoints[args.targetPOVId];
+    const pov = new ATON.POV(povData.position, povData.target, povData.fov);
+    const dur = ATON.XR._bPresenting ? ATON.XR.STD_TELEP_DURATION : 1.0;
+    ATON.Nav.requestPOV(pov, dur);
+  }
+};
+
+9.3 EXECUTION FLOW
+------------------
+User taps 3D object →
+  HATHOR detects semantic node hover →
+  ATON "Tap" event fired →
+  F.executeAction(semNodeId) →
+  Loop through actions dictionary →
+  Execute F.ActionHandlers[actionType]
+
+
+================================================================================
+10. FILE STRUCTURE
+================================================================================
+
+10.1 KEY DIRECTORIES
+--------------------
+wapps/atonStudio/
+  src/js/
+    widgets/          - Widget implementations
+      base/Widget.js  - Base widget class
+      LayerWidget.js
+      PointOfViewWidget.js
+      SemanticsWidget.js
+      MeasurementsWidget.js
+    capabilities/     - Capability implementations
+      Capability.js   - Base capability class
+      OverrideCapability.js
+      ScreenOverrideCapability.js
+    ModernWidgetHub.js - Central widget/action/capability manager
+    uikit.js          - UI component library
+
+config/flares/prototyper/
+  public/
+    prototyper.js     - Runtime flare (action execution)
+  proto_server.js     - Node.js backend
+
+data/scenes/          - Scene JSON files
+  [user]/[sceneId]/scene.json
+
+10.2 KEY FILES
+--------------
+**ModernWidgetHub.js** (1300+ lines)
+- Central manager for widgets, actions, capabilities
+- assignActionToNode() - Open action modal
+- saveActionAssignment() - Add action to semantic node
+- removeActionFromNode() - Remove action by ID
+- cleanupActionsForDeletedItem() - Orphaned action cleanup
+- cleanupCapabilitiesForDeletedItem() - Orphaned capability cleanup
+
+**Widget.js** (600+ lines)
+- Base class for all widgets
+- registerCapability() - Add capability to widget
+- getCapabilities() - Return registered capabilities
+- getItemCapabilities() - Check which capabilities item has
+- Gizmo management, patching, UI generation
+
+**prototyper.js** (300+ lines)
+- Runtime flare executing actions
+- F.setupActionHandlers() - Register handlers
+- F.executeAction() - Execute actions on semantic node tap
+- F.ActionHandlers - Dictionary of action implementations
+
+
+================================================================================
+11. KNOWN ISSUES & FUTURE WORK
+================================================================================
+
+11.1 CURRENT LIMITATIONS
+------------------------
+- Actions only support "onSelect" event (no hover, timer, proximity, etc.)
+- No visual feedback for invalid actions in editor
+- No action reusability across semantic nodes (each assignment is unique)
+- No global action registry (actions defined per-widget)
+- Capability data doesn't validate on load
+
+11.2 PROPOSED ENHANCEMENTS
+--------------------------
+**Phase 2: Enhanced Actions**
+- Multiple event triggers (onHover, onProximity, onTimer)
+- Action chains (sequence of actions)
+- Conditional actions (if/else logic)
+- Action parameters with expressions
+
+**Phase 3: Action Management**
+- Global action registry (scene.capabilities.actions)
+- Reusable action templates
+- Action library/marketplace
+- Visual action editor (flow-based)
+
+**Phase 4: Advanced Capabilities**
+- Animation capability (trigger animations)
+- Audio capability (spatial audio)
+- Physics capability (colliders, gravity)
+- Scripting capability (custom JavaScript)
+
+**Phase 5: Validation & Debugging**
+- Runtime validation (isValid hook)
+- Visual feedback for broken actions
+- Action debugger/logger
+- Performance monitoring
+
+
+================================================================================
+12. GLOSSARY
+================================================================================
+
+**Action**: Behavior triggered by event (e.g., tap → show layer)
+**actionId**: Unique identifier for action instance (e.g., "goToPov-abc123")
+**actionType**: Template identifier for action (e.g., "goToPov")
+**Capability**: Extendable feature for scene items (e.g., material override)
+**Flare**: ATON extension module loaded at runtime
+**Gizmo**: 3D manipulation widget (translate/rotate/scale)
+**Layer**: 3D model node in scenegraph
+**MODE_ADD**: Patch mode for creating/updating data
+**MODE_DEL**: Patch mode for deleting data
+**Patch**: JSON object describing scene changes for WebDAV sync
+**POV (Point of View)**: Camera position/orientation preset
+**Semantic Node**: Interactive hotspot in 3D space
+**Widget**: Modular editor component managing specific entity types
+**WidgetHub**: Central manager coordinating all widgets
+
+
+================================================================================
+13. DEBUGGING TIPS
+================================================================================
+
+13.1 COMMON ISSUES
+------------------
+**Actions not executing:**
+- Check prototyper.js console for errors
+- Verify action handler is registered in F.ActionHandlers
+- Check events.onSelect is dictionary (not array)
+- Verify HATHOR._actState === HATHOR.SELACTION_STD
+
+**Patch not saving:**
+- Check editor.OnPatchChanged() is called
+- Verify patch structure matches scene JSON
+- Check MODE_ADD vs MODE_DEL
+- Look for WebDAV server errors in console
+
+**Cleanup not working:**
+- Verify onReferencedItemDeleted / onItemDeleted implemented
+- Check deletedItemId matches stored ID
+- Verify cleanup called before/after deletion correctly
+- Check MODE_DEL patch structure
+
+13.2 LOGGING
+------------
+Key log messages to look for:
+- "✅ [Flare] Action handlers registered successfully"
+- "⚡ [Flare] Executed action: ..."
+- "🗑️ Removing action/capability ... from semantic node"
+- "✅ Cleaned up N action(s) from M semantic node(s)"
+- "💾 Saved POV/Layer selection: ..."
+
+
+================================================================================
+14. QUICK REFERENCE: COMMON TASKS
+================================================================================
+
+14.1 ADD NEW ACTION
+-------------------
+1. Define in Widget.getActions():
+   - id, getProperties, execute, onDelete, onReferencedItemDeleted
+2. Create UI block for action parameters
+3. Add handler in prototyper.js F.ActionHandlers
+4. Test: assign to semantic node, tap in viewer
+5. Test cleanup: delete referenced item, verify action removed
+
+14.2 ADD NEW CAPABILITY
+-----------------------
+1. Create class extending Capability
+2. Implement getProperties() for inspector UI
+3. Implement onItemDeleted() for cleanup
+4. Register in widget constructor: registerCapability(new MyCapability())
+5. Test: equip capability, edit properties, delete item
+
+14.3 ADD NEW WIDGET
+-------------------
+1. Create class extending Widget
+2. Define createBtnClicked() for item creation
+3. Define inspector blocks in createInspector()
+4. Define deleteItem() with cleanup calls
+5. Register in app.js: widgetsHub.registerWidget(new MyWidget())
+
+14.4 DEBUG ACTION EXECUTION
+---------------------------
+1. Open browser console
+2. Look for "⚡ [Flare] Executed action: ..." messages
+3. Check F.ActionHandlers[actionType] exists
+4. Verify scene.semanticgraph.nodes[semNodeId].events.onSelect structure
+5. Check ATON._hoveredSemNode when tapping
+
+
+================================================================================
+END OF RECAP
+================================================================================
+
+This document should serve as a comprehensive reference for understanding
+the Prototyper project architecture, recent refactorings, and current state.
+
+If you need to restore context after a reset, read this file to understand:
+- What the project does
+- How actions and capabilities work
+- What refactorings were completed
+- Current architectural patterns
+- Where to find key code sections
+
+For questions or clarifications, refer to the specific sections above.
