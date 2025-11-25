@@ -701,4 +701,67 @@ export class ModernWidgetHub {
       console.log(`No actions referencing ${deletedItemId} found`);
     }
   }
+
+  /**
+   * Clean up capabilities data for a deleted item
+   * Scans all capabilities and removes data for the deleted item
+   * @param {Object} options - Cleanup options
+   * @param {string} options.deletedItemId - ID of the deleted item
+   * @param {string} options.widgetId - ID of the widget that owns the item
+   */
+  cleanupCapabilitiesForDeletedItem({ deletedItemId, widgetId }) {
+    const widget = this.getWidget(widgetId);
+    if (!widget) {
+      console.warn(`Widget ${widgetId} not found`);
+      return;
+    }
+
+    const scene = this.getCurrentScene();
+    if (!scene.capabilities) return;
+
+    const capabilitiesToClean = {};
+    let totalRemoved = 0;
+
+    // Get all capabilities registered to this widget
+    const capabilities = widget.getCapabilities ? widget.getCapabilities() : {};
+
+    // Check each capability if it needs cleanup
+    for (const [capId, capability] of Object.entries(capabilities)) {
+      if (!capability.onItemDeleted) continue;
+
+      const result = capability.onItemDeleted(deletedItemId, scene);
+      
+      if (result.shouldRemove) {
+        console.log(`🗑️ Removing capability "${capability.id}" data for deleted item: ${deletedItemId} - ${result.reason}`);
+        
+        // Mark for deletion
+        if (!capabilitiesToClean[capability.id]) {
+          capabilitiesToClean[capability.id] = {};
+        }
+        capabilitiesToClean[capability.id][deletedItemId] = {};
+        
+        // Remove from local scene data
+        if (scene.capabilities[capability.id]) {
+          delete scene.capabilities[capability.id][deletedItemId];
+        }
+        
+        totalRemoved++;
+      }
+    }
+
+    // Send delete patch for all affected capabilities
+    if (Object.keys(capabilitiesToClean).length > 0) {
+      const patch = {
+        capabilities: capabilitiesToClean
+      };
+
+      widget.editor.patch = patch;
+      widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
+      widget.editor.OnPatchChanged();
+
+      console.log(`✅ Cleaned up ${totalRemoved} capability data entry(ies) for item: ${deletedItemId}`);
+    } else {
+      console.log(`No capability data found for deleted item: ${deletedItemId}`);
+    }
+  }
 }

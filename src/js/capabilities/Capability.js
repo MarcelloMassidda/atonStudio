@@ -142,4 +142,25 @@ export class Capability {
     addActions(widget) {
         return [];
     }
+
+    /**
+     * Called when an item is being deleted from the scene
+     * Override in subclasses to check if this capability has data for the deleted item
+     * @param {string} deletedItemId - The ID of the item being deleted
+     * @param {object} scene - Current scene data
+     * @returns {{ shouldRemove: boolean, reason?: string }} Whether to remove capability data
+     */
+    onItemDeleted(deletedItemId, scene) {
+        // Check if this capability has data for the deleted item
+        const capabilityData = scene.capabilities?.[this.id]?.[deletedItemId];
+        
+        if (capabilityData) {
+            return { 
+                shouldRemove: true, 
+                reason: `Item "${deletedItemId}" was deleted`
+            };
+        }
+        
+        return { shouldRemove: false };
+    }
 }

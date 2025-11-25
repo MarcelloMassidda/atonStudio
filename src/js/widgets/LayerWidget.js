@@ -299,8 +299,7 @@ constructor(app) {
     // Send delete patch
     this.composePatch(
       {
-        scenegraph: { nodes: { [nid]: {} } },
-        texturized: { [nid]: {} },
+        scenegraph: { nodes: { [nid]: {} } }
       },
       ATON.SceneHub.MODE_DEL
     );
@@ -310,6 +309,12 @@ constructor(app) {
       deletedItemId: nid,
       widgetId: this.id,
       actionType: 'toggleVisible'
+    });
+
+    // Clean up any capability data for this layer
+    this.app.widgetsHub.cleanupCapabilitiesForDeletedItem({
+      deletedItemId: nid,
+      widgetId: this.id
     });
   }
 

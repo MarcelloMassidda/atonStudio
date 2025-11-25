@@ -28,6 +28,18 @@ export class Widget {
   }
 
   /**
+   * Get all capabilities registered to this widget
+   * @returns {Object} Object with capability id as key and capability instance as value
+   */
+  getCapabilities() {
+    const capsObject = {};
+    for (const [id, capability] of this.capabilities.entries()) {
+      capsObject[id] = capability;
+    }
+    return capsObject;
+  }
+
+  /**
    * Get capabilities for a specific item by checking scene JSON structure
    * or using custom capability detection methods
    */
