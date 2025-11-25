@@ -101,14 +101,19 @@ export class SemanticsWidget extends Widget {
     const scene = this.getCurrentScene();
     const semNode = scene.semanticgraph?.nodes?.[id];
     const actions = semNode?.events?.onSelect;
-    if (actions && (Array.isArray(actions) ? actions.length > 0 : true)) {
-      btnOptions.badges = btnOptions.badges || [];
-      const count = Array.isArray(actions) ? actions.length : 1;
-      btnOptions.badges.push({
-        text: count > 1 ? `⚡${count}` : "⚡",
-        type: "warning",
-        title: `Has ${count} assigned action${count > 1 ? 's' : ''}`,
-      });
+    
+    // Check if actions dictionary exists and has keys
+    if (actions && typeof actions === 'object' && !Array.isArray(actions)) {
+      const count = Object.keys(actions).length;
+      
+      if (count > 0) {
+        btnOptions.badges = btnOptions.badges || [];
+        btnOptions.badges.push({
+          text: count > 1 ? `⚡${count}` : "⚡",
+          type: "warning",
+          title: `Has ${count} assigned action${count > 1 ? 's' : ''}`,
+        });
+      }
     }
 
     return this.app.widgetsHub.itemBtn_base(btnOptions);
@@ -592,8 +597,7 @@ export class SemanticsWidget extends Widget {
   createEventsInspector(node) {
     const scene = this.getCurrentScene();
     const semNode = scene.semanticgraph?.nodes?.[node.nid];
-    const actionsData = semNode?.events?.onSelect;
-    const actions = Array.isArray(actionsData) ? actionsData : (actionsData ? [actionsData] : []);
+    const actionsDict = semNode?.events?.onSelect;
 
     const container = this.app.uikit.createContainer({
       classList: ["inspector_Block"],
@@ -611,8 +615,10 @@ export class SemanticsWidget extends Widget {
     container.appendChild(addBtn);
 
     // If actions are assigned, render each action's inspector block
-    if (actions.length > 0) {
-      actions.forEach((actionData, index) => {
+    if (actionsDict && typeof actionsDict === 'object' && !Array.isArray(actionsDict)) {
+      const actionEntries = Object.entries(actionsDict);
+      
+      actionEntries.forEach(([actionId, actionData], index) => {
         const actionWidget = this.app.widgetsHub.getWidget(actionData.widgetId);
         if (actionWidget) {
           const widgetActions = actionWidget.getActions();
@@ -626,7 +632,7 @@ export class SemanticsWidget extends Widget {
 
             // Show action ID header
             const actionHeader = this.app.uikit.createText({
-              text: `Action: ${actionData.actionId}`,
+              text: `Action: ${actionId}`,
               classList: ["text-muted", "small", "mb-2"],
             });
             container.appendChild(actionHeader);
@@ -635,7 +641,7 @@ export class SemanticsWidget extends Widget {
             const props = action.getProperties({ 
               node, 
               widget: this, 
-              actionId: actionData.actionId,
+              actionId: actionId,
               args: actionData.args 
             });
 
@@ -654,7 +660,7 @@ export class SemanticsWidget extends Widget {
               variant: "warning",
               classList: ["btn-sm", "mt-2"],
               onClick: () => {
-                this.app.widgetsHub.removeActionFromNode(node, this, actionData.actionId);
+                this.app.widgetsHub.removeActionFromNode(node, this, actionId);
               },
             });
             container.appendChild(removeBtn);

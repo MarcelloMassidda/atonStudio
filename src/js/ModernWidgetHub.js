@@ -422,29 +422,28 @@ export class ModernWidgetHub {
     if (!scene.semanticgraph.nodes[nid].events)
       scene.semanticgraph.nodes[nid].events = {};
 
-    // Get existing actions or initialize as empty array
+    // Get existing actions or initialize as empty dictionary
     let actions = scene.semanticgraph.nodes[nid].events.onSelect;
     if (!actions) {
-      actions = [];
+      actions = {};
     }
-    // Actions must be an array
-    if (!Array.isArray(actions)) {
-      console.error("events.onSelect must be an array");
-      actions = [];
+    // Actions must be a dictionary object
+    if (typeof actions !== 'object' || Array.isArray(actions)) {
+      console.error("events.onSelect must be an object dictionary");
+      actions = {};
     }
 
     // Generate unique action ID
     const uniqueActionId = ATON.Utils.generateID(action.id);
 
-    // Add new action to array with unique ID
-    actions.push({
-      actionId: uniqueActionId,
+    // Add new action to dictionary with actionId as key
+    actions[uniqueActionId] = {
       actionType: action.id, // Original action type (e.g., "toggleVisible")
       widgetId: action.widgetId,
       args: {}, // Will be populated by action-specific UI
-    });
+    };
 
-    // Store actions array
+    // Store actions dictionary
     scene.semanticgraph.nodes[nid].events.onSelect = actions;
 
     // Compose patch
@@ -485,16 +484,19 @@ export class ModernWidgetHub {
     const scene = this.getCurrentScene();
     const nid = node.nid;
 
-    let actionsData = scene.semanticgraph?.nodes?.[nid]?.events?.onSelect;
-    if (!actionsData) return;
+    let actions = scene.semanticgraph?.nodes?.[nid]?.events?.onSelect;
+    if (!actions) return;
 
-    // Convert to array if needed
-    let actions = Array.isArray(actionsData) ? actionsData : [actionsData];
+    // Actions must be a dictionary
+    if (typeof actions !== 'object' || Array.isArray(actions)) {
+      console.error("events.onSelect must be an object dictionary");
+      return;
+    }
     
     // If no specific actionId, remove all actions
     if (actionId === null) {
       // Call onDelete for all actions
-      actions.forEach(actionAssignment => {
+      Object.entries(actions).forEach(([aid, actionAssignment]) => {
         const actionWidget = this.getWidget(actionAssignment.widgetId);
         if (actionWidget) {
           const widgetActions = actionWidget.getActions();
@@ -529,15 +531,13 @@ export class ModernWidgetHub {
 
       console.log(`🗑️ Removed all actions from semantic node ${nid}`);
     } else {
-      // Remove specific action by actionId
-      const actionIndex = actions.findIndex((a) => a.actionId === actionId);
-      
-      if (actionIndex === -1) {
+      // Remove specific action by actionId using dictionary key
+      if (!actions[actionId]) {
         console.warn(`Action with ID ${actionId} not found`);
         return;
       }
 
-      const actionAssignment = actions[actionIndex];
+      const actionAssignment = actions[actionId];
       
       // Call onDelete for this action
       const actionWidget = this.getWidget(actionAssignment.widgetId);
@@ -551,32 +551,34 @@ export class ModernWidgetHub {
         }
       }
 
-      // Remove from array
-      actions.splice(actionIndex, 1);
+      // Remove from dictionary locally
+      delete actions[actionId];
 
-      // Update or delete based on remaining actions
-      if (actions.length === 0) {
+      // Update local data
+      if (Object.keys(actions).length === 0) {
         delete scene.semanticgraph.nodes[nid].events.onSelect;
-      } else {
-        scene.semanticgraph.nodes[nid].events.onSelect = actions;
       }
 
-      // Send patch
+      // Send delete patch for specific action key
       const patch = {
         semanticgraph: {
           nodes: {
             [nid]: {
-              events: scene.semanticgraph.nodes[nid].events,
+              events: {
+                onSelect: {
+                  [actionId]: {}
+                }
+              },
             }
           }
         },
       };
 
       widget.editor.patch = patch;
-      widget.editor.modePatch = actions.length === 0 ? ATON.SceneHub.MODE_DEL : ATON.SceneHub.MODE_ADD;
+      widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
       widget.editor.OnPatchChanged();
 
-      console.log(`🗑️ Removed action ${actionAssignment.actionId} from semantic node ${nid}`);
+      console.log(`🗑️ Removed action ${actionId} from semantic node ${nid}`);
     }
 
     // Update UI to remove badge and refresh hierarchy
@@ -585,5 +587,118 @@ export class ModernWidgetHub {
 
     // Refocus to update inspector
     this.focusOnItem({ id: nid, wid: widget.id });
+  }
+
+  /**
+   * Clean up actions referencing a deleted item
+   * Scans all semantic nodes and removes actions that reference the deleted item
+   * @param {Object} options - Cleanup options
+   * @param {string} options.deletedItemId - ID of the deleted item (layer, POV, etc.)
+   * @param {string} options.widgetId - ID of the widget that owns the action
+   * @param {string} options.actionType - Type of action to clean up
+   */
+  cleanupActionsForDeletedItem({ deletedItemId, widgetId, actionType }) {
+    const widget = this.getWidget(widgetId);
+    if (!widget) {
+      console.warn(`Widget ${widgetId} not found`);
+      return;
+    }
+
+    // Get action definition
+    const actionDef = widget.getActions().find(a => a.id === actionType);
+    if (!actionDef) {
+      console.warn(`Action ${actionType} not found in widget ${widgetId}`);
+      return;
+    }
+
+    // Check if action has cleanup handler
+    if (!actionDef.onReferencedItemDeleted) {
+      console.log(`Action ${actionType} has no onReferencedItemDeleted handler, skipping cleanup`);
+      return;
+    }
+
+    const scene = this.getCurrentScene();
+    if (!scene.semanticgraph?.nodes) return;
+
+    const affectedNodes = [];
+    let totalRemoved = 0;
+
+    // Scan all semantic nodes and collect actions to delete
+    const actionsToDelete = {}; // { nodeId: [actionId1, actionId2, ...] }
+
+    for (const [nid, nodeData] of Object.entries(scene.semanticgraph.nodes)) {
+      if (!nodeData.events?.onSelect) continue;
+      
+      const actions = nodeData.events.onSelect;
+      if (typeof actions !== 'object' || Array.isArray(actions)) continue;
+
+      // Check each action in the dictionary
+      for (const [actionId, actionInstance] of Object.entries(actions)) {
+        // Only check actions of matching type and widget
+        if (actionInstance.actionType !== actionType || actionInstance.widgetId !== widgetId) {
+          continue;
+        }
+
+        // Call the action's cleanup handler
+        const result = actionDef.onReferencedItemDeleted(deletedItemId, actionInstance);
+        
+        if (result.shouldRemove) {
+          console.log(`🗑️ Marking action ${actionId} for removal from semantic node ${nid}: ${result.reason}`);
+          
+          if (!actionsToDelete[nid]) actionsToDelete[nid] = [];
+          actionsToDelete[nid].push(actionId);
+          
+          totalRemoved++;
+        }
+      }
+    }
+
+    // If any actions need to be deleted, send delete patches
+    if (Object.keys(actionsToDelete).length > 0) {
+      console.log(`✅ Cleaning up ${totalRemoved} action(s) from ${Object.keys(actionsToDelete).length} semantic node(s)`);
+      
+      // Compose delete patch for all affected action keys
+      const patchNodes = {};
+      
+      for (const [nid, actionIds] of Object.entries(actionsToDelete)) {
+        const nodeData = scene.semanticgraph.nodes[nid];
+        const onSelectPatch = {};
+        
+        // Create delete patch for each action
+        actionIds.forEach(actionId => {
+          onSelectPatch[actionId] = {};
+          // Also delete from local data
+          delete nodeData.events.onSelect[actionId];
+        });
+        
+        patchNodes[nid] = {
+          events: {
+            onSelect: onSelectPatch
+          }
+        };
+        
+        // Clean up empty events locally
+        if (Object.keys(nodeData.events.onSelect).length === 0) {
+          delete nodeData.events.onSelect;
+        }
+      }
+
+      const patch = {
+        semanticgraph: {
+          nodes: patchNodes
+          // NO edges - we're just deleting specific action keys
+        }
+      };
+
+      // Send as DEL mode - this will delete the specific action keys
+      widget.editor.patch = patch;
+      widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
+      widget.editor.OnPatchChanged();
+
+      // Update UI
+      this.app.ui.editor_updateHierarchy();
+    } else {
+      console.log(`No actions referencing ${deletedItemId} found`);
+    }
   }
 }

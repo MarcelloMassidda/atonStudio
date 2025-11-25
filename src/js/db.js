@@ -94,7 +94,7 @@ db.get = (endpoint,onReceive) => {
     });
 };
 
-db.post = (endpoint, content, onComplete) => { //NOT TESTED OR USED.
+db.post = (endpoint, content, onComplete) => {
 
     const url = ATON.PATH_RESTAPI + endpoint;
     fetch(url, {

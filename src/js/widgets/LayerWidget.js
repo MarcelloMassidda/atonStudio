@@ -304,6 +304,13 @@ constructor(app) {
       },
       ATON.SceneHub.MODE_DEL
     );
+
+    // Clean up any actions referencing this layer (AFTER delete patch sent)
+    this.app.widgetsHub.cleanupActionsForDeletedItem({
+      deletedItemId: nid,
+      widgetId: this.id,
+      actionType: 'toggleVisible'
+    });
   }
 
   /**
@@ -389,15 +396,23 @@ constructor(app) {
         },
         onDelete: (context) => {
           // Clean up targetLayerId when action is removed
-          const { node, widget, scene } = context;
+          const { node, widget, scene, actionId } = context;
           const nid = node.nid;
 
           console.log(`🧹 Cleaning up toggleVisible action for semantic node ${nid}`);
 
-          // Remove targetLayerId from events
-          if (scene.semanticgraph?.nodes?.[nid]?.events?.onSelect?.args?.targetLayerId) {
-            delete scene.semanticgraph.nodes[nid].events.onSelect.args.targetLayerId;
+          // With dictionary structure, the action will be deleted by the caller
+          // No additional cleanup needed here as args are part of the action being deleted
+        },
+        onReferencedItemDeleted: (deletedItemId, actionInstance) => {
+          // Check if this action references the deleted layer
+          if (actionInstance.args?.targetLayerId === deletedItemId) {
+            return { 
+              shouldRemove: true, 
+              reason: `Layer "${deletedItemId}" was deleted` 
+            };
           }
+          return { shouldRemove: false };
         },
       },
     ];
@@ -501,15 +516,15 @@ constructor(app) {
     const scene = this.getCurrentScene();
     const nid = node.nid;
 
-    // Find the specific action in the array
+    // Find the specific action in the dictionary
     const actions = scene.semanticgraph.nodes[nid]?.events?.onSelect;
-    if (!actions || !Array.isArray(actions)) {
-      console.error("No actions found for node");
+    if (!actions || typeof actions !== 'object' || Array.isArray(actions)) {
+      console.error("No actions found for node or invalid structure");
       return;
     }
 
-    // Find the action with this actionId
-    const action = actions.find(a => a.actionId === actionId);
+    // Find the action with this actionId in dictionary
+    const action = actions[actionId];
     if (!action) {
       console.error(`Action ${actionId} not found`);
       return;

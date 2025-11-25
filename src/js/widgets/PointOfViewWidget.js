@@ -90,13 +90,23 @@ export class PointOfViewWidget extends Widget {
         if (!nodeData?.events?.onSelect) return;
 
         const actions = nodeData.events.onSelect;
-        if (!Array.isArray(actions)) return;
+        if (typeof actions !== 'object' || Array.isArray(actions)) return;
 
-        // Find the action and clean up its args
-        const action = actions.find((a) => a.actionId === actionId);
+        // Find the action in dictionary and clean up its args
+        const action = actions[actionId];
         if (action && action.args) {
           delete action.args.targetPOVId;
         }
+      },
+      onReferencedItemDeleted: (deletedItemId, actionInstance) => {
+        // Check if this action references the deleted POV
+        if (actionInstance.args?.targetPOVId === deletedItemId) {
+          return { 
+            shouldRemove: true, 
+            reason: `Viewpoint "${deletedItemId}" was deleted` 
+          };
+        }
+        return { shouldRemove: false };
       },
     });
 
@@ -188,16 +198,15 @@ export class PointOfViewWidget extends Widget {
     if (!nodeData?.events?.onSelect) return;
 
     const actions = nodeData.events.onSelect;
-    if (!Array.isArray(actions)) return;
+    if (typeof actions !== 'object' || Array.isArray(actions)) return;
 
-    // Find the specific action by actionId and update its args
-    const action = actions.find((a) => a.actionId === actionId);
+    // Find the specific action by actionId in dictionary and update its args
+    const action = actions[actionId];
     if (action) {
       if (!action.args) action.args = {};
       action.args.targetPOVId = targetPOVId;
 
-      // Update the local scene data
-      scene.semanticgraph.nodes[nid].events.onSelect = actions;
+      // Local data is already updated by reference
 
       // Compose and send patch
       const patch = {
@@ -543,5 +552,12 @@ export class PointOfViewWidget extends Widget {
       },
       ATON.SceneHub.MODE_DEL
     );
+
+    // Clean up any actions referencing this POV (AFTER delete patch sent)
+    this.app.widgetsHub.cleanupActionsForDeletedItem({
+      deletedItemId: nid,
+      widgetId: this.id,
+      actionType: 'goToPov'
+    });
   }
 }
