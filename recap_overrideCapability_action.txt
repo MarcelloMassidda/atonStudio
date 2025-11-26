@@ -1,0 +1,537 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    OVERRIDE CAPABILITY ARCHITECTURE                            ║
+║                  Single Source of Truth: createAuthoringUI()                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CAPABILITY REGISTRATION                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    LayerWidget.constructor()
+         │
+         ├─► registerCapability(new OverrideCapability(this))
+         │       │
+         │       └─► OverrideCapability.addActions(widget)
+         │               │
+         │               └─► Registers "override" action to widget
+         │
+         └─► Widget now has:
+                 - Capability: OverrideCapability
+                 - Action: "override" (exposed by capability)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            TWO EXECUTION MODES                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔═════════════════════════════════╗    ╔════════════════════════════════════╗
+║        MODE: 'direct'           ║    ║         MODE: 'action'             ║
+║   (Immediate Capability)        ║    ║    (Deferred via Semantic Node)    ║
+╚═════════════════════════════════╝    ╚════════════════════════════════════╝
+
+WHEN: User equips capability         WHEN: User adds action to semantic node
+WHERE: Item inspector                WHERE: Semantic node inspector  
+DATA: capabilities.override[itemId]  DATA: semanticgraph.nodes[nodeId].events
+EXECUTE: Immediately on equip        EXECUTE: Later on node tap/event
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DIRECT MODE LIFECYCLE                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+1️⃣  USER SELECTS LAYER "Stand-p760jhlog"
+    │
+    ├─► LayerWidget.focusOnItem(itemId)
+    │
+    └─► Widget.createInspectorContent(item)
+            │
+            └─► Iterates through capabilities
+                    │
+                    └─► OverrideCapability.getProperties(item, widget)
+                            │
+                            └─► Returns:
+                                {
+                                  materialOverride: {
+                                    inspectorBlock: (item) => {
+                                      return this.createAuthoringUI({
+                                        itemId: "Stand-p760jhlog",
+                                        currentData: capabilities.override["Stand-p760jhlog"],
+                                        onSave: (data) => {...},
+                                        widget: widget,
+                                        mode: 'direct' ◄─────────────┐
+                                      })                             │
+                                    }                                │
+                                  }                                  │
+                                }                                    │
+                                                                     │
+2️⃣  createAuthoringUI() RENDERS UI                                  │
+    │                                                               │
+    ├─► Gets materials from item:                                  │
+    │   - structure                                                 │
+    │   - screen                                                    │
+    │                                                               │
+    ├─► For each material creates:                                 │
+    │   ┌───────────────────────────────┐                         │
+    │   │ Material: structure            │                         │
+    │   │ [🖼️ Change Texture]           │                         │
+    │   │ [Restore Original] (if set)    │                         │
+    │   └───────────────────────────────┘                         │
+    │   ┌───────────────────────────────┐                         │
+    │   │ Material: screen               │                         │
+    │   │ [🖼️ Change Texture]           │                         │
+    │   │ [Restore Original] (if set)    │                         │
+    │   └───────────────────────────────┘                         │
+    │                                                               │
+    └─► Returns container with all UI elements                     │
+                                                                     │
+3️⃣  USER CLICKS "Change Texture" for "screen"                       │
+    │                                                               │
+    └─► openTextureSelectorForMaterial("screen", itemId, widget, mode, callback)
+            │                                                       │
+            │   mode = 'direct' ────────────────────────────────────┘
+            │
+            ├─► Opens MediaGallery modal
+            │
+            └─► User selects texture: "bastet/media/ZEUS-MUSEO1.jpg"
+                    │
+                    └─► onMediaItemClicked({ url })
+                            │
+                            ├─► ATON.UI.hideModal() ◄── Modal closes
+                            │
+                            └─► if (mode === 'direct')
+                                    │
+                                    └─► saveTexture(itemId, "screen", url, widget)
+
+4️⃣  saveTexture() - APPLIES TO 3D MODEL & SAVES
+    │
+    ├─► Get item and material objects
+    │   const item = widget.getItem("Stand-p760jhlog")
+    │   const materials = getMaterialsFromNode(item)
+    │   const material = materials.find(m => m.name === "screen")
+    │
+    ├─► applyTextureToMaterial(item, material, url)
+    │   │
+    │   ├─► Load texture from URL
+    │   ├─► Apply to 3D model (immediate visual update)
+    │   │
+    │   └─► Update scene data:
+    │       scene.capabilities.override["Stand-p760jhlog"] = {
+    │         materials: {
+    │           screen: { texturePath: "bastet/media/ZEUS-MUSEO1.jpg" }
+    │         }
+    │       }
+    │
+    ├─► Send PATCH (MODE_ADD):
+    │   {
+    │     capabilities: {
+    │       override: {
+    │         "Stand-p760jhlog": {
+    │           materials: {
+    │             screen: { texturePath: "bastet/media/ZEUS-MUSEO1.jpg" }
+    │           }
+    │         }
+    │       }
+    │     }
+    │   }
+    │
+    └─► widget.app.widgetsHub.focusOnItem(itemId)
+            │
+            └─► Refreshes inspector UI (shows updated texture)
+
+5️⃣  USER CLICKS "Restore Original" for "screen"
+    │
+    └─► restoreOriginalTexture("screen", itemId, widget, mode, callback)
+            │
+            └─► if (mode === 'direct')
+                    │
+                    ├─► Get item object
+                    ├─► restoreOriginalMaterial(item, "screen")
+                    │   │
+                    │   ├─► Restore from F.originalMaterials storage
+                    │   └─► Apply to 3D model
+                    │
+                    ├─► Delete from scene data:
+                    │   delete scene.capabilities.override["Stand-p760jhlog"].materials.screen
+                    │
+                    ├─► Send PATCH (MODE_DEL):
+                    │   {
+                    │     capabilities: {
+                    │       override: {
+                    │         "Stand-p760jhlog": {
+                    │           materials: {
+                    │             screen: {} ◄── Empty = delete
+                    │           }
+                    │         }
+                    │       }
+                    │     }
+                    │   }
+                    │
+                    └─► widget.app.widgetsHub.focusOnItem(itemId)
+                            │
+                            └─► Refreshes inspector UI
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          ACTION MODE LIFECYCLE                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+1️⃣  USER SELECTS SEMANTIC NODE "mytoggle"
+    │
+    ├─► SemanticsWidget.focusOnItem(nodeId)
+    │
+    └─► Creates inspector with [+ Add Action] button
+
+2️⃣  USER CLICKS [+ Add Action]
+    │
+    └─► Shows action selector modal
+            │
+            └─► Lists all available actions from all widgets
+                    │
+                    └─► User selects: "Override Materials" (from LayerWidget)
+
+3️⃣  ACTION ASSIGNED TO SEMANTIC NODE
+    │
+    ├─► Generate actionId: "override-qj9ysvzbm"
+    │
+    ├─► Create action instance:
+    │   {
+    │     actionType: "override",
+    │     widgetId: "layers",
+    │     args: {} ◄── Initially empty
+    │   }
+    │
+    ├─► Save to scene:
+    │   scene.semanticgraph.nodes.mytoggle.events.onSelect = {
+    │     "override-qj9ysvzbm": { ... }
+    │   }
+    │
+    └─► Patch and refresh inspector
+
+4️⃣  ACTION INSPECTOR SHOWS CONFIGURATION
+    │
+    └─► OverrideCapability.createActionInspectorBlock(node, actionId, args, widget)
+            │
+            ├─► if (!args.itemId) ◄── Step 1: Select target item
+            │   │
+            │   └─► [Select Item to Override] button
+            │           │
+            │           └─► openItemSelectionModal()
+            │                   │
+            │                   ├─► Lists: "Stand-p760jhlog", "ddd", "cospi"
+            │                   │
+            │                   └─► User selects: "Stand-p760jhlog"
+            │                           │
+            │                           └─► saveActionItemSelection()
+            │                                   │
+            │                                   ├─► args.itemId = "Stand-p760jhlog"
+            │                                   ├─► args.materials = {}
+            │                                   ├─► Patch (MODE_ADD)
+            │                                   └─► Refresh inspector
+            │
+            └─► else ◄── Step 2: Configure materials
+                │
+                ├─► Show target label: "Target: Stand-p760jhlog"
+                │
+                ├─► Call createAuthoringUI():
+                │   this.createAuthoringUI({
+                │     itemId: "Stand-p760jhlog",
+                │     currentData: args.materials,  ◄── From action args
+                │     onSave: (data) => this.saveActionConfig(...),
+                │     widget: widget,
+                │     mode: 'action' ◄─────────────────────────┐
+                │   })                                          │
+                │                                                │
+                └─► [Change Target Item] button                 │
+                                                                 │
+5️⃣  createAuthoringUI() RENDERS SAME UI AS DIRECT MODE          │
+    │                                                            │
+    ├─► Gets materials from "Stand-p760jhlog":                  │
+    │   - structure                                              │
+    │   - screen                                                 │
+    │                                                            │
+    └─► For each material creates texture selector              │
+        (Same UI as direct mode)                                │
+                                                                 │
+6️⃣  USER CLICKS "Change Texture" for "screen"                   │
+    │                                                            │
+    └─► openTextureSelectorForMaterial("screen", itemId, widget, mode, callback)
+            │                                                    │
+            │   mode = 'action' ──────────────────────────────────┘
+            │
+            ├─► Opens MediaGallery modal
+            │
+            └─► User selects texture: "bastet/media/ZEUS-MUSEO1.jpg"
+                    │
+                    └─► onMediaItemClicked({ url })
+                            │
+                            ├─► ATON.UI.hideModal() ◄── Modal closes
+                            │
+                            └─► if (mode === 'action')
+                                    │
+                                    └─► onSaveCallback({
+                                          itemId: "Stand-p760jhlog",
+                                          materialName: "screen",
+                                          texturePath: "bastet/media/ZEUS-MUSEO1.jpg"
+                                        })
+                                            │
+                                            └─► saveActionConfig(node, actionId, data)
+
+7️⃣  saveActionConfig() - SAVES TO ACTION ARGS
+    │
+    ├─► Update action args:
+    │   args.materials.screen = {
+    │     texturePath: "bastet/media/ZEUS-MUSEO1.jpg"
+    │   }
+    │
+    ├─► Send PATCH (MODE_ADD):
+    │   {
+    │     semanticgraph: {
+    │       nodes: {
+    │         mytoggle: {
+    │           events: {
+    │             onSelect: {
+    │               "override-qj9ysvzbm": {
+    │                 actionType: "override",
+    │                 widgetId: "layers",
+    │                 args: {
+    │                   itemId: "Stand-p760jhlog",
+    │                   materials: {
+    │                     screen: {
+    │                       texturePath: "bastet/media/ZEUS-MUSEO1.jpg"
+    │                     }
+    │                   }
+    │                 }
+    │               }
+    │             }
+    │           }
+    │         }
+    │       }
+    │     }
+    │   }
+    │
+    └─► widget.app.widgetsHub.focusOnItem({ id: nodeId, wid: "annotations" })
+            │
+            └─► Refreshes inspector UI (shows updated texture in action config)
+
+8️⃣  USER CLICKS "Restore Original" for "screen"
+    │
+    └─► restoreOriginalTexture("screen", itemId, widget, mode, callback)
+            │
+            └─► if (mode === 'action')
+                    │
+                    └─► onSaveCallback({
+                          itemId: "Stand-p760jhlog",
+                          materialName: "screen",
+                          texturePath: null ◄── null = restore
+                        })
+                            │
+                            └─► saveActionConfig(node, actionId, data)
+                                    │
+                                    ├─► if (texturePath === null)
+                                    │   │
+                                    │   ├─► Delete material:
+                                    │   │   delete args.materials.screen
+                                    │   │
+                                    │   └─► Send PATCH (MODE_DEL):
+                                    │       {
+                                    │         semanticgraph: {
+                                    │           nodes: {
+                                    │             mytoggle: {
+                                    │               events: {
+                                    │                 onSelect: {
+                                    │                   "override-qj9ysvzbm": {
+                                    │                     args: {
+                                    │                       materials: {
+                                    │                         screen: {} ◄── Empty = delete
+                                    │                       }
+                                    │                     }
+                                    │                   }
+                                    │                 }
+                                    │               }
+                                    │             }
+                                    │           }
+                                    │         }
+                                    │       }
+                                    │
+                                    └─► widget.app.widgetsHub.focusOnItem(nodeId)
+                                            │
+                                            └─► Refreshes inspector UI
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          RUNTIME EXECUTION (FLARE)                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+9️⃣  USER TAPS SEMANTIC NODE "mytoggle" IN VIEWER
+    │
+    └─► prototyper.js: F.executeAction = (semNodeId) => {...}
+            │
+            ├─► Get actions from semantic node:
+            │   const actions = scene.semanticgraph.nodes.mytoggle.events.onSelect
+            │
+            ├─► Loop through actions dictionary:
+            │   for (const [actionId, actionData] of Object.entries(actions))
+            │
+            └─► Execute: F.ActionHandlers['override']({
+                  actionId: "override-qj9ysvzbm",
+                  args: {
+                    itemId: "Stand-p760jhlog",
+                    materials: {
+                      structure: { texturePath: "bastet/media/0_0.png" },
+                      screen: { texturePath: "bastet/media/ZEUS-MUSEO1.jpg" }
+                    }
+                  },
+                  semNodeId: "mytoggle",
+                  scene: {...}
+                })
+
+🔟 RUNTIME HANDLER APPLIES OVERRIDES
+    │
+    ├─► Get target item:
+    │   const targetNode = ATON.getSceneNode("Stand-p760jhlog")
+    │
+    ├─► For each material override:
+    │   │
+    │   ├─► structure:
+    │   │   F.applyTextureToMaterial(
+    │   │     targetNode,
+    │   │     "structure",
+    │   │     "bastet/media/0_0.png"
+    │   │   )
+    │   │
+    │   └─► screen:
+    │       F.applyTextureToMaterial(
+    │         targetNode,
+    │         "screen",
+    │         "bastet/media/ZEUS-MUSEO1.jpg"
+    │       )
+    │
+    └─► ✅ Override applied to 3D model!
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DATA STORAGE COMPARISON                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+DIRECT MODE (Immediate Capability):
+════════════════════════════════════
+{
+  "capabilities": {
+    "override": {
+      "Stand-p760jhlog": {              ◄── Item ID as key
+        "materials": {
+          "screen": {
+            "texturePath": "bastet/media/ZEUS-MUSEO1.jpg"
+          }
+        }
+      }
+    }
+  }
+}
+
+Executed: Immediately when equipped
+Stored in: capabilities.override[itemId]
+
+
+ACTION MODE (Deferred Execution):
+═════════════════════════════════
+{
+  "semanticgraph": {
+    "nodes": {
+      "mytoggle": {                     ◄── Semantic node
+        "events": {
+          "onSelect": {
+            "override-qj9ysvzbm": {     ◄── Action ID as key (dictionary)
+              "actionType": "override",
+              "widgetId": "layers",
+              "args": {
+                "itemId": "Stand-p760jhlog",  ◄── Target item
+                "materials": {
+                  "structure": { texturePath: "bastet/media/0_0.png" },
+                  "screen": { texturePath: "bastet/media/ZEUS-MUSEO1.jpg" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+Executed: When semantic node is tapped
+Stored in: semanticgraph.nodes[nodeId].events.onSelect[actionId]
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       KEY ARCHITECTURAL INSIGHTS                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+✅ SINGLE SOURCE OF TRUTH
+   └─► createAuthoringUI() is the ONLY place where UI is defined
+       - Direct mode calls it
+       - Action mode calls it
+       - Same UI, different data flow
+
+✅ MODE PARAMETER ELEGANCE
+   └─► mode: 'direct' | 'action' controls behavior:
+       - 'direct': Saves immediately to capabilities, applies to model
+       - 'action': Saves to action args via callback, deferred execution
+
+✅ CALLBACK PATTERN
+   └─► onSave callback abstracts the save mechanism:
+       - Direct mode: Internal saveTexture()
+       - Action mode: saveActionConfig() via callback
+
+✅ CAPABILITY EXPOSES ACTION
+   └─► OverrideCapability.addActions() registers the action
+       - Widget is unaware of the action
+       - Capability owns both direct usage AND action
+
+✅ ZERO CODE DUPLICATION
+   └─► Material selection UI is written once in createAuthoringUI()
+       - Texture selector logic in openTextureSelectorForMaterial()
+       - Restore logic in restoreOriginalTexture()
+       - All reused across both modes
+
+✅ WEBDAV PATCH SAFETY
+   └─► Dictionary structure for actions:
+       - Can MODE_DEL specific action by key
+       - Can MODE_DEL specific material by key
+       - No array merging issues
+
+✅ CLEANUP STRATEGY
+   └─► onReferencedItemDeleted() handles both:
+       - Direct: Clean capabilities.override[deletedItemId]
+       - Action: Clean actions referencing deletedItemId
+
+✅ INSPECTOR REFRESH PATTERN
+   └─► Direct mode: focusOnItem(itemId) → refreshes layer inspector
+       Action mode: focusOnItem(nodeId) → refreshes semantic node inspector
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              LIFECYCLE SUMMARY                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+DIRECT MODE:
+1. Equip capability on item
+2. createAuthoringUI(mode: 'direct') renders config
+3. Select texture → saveTexture() → Apply to 3D model + Patch
+4. Restore → restoreOriginalTexture() → Restore 3D model + Delete patch
+5. Effect: Immediate visual change
+
+ACTION MODE:
+1. Add action to semantic node
+2. Select target item → saveActionItemSelection()
+3. createAuthoringUI(mode: 'action') renders config
+4. Select texture → onSave callback → saveActionConfig() → Patch action args
+5. Restore → onSave callback(null) → Delete material from action args
+6. Tap node in viewer → F.ActionHandlers['override'] → Apply to 3D model
+7. Effect: Deferred execution on event
+
+BOTH MODES USE SAME UI CODE: createAuthoringUI() ✨
+\`\`\`
+
+This schema shows the complete lifecycle of the Override Capability in both direct and action modes, highlighting the elegant reuse of \`createAuthoringUI()\` as the single source of truth for configuration UI! 🎯
+`;

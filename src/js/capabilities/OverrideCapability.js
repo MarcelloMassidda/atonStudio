@@ -56,46 +56,194 @@ export class OverrideCapability extends Capability {
   }
 
   /**
+   * Create the authoring UI for material override
+   * This is the single source of truth for override configuration
+   */
+  createAuthoringUI(context) {
+    const { itemId, currentData, onSave, widget, mode } = context;
+    
+    // Get the item node
+    const item = widget.getItem(itemId);
+    if (!item) {
+      console.warn(`Item ${itemId} not found`);
+      return null;
+    }
+    
+    // Get materials from the item
+    const materials = this.getMaterialsFromNode(item);
+    
+    if (materials.length === 0) {
+      return widget.app.uikit.createText({
+        text: "No materials found on this item",
+        classList: ['text-muted', 'fst-italic']
+      });
+    }
+    
+    const container = widget.app.uikit.createContainer({
+      classList: ['material-override-authoring']
+    });
+    
+    // Create a texture selector for each material
+    materials.forEach(material => {
+      const matName = material.name;
+      const currentTexture = currentData?.materials?.[matName]?.texturePath;
+      
+      // Create texture selector block
+      const textureBlock = widget.app.uikit.TextureSelectorBlock(
+        currentTexture || this.getMaterialTexture(material),
+        () => this.openTextureSelectorForMaterial(matName, itemId, widget, mode, onSave),
+        matName
+      );
+      
+      container.appendChild(textureBlock);
+      
+      // If material has override, add undo button
+      if (currentTexture) {
+        const undoBtn = widget.app.uikit.createButton({
+          text: "Restore Original",
+          icon: "undo",
+          classList: ['btn-sm', 'btn-warning', 'mt-1', 'mb-3'],
+          onClick: () => this.restoreOriginalTexture(matName, itemId, widget, mode, onSave)
+        });
+        container.appendChild(undoBtn);
+      }
+    });
+    
+    return container;
+  }
+
+  /**
+   * Open texture selector modal for a specific material
+   */
+  openTextureSelectorForMaterial(materialName, itemId, widget, mode, onSaveCallback) {
+    widget.app.uikit.createMediaGallery({
+      title: `Select Texture for ${materialName}`,
+      onMediaItemClicked: ({ url }) => {
+        // Close modal first
+        ATON.UI.hideModal();
+        
+        if (mode === 'direct') {
+          // Direct mode: save immediately to item
+          this.saveTexture(itemId, materialName, url, widget);
+        } else if (mode === 'action') {
+          // Action mode: call callback (action will handle saving)
+          onSaveCallback({
+            itemId,
+            materialName,
+            texturePath: url
+          });
+        }
+      }
+    });
+  }
+
+  /**
+   * Save texture to item's capability data and apply to 3D model
+   */
+  saveTexture(itemId, materialName, texturePath, widget) {
+    const item = widget.getItem(itemId);
+    if (!item) {
+      console.error(`Item ${itemId} not found`);
+      return;
+    }
+    
+    // Get the material object
+    const material = this.getItemMaterial(item, materialName);
+    if (!material) {
+      console.error(`Material ${materialName} not found in item ${itemId}`);
+      return;
+    }
+    
+    // Apply texture to the 3D model (this also patches and saves to scene)
+    this.applyTextureToMaterial(material, texturePath, item, widget);
+    
+    console.log(`✅ Saved and applied texture for ${materialName} on ${itemId}`);
+    
+    // Refocus on item to properly reload inspector
+    widget.app.widgetsHub.focusOnItem({ id: itemId, wid: widget.id });
+  }
+
+  /**
+   * Restore original texture for a material
+   */
+  restoreOriginalTexture(materialName, itemId, widget, mode, onSaveCallback) {
+    if (mode === 'direct') {
+      const item = widget.getItem(itemId);
+      if (!item) {
+        console.error(`Item ${itemId} not found`);
+        return;
+      }
+      
+      // Get the material object (create a minimal material object for restoreOriginalMaterial)
+      const material = { name: materialName };
+      
+      // Actually restore the material on the 3D model (this also patches)
+      this.restoreOriginalMaterial(material, item, widget);
+      
+      console.log(`✅ Restored original texture for ${materialName}`);
+      
+      // Refocus on item to properly reload inspector
+      widget.app.widgetsHub.focusOnItem({ id: itemId, wid: widget.id });
+    } else if (mode === 'action') {
+      // Action mode: notify via callback
+      onSaveCallback({
+        itemId,
+        materialName,
+        texturePath: null // null = restore original
+      });
+    }
+  }
+
+  /**
    * Get properties for this capability
-   * @param {Object} item - The item to get properties for
-   * @param {Object} widget - The parent widget
-   * @returns {Object} Property definitions
+   * Returns a single property that renders the full authoring UI
+   * This is the standard way widgets consume capability UIs
    */
   getProperties(item, widget) {
     const materials = this.getMaterialsFromNode(item);
-    const properties = {};
+    
+    if (materials.length === 0) return {};
+    
     const capabilityData = this.getItemData(item, widget) || {};
-
-    // For each material expose a texture property that renders the texture selector block
-    materials.forEach((material, index) => {
-      const key = material.name || `material_${index}`;
-      properties[key] = {
-        inspectorBlock: (it) =>
-          this.createTextureOverrideBlock(material, it, widget),
-        get: () =>
-          capabilityData?.materials?.[material.name]?.texturePath || null,
-        set: (texturePath) => {
-          // Update capability data for this item/material
-          this.setItemData(item, widget, {
-            materials: {
-              [material.name]: { texturePath },
+    
+    // Return single property with full authoring UI
+    return {
+      materialOverride: {
+        inspectorBlock: (it) => {
+          return this.createAuthoringUI({
+            itemId: item.nid,
+            currentData: capabilityData,
+            onSave: (data) => {
+              // Save handled by authoring UI internally
             },
+            widget: widget,
+            mode: 'direct'
           });
-        },
-      };
-    });
-
-    return properties;
+        }
+      }
+    };
   }
 
   /**
    * Get inspector blocks for all materials
+   * Now delegated to createAuthoringUI
+   * NOTE: Not used in standard widget flow - getProperties is the standard pattern
    */
   getInspectorBlocks(item, widget) {
     const materials = this.getMaterialsFromNode(item);
-    return materials.map((material) =>
-      this.createMaterialOverrideInspector(material, item, widget)
-    );
+    
+    if (materials.length === 0) return [];
+    
+    // Return single block using authoring UI
+    return [
+      this.createAuthoringUI({
+        itemId: item.nid,
+        currentData: this.getItemData(item, widget),
+        onSave: () => {}, // Handled internally
+        widget: widget,
+        mode: 'direct'
+      })
+    ];
   }
 
   /**
@@ -541,6 +689,260 @@ export class OverrideCapability extends Capability {
   equip(item, widget) {
     console.log(`Equipping override capability for item ${item.nid}`);
     return super.equip(item, widget);
+  }
+
+  /**
+   * Add override action to widget
+   * This makes the capability available as an action that can be assigned to semantic nodes
+   */
+  addActions(widget) {
+    return [
+      {
+        id: "override",
+        name: "Override Material",
+        widgetId: widget.id,
+        getProperties: (context) => {
+          const { node, actionId, args } = context;
+          return {
+            override: {
+              inspectorBlock: () => this.createActionInspectorBlock(node, actionId, args, widget),
+            },
+          };
+        },
+        execute: (context) => {
+          // Runtime execution handled by prototyper flare
+        },
+        onDelete: (context) => {
+          console.log(`🧹 Cleaning up override action`);
+        },
+        onReferencedItemDeleted: (deletedItemId, actionInstance) => {
+          // Check if this action references the deleted item
+          if (actionInstance.args?.itemId === deletedItemId) {
+            return { 
+              shouldRemove: true, 
+              reason: `Item "${deletedItemId}" was deleted` 
+            };
+          }
+          return { shouldRemove: false };
+        },
+      },
+    ];
+  }
+
+  /**
+   * Create action inspector block
+   * Shows item selection and material configuration UI
+   * This is a light wrapper around createAuthoringUI
+   */
+  createActionInspectorBlock(node, actionId, args, widget) {
+    const itemId = args?.itemId;
+
+    const container = widget.app.uikit.createContainer({
+      classList: ["inspector_Block"],
+      content: [],
+    });
+
+    // Item selector button
+    const itemBtn = widget.app.uikit.createButton({
+      text: itemId || "Select Item",
+      icon: "collection-item",
+      classList: ["btn-light", "mb-2"],
+      onClick: () => this.openItemSelectionModal(node, actionId, widget),
+    });
+    container.appendChild(itemBtn);
+
+    // If item is selected, show material configuration using authoring UI
+    if (itemId) {
+      const currentConfig = args?.materials || {};
+
+      const configUI = this.createAuthoringUI({
+        itemId: itemId,
+        currentData: { materials: currentConfig },
+        onSave: (data) => {
+          this.saveActionConfig(node, actionId, itemId, data, widget);
+        },
+        widget: widget,
+        mode: "action",
+      });
+
+      if (configUI) {
+        container.appendChild(configUI);
+      }
+    }
+
+    return container;
+  }
+
+  /**
+   * Open item selection modal for override action
+   */
+  openItemSelectionModal(node, actionId, widget) {
+    const scene = widget.getCurrentScene();
+    const items = widget.options.items();
+
+    if (!items || Object.keys(items).length === 0) {
+      window.alert("No items available in the scene");
+      return;
+    }
+
+    // Create modal body
+    const bodyContent = document.createElement("div");
+
+    // Add instruction text
+    const instruction = document.createElement("p");
+    instruction.classList.add("text-muted", "mb-3");
+    instruction.textContent = "Select the item for material override:";
+    bodyContent.appendChild(instruction);
+
+    // Create list group
+    const listGroup = document.createElement("div");
+    listGroup.classList.add("list-group");
+    bodyContent.appendChild(listGroup);
+
+    // Add items to list
+    for (const [itemId, itemData] of Object.entries(items)) {
+      const itemElement = document.createElement("button");
+      itemElement.type = "button";
+      itemElement.classList.add("list-group-item", "list-group-item-action");
+      itemElement.textContent = itemId;
+
+      itemElement.addEventListener("click", () => {
+        this.saveItemSelection(node, actionId, itemId, widget);
+      });
+
+      listGroup.appendChild(itemElement);
+    }
+
+    // Show modal
+    ATON.UI.showModal({
+      header: "Select Item for Override",
+      body: bodyContent,
+      size: "md",
+    });
+  }
+
+  /**
+   * Save item selection and show configuration UI
+   */
+  saveItemSelection(node, actionId, itemId, widget) {
+    const scene = widget.getCurrentScene();
+    const nid = node.nid;
+
+    // Find the action
+    const actions = scene.semanticgraph.nodes[nid]?.events?.onSelect;
+    if (!actions || !actions[actionId]) {
+      console.error(`Action ${actionId} not found`);
+      return;
+    }
+
+    // Save itemId
+    if (!actions[actionId].args) actions[actionId].args = {};
+    actions[actionId].args.itemId = itemId;
+
+    // Patch to save itemId
+    const patch = {
+      semanticgraph: {
+        nodes: {
+          [nid]: {
+            events: scene.semanticgraph.nodes[nid].events,
+          },
+        },
+        edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
+      },
+    };
+
+    widget.editor.patch = patch;
+    widget.editor.modePatch = ATON.SceneHub.MODE_ADD;
+    widget.editor.OnPatchChanged();
+
+    console.log(`✅ Item ${itemId} selected for override action ${actionId}`);
+
+    // Close modal
+    ATON.UI.hideModal();
+
+    // Update inspector to show configuration UI
+    widget.app.widgetsHub.focusOnItem({ id: nid, wid: "annotations" });
+  }
+
+  /**
+   * Save override action material configuration
+   */
+  saveActionConfig(node, actionId, itemId, data, widget) {
+    const scene = widget.getCurrentScene();
+    const nid = node.nid;
+
+    // Find the action
+    const actions = scene.semanticgraph.nodes[nid]?.events?.onSelect;
+    if (!actions || !actions[actionId]) {
+      console.error(`Action ${actionId} not found`);
+      return;
+    }
+
+    // Initialize materials object if needed
+    if (!actions[actionId].args.materials) {
+      actions[actionId].args.materials = {};
+    }
+
+    // Update material configuration
+    const { materialName, texturePath } = data;
+
+    if (texturePath === null) {
+      // Restore original: remove from config
+      delete actions[actionId].args.materials[materialName];
+      
+      // Send DELETE patch for this specific material
+      const deletePatch = {
+        semanticgraph: {
+          nodes: {
+            [nid]: {
+              events: {
+                onSelect: {
+                  [actionId]: {
+                    args: {
+                      materials: {
+                        [materialName]: {}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+      
+      widget.editor.patch = deletePatch;
+      widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
+      widget.editor.OnPatchChanged();
+      
+      console.log(`✅ Removed override for material ${materialName} in action ${actionId}`);
+    } else {
+      // Set override
+      actions[actionId].args.materials[materialName] = {
+        texturePath,
+      };
+      
+      // Send ADD patch with entire events structure
+      const addPatch = {
+        semanticgraph: {
+          nodes: {
+            [nid]: {
+              events: scene.semanticgraph.nodes[nid].events,
+            },
+          },
+          edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
+        },
+      };
+      
+      widget.editor.patch = addPatch;
+      widget.editor.modePatch = ATON.SceneHub.MODE_ADD;
+      widget.editor.OnPatchChanged();
+      
+      console.log(`✅ Updated override action ${actionId} material ${materialName}`);
+    }
+
+    // Refocus on semantic node to properly reload inspector
+    widget.app.widgetsHub.focusOnItem({ id: nid, wid: "annotations" });
   }
 
   /**

@@ -89,6 +89,31 @@ export class ScreenOverrideCapability extends OverrideCapability {
     }
 
     /**
+     * Override createAuthoringUI to filter for screen material
+     * Reuses parent implementation but with filtered materials
+     */
+    createAuthoringUI(context) {
+        const { itemId, widget } = context;
+        
+        // Get the item
+        const item = widget.getItem(itemId);
+        if (!item) return null;
+        
+        // Get screen materials (should be 1)
+        const materials = this.getMaterialsFromNode(item);
+        
+        if (materials.length === 0) {
+            return widget.app.uikit.createText({
+                text: "No screen material found on this item",
+                classList: ['text-muted', 'fst-italic']
+            });
+        }
+        
+        // Use parent's authoring UI with filtered context
+        return super.createAuthoringUI(context);
+    }
+
+    /**
      * Get properties for this capability
      * @param {Object} item - The item to get properties for
      * @param {Object} widget - The parent widget

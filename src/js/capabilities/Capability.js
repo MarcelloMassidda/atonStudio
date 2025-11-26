@@ -133,6 +133,25 @@ export class Capability {
     }
 
     /**
+     * Create the authoring UI for this capability
+     * This is the SINGLE SOURCE OF TRUTH for capability configuration
+     * Can be called from item inspector OR action inspector for reusability
+     * 
+     * @param {Object} context - Configuration context
+     * @param {string} context.itemId - The item being configured
+     * @param {Object} context.currentData - Existing capability data (if any)
+     * @param {Function} context.onSave - Callback when configuration is saved
+     * @param {Widget} context.widget - The widget managing the item
+     * @param {string} context.mode - 'direct' | 'action' (where it's called from)
+     * @returns {Element|null} The configuration UI or null if not implemented
+     */
+    createAuthoringUI(context) {
+        // Default: no authoring UI
+        // Override in subclasses to provide capability-specific configuration UI
+        return null;
+    }
+
+    /**
      * Add actions to the widget's action catalog
      * Override in subclasses to provide capability-specific actions
      * Actions are widget-level capabilities, not item-specific
