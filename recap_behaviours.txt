@@ -1,0 +1,835 @@
+================================================================================
+BEHAVIOURS SYSTEM - UNIFIED ARCHITECTURE REPORT
+================================================================================
+Date: December 13, 2025
+System: ATON Studio - Scene Authoring Framework
+
+================================================================================
+PART 1: DESCRIPTIVE AND METHODOLOGICAL OVERVIEW
+================================================================================
+
+1.1 INTRODUCTION
+--------------------------------------------------------------------------------
+The Behaviours system represents a unified architectural approach that merges 
+the previously separate "Actions" and "Capabilities" systems into a single, 
+mode-based entity. This consolidation eliminates code duplication, provides a 
+consistent authoring experience, and simplifies the extension of scene 
+interactivity features.
+
+Previous Architecture (DEPRECATED):
+- Capabilities: Direct modifications applied immediately to scene items
+- Actions: Deferred modifications triggered by semantic node events (onSelect)
+- TWO separate implementations with duplicated logic
+
+New Architecture (CURRENT):
+- Behaviours: Single entity supporting multiple execution modes
+  * 'direct' mode: Immediate application (replaces Capabilities)
+  * 'action' mode: Event-driven execution (replaces Actions)
+  * Single source of truth for authoring UI and execution logic
+
+
+1.2 CORE CONCEPTS
+--------------------------------------------------------------------------------
+
+A. BEHAVIOUR BASE CLASS
+Location: src/js/behaviours/Behaviour.js
+
+A Behaviour is an extensible entity that can:
+- Support one or more execution modes (direct, action, or both)
+- Provide a unified authoring UI (createAuthoringUI method)
+- Store data in different scene JSON locations based on mode
+- Handle lifecycle events (equip, unequip, item deletion)
+- Integrate with the Widget system for UI composition
+
+Key Properties:
+- id: Unique identifier (e.g., "override")
+- name: Human-readable name (e.g., "Material Override")
+- actionLabel: Label when used as action (e.g., "Override Materials")
+- modes: Array of supported modes ['direct', 'action']
+- visible: Whether it appears in available behaviours list
+- autoEquip: Whether it auto-equips when item is created
+
+B. EXECUTION MODES
+
+1) DIRECT MODE (replaces Capabilities)
+   - Applied immediately to scene items
+   - User selects behaviour → Configures → Saves
+   - Data stored in: scene.behaviours[behaviourId][itemId]
+   - Example: User adds Override behaviour to a 3D model, selects texture
+   - Use case: Direct modification of scene items during authoring
+
+2) ACTION MODE (replaces Actions)
+   - Configured in semantic nodes, executed on events
+   - User creates semantic node → Adds action → Configures target item
+   - Data stored in: scene.semanticgraph.nodes[nodeId].events[eventType][actionId].args
+   - Example: User creates hotspot that overrides materials when clicked
+   - Use case: Interactive scene behaviors triggered by user interaction
+
+
+1.3 DATA STORAGE ARCHITECTURE
+--------------------------------------------------------------------------------
+
+A. DIRECT MODE STORAGE
+Path: scene.behaviours[behaviourId][itemId]
+Structure:
+{
+  "behaviours": {
+    "override": {
+      "model-xyz": {
+        "materials": {
+          "materialName": {
+            "texturePath": "path/to/texture.jpg"
+          }
+        }
+      }
+    }
+  }
+}
+
+B. ACTION MODE STORAGE
+Path: scene.semanticgraph.nodes[nodeId].events.onSelect[actionId]
+Structure:
+{
+  "semanticgraph": {
+    "nodes": {
+      "semantic-node-abc": {
+        "events": {
+          "onSelect": {
+            "override-k3dbo96zq": {
+              "actionType": "override",
+              "widgetId": "layers",
+              "args": {
+                "itemId": "model-xyz",
+                "materials": {
+                  "materialName": {
+                    "texturePath": "path/to/texture.jpg"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+1.4 AUTHORING WORKFLOW
+--------------------------------------------------------------------------------
+
+A. DIRECT MODE WORKFLOW (Equipment-based)
+1. User focuses on scene item (3D model, POV, etc.)
+2. Widget shows "Add Behaviour" button with available behaviours
+3. User clicks behaviour → Behaviour is equipped to item
+4. createAuthoringUI(context) generates configuration UI
+5. User configures (e.g., selects texture for material)
+6. Data saved to scene.behaviours[behaviourId][itemId]
+7. Changes applied immediately to scene
+8. UI updated to show current configuration
+
+B. ACTION MODE WORKFLOW (Event-based)
+1. User focuses on semantic node
+2. Widget shows "Add Action" button
+3. Modal displays all available actions from all widgets
+4. User selects action (e.g., "Override Materials")
+5. Action added to node with unique actionId
+6. getActionDefinition().getProperties() creates inspector UI
+7. createActionInspectorBlock() shows item selector
+8. User selects target item
+9. createAuthoringUI(context) generates material configuration UI
+10. User configures materials
+11. saveActionConfig() patches data to semanticgraph
+12. Inspector refreshes to show current configuration
+13. Runtime: Prototyper flare executes action on event trigger
+
+
+1.5 KEY ARCHITECTURAL PATTERNS
+--------------------------------------------------------------------------------
+
+A. SINGLE SOURCE OF TRUTH
+Method: createAuthoringUI(context)
+- Receives mode-specific context
+- Generates identical UI for both modes
+- Adapts data sources based on mode
+- Uses unified save callbacks
+
+B. FRESH DATA PATTERN
+Problem: Stale args causing UI to show outdated configurations
+Solution: Always read fresh data from scene at inspector render time
+Implementation:
+```javascript
+createActionInspectorBlock(node, actionId, args, widget) {
+  // ALWAYS read fresh args from scene data
+  const scene = widget.getCurrentScene();
+  const freshArgs = scene.semanticgraph.nodes[nid].events.onSelect[actionId].args;
+  // Use freshArgs instead of stale args parameter
+}
+```
+
+C. WIDGET INTEGRATION
+- Behaviours registered to Widgets via registerBehaviour()
+- Widget provides helper methods: getItem(), getCurrentScene(), composePatch()
+- Widget aggregates behaviour properties for inspector
+- Widget filters behaviours by compatibility (canEquip)
+
+D. PATCHING MECHANISM
+- All scene modifications go through widget.composePatch(patch, mode)
+- Builds nested patch structures from path strings
+- Uses ATON.SceneHub.MODE_ADD or MODE_DEL
+- Triggers editor.OnPatchChanged() for server sync
+
+
+1.6 MATERIAL OVERRIDE BEHAVIOUR (REFERENCE IMPLEMENTATION)
+--------------------------------------------------------------------------------
+
+File: src/js/behaviours/OverrideBehaviour.js
+Modes: ['direct', 'action']
+
+Features:
+- Clone materials before modifying (preserves originals)
+- Shared storage with prototyper flare (Map<itemId, Map<materialName, material>>)
+- URL resolution via ATON.Utils.resolveCollectionURL()
+- Cache invalidation after material changes
+- Light probe updates after texture application
+
+Direct Mode Flow:
+1. User equips Override behaviour to 3D model
+2. getMaterialsFromNode() extracts all materials
+3. createAuthoringUI() shows texture selectors per material
+4. User selects texture → applyTextureToMaterial()
+5. Material cloned, texture applied, cache invalidated
+6. Data saved to scene.behaviours.override[itemId]
+7. "Restore Original" button appears
+8. User can restore → restoreOriginalTexture()
+
+Action Mode Flow:
+1. User adds Override action to semantic node
+2. createActionInspectorBlock() shows "Select Item" button
+3. openItemSelectionModal() displays available 3D models
+4. User selects model → saveItemSelection()
+5. Inspector refreshes, shows material configuration UI
+6. createAuthoringUI() renders texture selectors (same as direct mode)
+7. User selects texture → saveTexture calls onSave callback
+8. onSave calls saveActionConfig(node, actionId, itemId, data, widget)
+9. Data patched to semanticgraph.nodes[nid].events.onSelect[actionId].args
+10. Inspector refreshes with fresh args to show selection
+11. Runtime: Prototyper flare reads args and applies overrides
+
+
+1.7 TEMPLATE INTEGRATION
+--------------------------------------------------------------------------------
+
+Templates define "equipment recipes" for widgets:
+- Which behaviours are available
+- Which actions are allowed
+- Auto-equip configurations
+
+Example - Exhibition Template:
+```javascript
+const layerWidget = new LayerWidget(app, {
+  // ... widget options
+});
+
+// Register specialized behaviour
+layerWidget.registerBehaviour(new ScreenOverrideBehaviour());
+
+// Template filtering
+template.allowedActions = {
+  layers: ['override'], // Only override action allowed
+  viewpoints: ['toggleVisible']
+};
+```
+
+
+1.8 RUNTIME EXECUTION (PROTOTYPER FLARE)
+--------------------------------------------------------------------------------
+
+File: config/flares/prototyper/public/prototyper.js
+
+Refactored to support behaviours namespace:
+- Parser: behaviours_parser (instead of capabilities_parser)
+- Methods: parse_behaviours(), parse_override_behaviour()
+- Reads both scene.behaviours (direct) and action args (action mode)
+- Shared _originalMaterials storage for material restoration
+- Executes behaviour logic at scene load or event trigger
+
+
+1.9 MIGRATION STRATEGY
+--------------------------------------------------------------------------------
+
+A. BACKWARD COMPATIBILITY
+- Old scenes still work with legacy capabilities namespace
+- New scenes use behaviours namespace
+- Both can coexist during transition period
+- Widget supports both getCapabilities() and getBehaviours()
+
+B. CONVERSION PATH
+Old: OverrideCapability extends Capability
+New: OverrideBehaviour extends Behaviour
+
+Changes:
+- mode property → modes array
+- Single createAuthoringUI() replaces separate UI methods
+- Action definition returned by getActionDefinition(widget)
+- Data paths updated to new storage locations
+
+
+================================================================================
+PART 2: ENTITY INTERACTION SCHEMA
+================================================================================
+
+2.1 SYSTEM ENTITIES
+--------------------------------------------------------------------------------
+
+A. CORE ENTITIES
+- Widget: Base class for scene element management (layers, POVs, measurements)
+- Behaviour: Reusable functionality entity (override, toggle, animate)
+- ModernWidgetHub: Central registry and coordinator
+- Template: Configuration blueprint defining available features
+- Scene JSON: Data storage structure
+
+B. UI ENTITIES
+- Inspector: Property editor panel for focused items
+- Modal: Dialogs for selection workflows
+- MediaGallery: Asset browser for textures/media
+
+
+2.2 ENTITY RELATIONSHIPS - BEHAVIOUR DECLARATION
+--------------------------------------------------------------------------------
+
+[Template] creates → [Widget] with configuration
+    ↓
+[Widget].registerBehaviour(behaviour)
+    ↓
+[Behaviour] instance stored in Widget.behaviours Map
+    ↓
+[Behaviour].setWidget(widget) - establishes bidirectional link
+
+Example Code:
+```javascript
+// Template.js
+const layerWidget = new LayerWidget(app, {...});
+layerWidget.registerBehaviour(new OverrideBehaviour());
+widgetHub.registerWidget(layerWidget);
+```
+
+PARTICIPANTS:
+- Template: Initiator
+- Widget: Registry
+- Behaviour: Registered entity
+- ModernWidgetHub: Orchestrator
+
+
+2.3 ENTITY RELATIONSHIPS - DIRECT MODE BEHAVIOUR ASSIGNMENT
+--------------------------------------------------------------------------------
+
+USER ACTION: Clicks "Add Behaviour" button on focused item
+
+[User] → [Inspector] "Add Behaviour" button
+    ↓
+[Widget].getAddCapabilityButton(item)
+    ↓
+[Widget].getAvailableBehaviours(item)
+    ├─ filters by: visible, canEquip(item), not already equipped
+    └─ returns: Array<Behaviour>
+    ↓
+[User] selects behaviour from list
+    ↓
+[Widget].addBehaviourToItem(item, behaviourId)
+    ↓
+[Behaviour].onEquip(itemId) - lifecycle hook
+    ↓
+[Widget].composePatch(patch, MODE_ADD)
+    ├─ sets: editor.patch, editor.modePatch
+    └─ calls: editor.OnPatchChanged()
+    ↓
+[Scene JSON] updated: behaviours[behaviourId][itemId] = {}
+    ↓
+[Widget].app.widgetsHub.focusOnItem({id, wid})
+    ↓
+[ModernWidgetHub].focusOnItem()
+    ↓
+[ModernWidgetHub].setupInspector(widget, item, id)
+    ↓
+[Widget].getProperties(item)
+    ├─ aggregates from all equipped behaviours
+    └─ calls: behaviour.getProperties(itemId, widget)
+    ↓
+[Behaviour].getProperties(itemId, widget)
+    └─ returns: { [behaviourId]: { inspectorBlock: () => createAuthoringUI() } }
+    ↓
+[Inspector] renders → [Behaviour].createAuthoringUI(context)
+    └─ context: { mode: 'direct', itemId, widget }
+    ↓
+[User] configures via UI (e.g., selects texture)
+    ↓
+[Behaviour].saveTexture() or similar save method
+    ↓
+[Behaviour].sendPatch(path, data, mode)
+    └─ calls: widget.composePatch()
+    ↓
+[Scene JSON] updated: behaviours[behaviourId][itemId] = { config }
+    ↓
+[Behaviour].focusOnItem(itemId) - refresh UI
+    └─ calls: widget.app.widgetsHub.focusOnItem()
+
+CALL CHAIN SUMMARY:
+User → Inspector → Widget → Behaviour → Widget.composePatch → Scene JSON → 
+Inspector refresh → Behaviour.createAuthoringUI
+
+
+2.4 ENTITY RELATIONSHIPS - ACTION MODE BEHAVIOUR ASSIGNMENT
+--------------------------------------------------------------------------------
+
+USER ACTION: Clicks "Add Action" button on focused semantic node
+
+[User] → [Inspector] "Add Action" button
+    ↓
+[SemanticsWidget].getActionButton(node)
+    ↓
+[User] clicks button
+    ↓
+[ModernWidgetHub].assignActionToNode(node, widget)
+    ↓
+[ModernWidgetHub] collects actions from ALL widgets:
+    ├─ for each widget in widgetHub.widgets
+    │   ↓
+    │   [Widget].getActions()
+    │   ├─ gets legacy capability actions
+    │   └─ calls: widget.getActionModeBehaviours()
+    │       ↓
+    │       for each behaviour in widget.behaviours:
+    │         if behaviour.supportsMode('action'):
+    │           [Behaviour].getActionDefinition(widget)
+    │           └─ returns: {
+    │                id, name, widgetId,
+    │                getProperties(context),
+    │                execute(context),
+    │                onDelete(context),
+    │                onReferencedItemDeleted(deletedId, actionInstance)
+    │              }
+    └─ returns: Array of all available actions
+
+[ModernWidgetHub] displays modal with grouped action list
+    ↓
+[User] selects action (e.g., "Override Materials")
+    ↓
+[ModernWidgetHub].saveActionAssignment(node, widget, action)
+    ├─ generates unique actionId = ATON.Utils.generateID(action.id)
+    ├─ creates: semanticgraph.nodes[nid].events.onSelect[actionId] = {
+    │     actionType: action.id,
+    │     widgetId: action.widgetId,
+    │     args: {}
+    │   }
+    └─ calls: widget.composePatch(patch, MODE_ADD)
+    ↓
+[Scene JSON] updated with new action entry
+    ↓
+[ModernWidgetHub].focusOnItem({id: nid, wid: widget.id}) - refresh
+    ↓
+[ModernWidgetHub].setupInspector(widget, item, id)
+    ↓
+[Widget].getProperties(item) - for semantic node
+    ├─ gets node actions: semanticgraph.nodes[nid].events.onSelect
+    └─ for each [actionId, actionInstance]:
+        ├─ finds widget by actionInstance.widgetId
+        ├─ finds action definition by actionInstance.actionType
+        └─ calls: actionDef.getProperties({ node, actionId, args: actionInstance.args })
+            ↓
+            [Behaviour].getActionDefinition(widget).getProperties(context)
+            └─ returns: { [behaviourId]: { inspectorBlock: () => 
+                  this.createActionInspectorBlock(node, actionId, args, widget)
+                }}
+    ↓
+[Inspector] renders → [Behaviour].createActionInspectorBlock(node, actionId, args, widget)
+    ├─ READS FRESH ARGS from scene: freshArgs = scene.semanticgraph.nodes[nid].events.onSelect[actionId].args
+    ├─ renders "Select Item" button
+    └─ if item selected: calls createAuthoringUI({ 
+          mode: 'action',
+          itemId,
+          currentData: { materials: freshArgs.materials },
+          onSave: (data) => saveActionConfig(node, actionId, itemId, data, widget),
+          widget
+        })
+    ↓
+[User] clicks "Select Item"
+    ↓
+[Behaviour].openItemSelectionModal(node, actionId, widget)
+    └─ displays modal with all scene items
+    ↓
+[User] selects target item
+    ↓
+[Behaviour].saveItemSelection(node, actionId, itemId, widget)
+    ├─ updates: args.itemId = itemId
+    ├─ patches scene via widget.editor.patch
+    └─ calls: widget.app.widgetsHub.focusOnItem({id: nid, wid})
+    ↓
+[Inspector] re-renders (fresh args now include itemId)
+    ↓
+[Behaviour].createActionInspectorBlock() now shows material config UI
+    ↓
+[Behaviour].createAuthoringUI(context) - same as direct mode
+    └─ context: { mode: 'action', itemId, currentData, onSave, widget }
+    ↓
+[User] configures materials (selects texture)
+    ↓
+[Behaviour].openTextureSelectorForMaterial()
+    ↓
+[MediaGallery] shown
+    ↓
+[User] selects texture
+    ↓
+[Behaviour].saveTexture(itemId, materialName, texturePath, mode, actionId, onSave)
+    └─ in action mode: calls onSave({ materialName, texturePath })
+        ↓
+        onSave callback executes: 
+        [Behaviour].saveActionConfig(node, actionId, itemId, data, widget)
+        ├─ updates: args.materials[materialName] = { texturePath }
+        ├─ patches scene via widget.editor.patch
+        └─ calls: widget.app.widgetsHub.focusOnItem({id: nid, wid})
+        ↓
+[Inspector] re-renders with fresh args showing selected texture
+
+CALL CHAIN SUMMARY:
+User → Inspector → ModernWidgetHub.assignActionToNode → 
+Widget.getActions() → Behaviour.getActionDefinition() → Modal → 
+ModernWidgetHub.saveActionAssignment → Widget.composePatch → Scene JSON → 
+Inspector refresh → Behaviour.createActionInspectorBlock → 
+Behaviour.createAuthoringUI → User configures → 
+Behaviour.saveActionConfig → Scene JSON → Inspector refresh
+
+
+2.5 ENTITY RELATIONSHIPS - ACTION RUNTIME EXECUTION
+--------------------------------------------------------------------------------
+
+USER ACTION: Clicks semantic node hotspot in viewer
+
+[Viewer] user clicks hotspot
+    ↓
+[ATON] fires onSelect event for semantic node
+    ↓
+[Prototyper Flare] receives event
+    ↓
+[F.parse_scene()] called at scene load
+    ├─ parses: scene.semanticgraph.nodes
+    └─ for each node with events.onSelect:
+        calls: F.parse_behaviours(nid, scene)
+    ↓
+[F.parse_behaviours(nid, scene)]
+    ├─ gets: scene.semanticgraph.nodes[nid].events.onSelect
+    └─ for each [actionId, actionInstance]:
+        ├─ checks: actionInstance.actionType
+        └─ dispatches to specific parser:
+            [F.parse_override_behaviour(nid, actionId, actionInstance)]
+    ↓
+[F.parse_override_behaviour(nid, actionId, actionInstance)]
+    ├─ reads: actionInstance.args.itemId
+    ├─ reads: actionInstance.args.materials
+    ├─ gets item: ATON.getSceneNode(itemId)
+    └─ for each [materialName, config]:
+        ├─ stores original material in F._originalMaterials
+        ├─ resolves URL: ATON.Utils.resolveCollectionURL(texturePath)
+        ├─ loads texture: ATON.Utils.loadTexture(url)
+        ├─ clones material
+        └─ applies texture to material.map
+    ↓
+[Scene] materials updated, textures rendered
+    ↓
+[Light Probes] updated via assignLightProbesByProximity()
+
+RUNTIME EXECUTION PARTICIPANTS:
+- Viewer: User interaction source
+- ATON: Event system
+- Prototyper Flare: Runtime behaviour executor
+- Scene JSON: Data source (semanticgraph.nodes[nid].events.onSelect[actionId].args)
+- THREE.js: Material/texture rendering
+
+
+2.6 ENTITY RELATIONSHIPS - BEHAVIOUR DELETION
+--------------------------------------------------------------------------------
+
+A. DIRECT MODE DELETION
+
+USER ACTION: Removes equipped behaviour from item
+
+[User] → [Inspector] "Remove" button or similar
+    ↓
+[Widget].removeBehaviourFromItem(itemId, behaviourId)
+    ↓
+[Behaviour].onUnequip(itemId) - lifecycle hook
+    ↓
+[Widget].composePatch(patch, MODE_DEL)
+    └─ patch path: behaviours[behaviourId][itemId]
+    ↓
+[Scene JSON] updated: delete behaviours[behaviourId][itemId]
+    ↓
+[Inspector] refreshed
+
+B. ACTION MODE DELETION
+
+USER ACTION: Removes action from semantic node
+
+[User] → [Inspector] "Remove Action" button
+    ↓
+[ModernWidgetHub].removeActionFromNode(node, widget, actionId)
+    ├─ gets: actionInstance from scene.semanticgraph.nodes[nid].events.onSelect[actionId]
+    ├─ finds widget by actionInstance.widgetId
+    ├─ finds action definition by actionInstance.actionType
+    └─ calls: actionDef.onDelete({ node, actionId, args })
+        ↓
+        [Behaviour].getActionDefinition().onDelete(context)
+        └─ cleanup behaviour-specific data
+    ↓
+[ModernWidgetHub] patches scene:
+    └─ widget.composePatch(patch, MODE_DEL)
+        └─ patch path: semanticgraph.nodes[nid].events.onSelect[actionId]
+    ↓
+[Scene JSON] updated: delete action entry
+    ↓
+[Inspector] refreshed
+
+C. CASCADE DELETION (Item Deleted)
+
+SCENARIO: User deletes item that has behaviours or is referenced by actions
+
+[User] deletes item (e.g., 3D model)
+    ↓
+[Widget].deleteItem(itemId)
+    ↓
+[Widget] triggers cleanup:
+    ├─ Direct mode: [Behaviour].onItemDeleted(itemId)
+    │   └─ removes: scene.behaviours[behaviourId][itemId]
+    └─ Action mode: [ModernWidgetHub].cleanupActionsForDeletedItem({ deletedItemId, widgetId, actionType })
+        ↓
+        scans all semantic nodes:
+        for each node.events.onSelect[actionId]:
+          ├─ gets action definition
+          └─ calls: actionDef.onReferencedItemDeleted(deletedItemId, actionInstance)
+              ↓
+              [Behaviour].getActionDefinition().onReferencedItemDeleted(deletedId, instance)
+              ├─ checks if instance.args.itemId === deletedId
+              └─ if true: returns { shouldDelete: true }
+        ↓
+        [ModernWidgetHub] collects affected actions
+        ↓
+        [ModernWidgetHub] patches scene: MODE_DEL for all affected actions
+        ↓
+[Scene JSON] cleaned up
+
+
+2.7 WIDGET-BEHAVIOUR API CONTRACT
+--------------------------------------------------------------------------------
+
+WIDGET PROVIDES TO BEHAVIOUR:
+- getItem(id): Returns ATON scene node
+- getCurrentScene(): Returns app.db.data.currScene
+- composePatch(patch, mode): Sends scene modifications
+- app.uikit: UI component factory
+- app.widgetsHub: For focusOnItem() calls
+- options.items(): Function returning available items
+
+BEHAVIOUR PROVIDES TO WIDGET:
+- id: Unique identifier
+- name: Display name
+- modes: Array of supported modes
+- canEquip(itemId): Compatibility check
+- getProperties(itemId, widget): Inspector properties for direct mode
+- getActionDefinition(widget): Action definition for action mode
+- onEquip(itemId): Lifecycle hook
+- onUnequip(itemId): Lifecycle hook
+- onItemDeleted(itemId): Cleanup hook
+
+
+2.8 DATA FLOW DIAGRAM - ACTION MODE SAVE
+--------------------------------------------------------------------------------
+
+USER SELECTS TEXTURE IN ACTION INSPECTOR:
+
+[createAuthoringUI] creates UI with onSave callback
+    ↓
+onSave = (data) => saveActionConfig(node, actionId, itemId, data, widget)
+    ↓
+[User] clicks texture selector
+    ↓
+[openTextureSelectorForMaterial] opens MediaGallery
+    ↓
+[User] selects texture
+    ↓
+[saveTexture(itemId, materialName, texturePath, mode='action', actionId, onSave)]
+    └─ calls: onSave({ materialName, texturePath })
+        ↓
+        [saveActionConfig(node, actionId, itemId, data, widget)]
+        ├─ reads: scene.semanticgraph.nodes[nid].events.onSelect[actionId]
+        ├─ updates: args.materials[materialName] = { texturePath }
+        ├─ builds patch for semanticgraph
+        ├─ calls: widget.editor.patch = patch
+        ├─ calls: widget.editor.modePatch = MODE_ADD
+        ├─ calls: widget.editor.OnPatchChanged()
+        └─ calls: widget.app.widgetsHub.focusOnItem({id: nid, wid})
+            ↓
+            [Inspector] re-renders
+            ↓
+            [createActionInspectorBlock] reads FRESH args from scene
+            ↓
+            [createAuthoringUI] receives fresh currentData
+            ↓
+            [UI] displays updated texture selection
+
+CRITICAL PATTERN: Fresh Data on Render
+- createActionInspectorBlock ALWAYS reads: scene.semanticgraph.nodes[nid].events.onSelect[actionId].args
+- Never relies on stale args parameter
+- Passes fresh data as currentData to createAuthoringUI
+- createAuthoringUI prioritizes providedCurrentData over mode-based lookup
+
+
+================================================================================
+PART 3: FILE LOCATIONS AND KEY METHODS
+================================================================================
+
+3.1 CORE FILES
+--------------------------------------------------------------------------------
+
+Behaviour System:
+- src/js/behaviours/Behaviour.js
+  * Base class for all behaviours
+  * Key methods: getActionDefinition(), createAuthoringUI(), sendPatch()
+
+- src/js/behaviours/OverrideBehaviour.js
+  * Material override implementation
+  * Modes: ['direct', 'action']
+  * Key methods: createActionInspectorBlock(), saveActionConfig(), applyTextureToMaterial()
+
+- src/js/behaviours/ScreenOverrideBehaviour.js
+  * Specialized for exhibition screens
+  * Extends OverrideBehaviour
+
+Widget System:
+- src/js/widgets/base/Widget.js
+  * Base class for all widgets
+  * Key methods: registerBehaviour(), getActionModeBehaviours(), composePatch()
+
+- src/js/widgets/LayerWidget.js
+  * Manages 3D models/scenes
+  * Registers OverrideBehaviour
+
+Orchestration:
+- src/js/ModernWidgetHub.js
+  * Central coordinator
+  * Key methods: assignActionToNode(), saveActionAssignment(), focusOnItem()
+
+Templates:
+- src/js/templates/Template.js
+  * Base template class
+
+- src/js/templates/templates.js
+  * createFreeTemplate(), createExhibitionTemplate()
+
+- src/js/templates/ExhibitionTemplate.js
+  * Specialized exhibition template
+
+Runtime:
+- config/flares/prototyper/public/prototyper.js
+  * Runtime executor in viewer
+  * Key methods: parse_behaviours(), parse_override_behaviour()
+
+
+3.2 KEY METHOD SIGNATURES
+--------------------------------------------------------------------------------
+
+Behaviour Class:
+```javascript
+constructor(id, name, options)
+supportsMode(mode) → boolean
+canEquip(itemId) → boolean
+onEquip(itemId)
+onUnequip(itemId)
+onItemDeleted(itemId)
+getActionDefinition(widget) → { id, name, widgetId, getProperties, execute, onDelete, onReferencedItemDeleted }
+createAuthoringUI(context) → HTMLElement
+  context: { mode, itemId, actionId, actionData, onSave, widget, currentData }
+getProperties(itemId, widget) → { [behaviourId]: { inspectorBlock: Function } }
+sendPatch(path, data, mode)
+focusOnItem(itemId)
+```
+
+Widget Class:
+```javascript
+registerBehaviour(behaviour)
+getDirectModeBehaviours() → Array<Behaviour>
+getActionModeBehaviours() → Array<ActionDefinition>
+getItemBehaviours(id, item) → Array<behaviourId>
+getAvailableBehaviours(item) → Array<Behaviour>
+addBehaviourToItem(item, behaviourId)
+getProperties(item) → Object
+getActions() → Array<ActionDefinition>
+composePatch(patch, mode)
+```
+
+ModernWidgetHub Class:
+```javascript
+registerWidget(widget)
+getWidget(id) → Widget
+focusOnItem({ id, wid })
+setupInspector(widget, item, id)
+assignActionToNode(node, widget)
+saveActionAssignment(node, widget, action)
+removeActionFromNode(node, widget, actionId)
+cleanupActionsForDeletedItem({ deletedItemId, widgetId, actionType })
+```
+
+
+================================================================================
+PART 4: MIGRATION CHECKLIST
+================================================================================
+
+4.1 CONVERTING CAPABILITY TO BEHAVIOUR
+--------------------------------------------------------------------------------
+
+Step 1: Rename and Extend
+- Old: class OverrideCapability extends Capability
+- New: class OverrideBehaviour extends Behaviour
+
+Step 2: Update Constructor
+- Old: super(id, name)
+- New: super(id, name, { modes: ['direct', 'action'], ... })
+
+Step 3: Consolidate UI Methods
+- Old: createAuthoringUI_direct(), createAuthoringUI_action()
+- New: Single createAuthoringUI(context) with mode parameter
+
+Step 4: Implement Action Mode
+- Add: getActionDefinition(widget) returning action definition
+- Add: createActionInspectorBlock(node, actionId, args, widget)
+- Add: saveActionConfig(node, actionId, itemId, data, widget)
+
+Step 5: Update Data Access
+- Direct mode: this.getDirectModeData(itemId)
+- Action mode: Read from args parameter
+
+Step 6: Update Registration
+- Old: widget.registerCapability(new OverrideCapability())
+- New: widget.registerBehaviour(new OverrideBehaviour())
+
+
+4.2 WIDGET UPDATES
+--------------------------------------------------------------------------------
+
+1. Import behaviour classes
+2. Call registerBehaviour() in constructor
+3. Ensure getActions() includes getActionModeBehaviours()
+4. Update templates to use new class names
+
+
+4.3 PROTOTYPER FLARE UPDATES
+--------------------------------------------------------------------------------
+
+1. Add behaviours_parser alongside capabilities_parser
+2. Implement parse_behaviours() method
+3. Implement behaviour-specific parsers (e.g., parse_override_behaviour)
+4. Maintain shared storage (_originalMaterials) between parsers
+
+
+================================================================================
+END OF REPORT
+================================================================================

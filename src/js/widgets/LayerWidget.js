@@ -1,4 +1,5 @@
 import { Widget } from "./base/Widget.js";
+import { OverrideBehaviour } from "../behaviours/OverrideBehaviour.js";
 
 /**
  * Widget for managing 3D model layers in the scene
@@ -66,6 +67,9 @@ constructor(app) {
 
     super(app, options);
     this.gizmoManager = app.gizmoManager;
+
+    // Register behaviours
+    this.registerBehaviour(new OverrideBehaviour());
 
     // bind create button handler after super (can't use `this` before super)
     if (this.options && this.options.createBtnOptions) {
@@ -288,8 +292,21 @@ constructor(app) {
     this.editor.activeNode.delete();
 
     // Update local graph
-    const nodes = this.getCurrentScene().scenegraph.nodes;
+    const scene = this.getCurrentScene();
+    const nodes = scene.scenegraph.nodes;
     if (nodes[nid]) delete nodes[nid];
+
+    // Update edges - remove this node from parent edges
+    const edges = scene.scenegraph.edges;
+    if (edges) {
+      for (const [parentId, children] of Object.entries(edges)) {
+        const index = children.indexOf(nid);
+        if (index > -1) {
+          children.splice(index, 1);
+          console.log(`🔗 Removed ${nid} from edges[${parentId}]`);
+        }
+      }
+    }
 
     // Update UI
     this.app.ui.editor_updateHierarchy();
@@ -299,16 +316,42 @@ constructor(app) {
     // Send delete patch
     this.composePatch(
       {
-        scenegraph: { nodes: { [nid]: {} } }
+        scenegraph: { 
+          nodes: { [nid]: {} },
+          edges: edges
+        }
       },
       ATON.SceneHub.MODE_DEL
     );
 
     // Clean up any actions referencing this layer (AFTER delete patch sent)
-    this.app.widgetsHub.cleanupActionsForDeletedItem({
+    // Check all behaviour actions registered to this widget
+    for (const [behaviourId, behaviour] of this.behaviours.entries()) {
+      if (behaviour.supportsMode('action')) {
+        this.app.widgetsHub.cleanupActionsForDeletedItem({
+          deletedItemId: nid,
+          widgetId: this.id,
+          actionType: behaviourId
+        });
+      }
+    }
+    
+    // Also check legacy capability actions
+    const actions = this.getActions();
+    for (const action of actions) {
+      if (action.widgetId === this.id && action.onReferencedItemDeleted) {
+        this.app.widgetsHub.cleanupActionsForDeletedItem({
+          deletedItemId: nid,
+          widgetId: this.id,
+          actionType: action.id
+        });
+      }
+    }
+
+    // Clean up any behaviour data for this layer
+    this.app.widgetsHub.cleanupBehavioursForDeletedItem({
       deletedItemId: nid,
-      widgetId: this.id,
-      actionType: 'toggleVisible'
+      widgetId: this.id
     });
 
     // Clean up any capability data for this layer

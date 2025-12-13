@@ -1,0 +1,6 @@
+Domande:
+
+I behaviours così progettati mi permettono di espandere come voglio?
+Esempio: Wire system, è un widget a parte?
+Può un widget contare su un altro widget? Estenderlo? E se voglio mixare piu widget? Si chiama "feature"?
+

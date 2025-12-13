@@ -703,6 +703,62 @@ export class ModernWidgetHub {
   }
 
   /**
+   * Clean up behaviours data for a deleted item
+   * Calls onItemDeleted lifecycle hook for all behaviours
+   * @param {Object} options - Cleanup options
+   * @param {string} options.deletedItemId - ID of the deleted item
+   * @param {string} options.widgetId - ID of the widget that owns the item
+   */
+  cleanupBehavioursForDeletedItem({ deletedItemId, widgetId }) {
+    const widget = this.getWidget(widgetId);
+    if (!widget) {
+      console.warn(`Widget ${widgetId} not found`);
+      return;
+    }
+
+    const scene = this.getCurrentScene();
+    if (!scene.behaviours) return;
+
+    const behavioursToClean = {};
+    let totalRemoved = 0;
+
+    // Check each behaviour if it has data for this item
+    for (const [behaviourId, behaviour] of widget.behaviours.entries()) {
+      if (!scene.behaviours[behaviourId]) continue;
+      if (!scene.behaviours[behaviourId][deletedItemId]) continue;
+
+      // Call lifecycle hook
+      if (behaviour.onItemDeleted) {
+        behaviour.onItemDeleted(deletedItemId);
+      }
+
+      // Mark for cleanup
+      if (!behavioursToClean[behaviourId]) {
+        behavioursToClean[behaviourId] = {};
+      }
+      behavioursToClean[behaviourId][deletedItemId] = {};
+      totalRemoved++;
+
+      console.log(`🧹 Cleaning up behaviour ${behaviourId} data for item: ${deletedItemId}`);
+    }
+
+    // Send delete patch for all affected behaviours
+    if (Object.keys(behavioursToClean).length > 0) {
+      const patch = {
+        behaviours: behavioursToClean
+      };
+
+      widget.editor.patch = patch;
+      widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
+      widget.editor.OnPatchChanged();
+
+      console.log(`✅ Cleaned up ${totalRemoved} behaviour data entry(ies) for item: ${deletedItemId}`);
+    } else {
+      console.log(`No behaviour data found for deleted item: ${deletedItemId}`);
+    }
+  }
+
+  /**
    * Clean up capabilities data for a deleted item
    * Scans all capabilities and removes data for the deleted item
    * @param {Object} options - Cleanup options

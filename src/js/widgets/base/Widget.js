@@ -12,11 +12,27 @@ export class Widget {
     this.editor = app.editor;
     this.options = options;
     this.items = new Map();
-    this.capabilities = new Map();
+    this.capabilities = new Map(); // Legacy - for backward compatibility
+    this.behaviours = new Map(); // New unified behaviours system
   }
 
   /**
-   * Register a capability with this widget
+   * Register a behaviour with this widget
+   * @param {Behaviour} behaviour - The behaviour to register
+   */
+  registerBehaviour(behaviour) {
+    if (!behaviour.id) {
+      throw new Error("Behaviour must have an ID");
+    }
+    behaviour.setWidget(this);
+    this.behaviours.set(behaviour.id, behaviour);
+    console.log(`✨ Registered behaviour ${behaviour.id} for widget ${this.id}`);
+    return this;
+  }
+
+  /**
+   * Register a capability with this widget (LEGACY - for backward compatibility)
+   * @deprecated Use registerBehaviour() instead
    */
   registerCapability(capability) {
     if (!capability.id) {
@@ -25,6 +41,37 @@ export class Widget {
     this.capabilities.set(capability.id, capability);
     console.log(`Registered capability ${capability.id} for widget ${this.id}`);
     return this;
+  }
+
+  /**
+   * Get behaviours that support direct mode
+   * @returns {Array} Array of behaviours supporting 'direct' mode
+   */
+  getDirectModeBehaviours() {
+    const directBehaviours = [];
+    for (const [id, behaviour] of this.behaviours.entries()) {
+      if (behaviour.supportsMode('direct')) {
+        directBehaviours.push(behaviour);
+      }
+    }
+    return directBehaviours;
+  }
+
+  /**
+   * Get behaviours that support action mode
+   * @returns {Array} Array of action definitions for behaviours supporting 'action' mode
+   */
+  getActionModeBehaviours() {
+    const actions = [];
+    for (const [id, behaviour] of this.behaviours.entries()) {
+      if (behaviour.supportsMode('action')) {
+        const actionDef = behaviour.getActionDefinition(this);
+        if (actionDef) {
+          actions.push(actionDef);
+        }
+      }
+    }
+    return actions;
   }
 
   /**
@@ -40,8 +87,66 @@ export class Widget {
   }
 
   /**
-   * Get capabilities for a specific item by checking scene JSON structure
-   * or using custom capability detection methods
+   * Get behaviours for a specific item by checking scene JSON structure
+   * @param {string} id - Item ID
+   * @param {Object} item - Item object
+   * @returns {Array} Array of behaviour IDs equipped on this item
+   */
+  getItemBehaviours(id, item) {
+    const scene = this.getCurrentScene();
+    if (!scene.behaviours) {
+      console.log(`No behaviours in scene`);
+      return [];
+    }
+
+    // Get the actual item ID - could be passed as first param or from item.nid
+    const itemId = id || (item && item.nid);
+
+    if (!itemId) {
+      console.log(`No item ID provided to getItemBehaviours`);
+      return [];
+    }
+
+    // ALWAYS get the actual ATON node for behaviour checks
+    const atonNode = this.getItem(itemId);
+    if (!atonNode) {
+      console.log(`Could not get ATON node for ${itemId}`);
+      return [];
+    }
+
+    // Get behaviours for this item
+    const itemBehaviours = [];
+
+    // Check registered behaviours using their detection logic
+    for (const [registeredBehaviourId, behaviour] of this.behaviours.entries()) {
+      console.log(`Checking behaviour ${registeredBehaviourId} for item ${itemId}`);
+      
+      // If behaviour has custom detection method, use it
+      if (behaviour.canEquip) {
+        const canEquip = behaviour.canEquip(itemId);
+        
+        // Check if behaviour is actually equipped (has data in scene)
+        if (canEquip && scene.behaviours[behaviour.id]?.[itemId]) {
+          itemBehaviours.push(registeredBehaviourId);
+        }
+      } else {
+        // Standard check: look in scene.behaviours[behaviour.id][itemId]
+        if (scene.behaviours[behaviour.id]?.[itemId]) {
+          itemBehaviours.push(registeredBehaviourId);
+        }
+      }
+    }
+
+    console.log(
+      `✅ Item ${itemId} has ${itemBehaviours.length} behaviours:`,
+      itemBehaviours
+    );
+    return itemBehaviours;
+  }
+
+  /**
+   * Get capabilities for a specific item by checking scene JSON structure (LEGACY)
+   * @deprecated Use getItemBehaviours() instead for new code
    */
   getItemCapabilities(id, item) {
     const scene = this.getCurrentScene();
@@ -428,6 +533,54 @@ export class Widget {
   }
 
   /**
+   * Remove a behaviour from an item (manual unequip)
+   * @param {string} itemId - ID of the item
+   * @param {string} behaviourId - ID of the behaviour to remove
+   */
+  removeBehaviourFromItem(itemId, behaviourId) {
+    const behaviour = this.behaviours.get(behaviourId);
+    if (!behaviour) {
+      console.warn(`Behaviour ${behaviourId} not found`);
+      return;
+    }
+
+    // Call lifecycle hook
+    if (behaviour.onUnequip) {
+      behaviour.onUnequip(itemId);
+    }
+
+    // Delete from scene data
+    const scene = this.getCurrentScene();
+    if (scene.behaviours?.[behaviourId]?.[itemId]) {
+      delete scene.behaviours[behaviourId][itemId];
+
+      // If no more items have this behaviour, clean up the behaviour entry
+      if (Object.keys(scene.behaviours[behaviourId]).length === 0) {
+        delete scene.behaviours[behaviourId];
+      }
+    }
+
+    // Send delete patch
+    this.composePatch(
+      {
+        behaviours: {
+          [behaviourId]: {
+            [itemId]: {}
+          }
+        }
+      },
+      ATON.SceneHub.MODE_DEL
+    );
+
+    console.log(`🗑️ Removed behaviour ${behaviourId} from item ${itemId}`);
+
+    // Refresh UI
+    this.app.ui.editor_updateHierarchy();
+    this.app.ui.editor_updateWidgetMainPanel();
+    this.app.widgetsHub.focusOnItem({ id: itemId, wid: this.id });
+  }
+
+  /**
    * Delete an item
    */
   deleteItem(id) {
@@ -444,9 +597,9 @@ export class Widget {
   }
 
   /**
-   * Get properties including capability-provided properties
+   * Get properties including behaviour/capability-provided properties
    * @param {Object} item - The item to get properties for. If null, returns base widget properties.
-   * @returns {Object} Combined properties from widget and capabilities
+   * @returns {Object} Combined properties from widget, behaviours, and capabilities
    */
   getProperties(item = null) {
     // Start with base widget properties
@@ -455,7 +608,25 @@ export class Widget {
     // If no item provided, return base properties only
     if (!item) return props;
 
-    // Get additional properties from item's capabilities
+    // Get properties from behaviours (direct mode)
+    const itemBehaviours = this.getItemBehaviours(item.nid, item);
+    console.log(
+      "Getting properties via behaviours for item:",
+      item.nid,
+      item,
+      itemBehaviours
+    );
+    itemBehaviours.forEach((behaviourId) => {
+      const behaviour = this.behaviours.get(behaviourId);
+      if (behaviour?.supportsMode('direct') && behaviour.getProperties) {
+        const behaviourProps = behaviour.getProperties(item.nid, this);
+        console.log(`Properties from behaviour ${behaviourId}:`, behaviourProps);
+        // Merge behaviour properties (same pattern as capabilities)
+        props = { ...props, ...behaviourProps };
+      }
+    });
+
+    // Legacy: Get additional properties from item's capabilities (backward compatibility)
     const itemCaps = this.getItemCapabilities(item.nid, item);
     console.log(
       "Getting properties via capabilities for item:",
@@ -583,30 +754,118 @@ export class Widget {
   }
 
   /**
-   * Get the "Add Capability" button for the inspector
-   * Returns null if no capabilities are available to add
+   * Get behaviours available to add to an item
+   * Returns visible behaviours that are not yet attached to the item
+   * and are compatible with the item (via canEquip check)
+   */
+  getAvailableBehaviours(item) {
+    if (!item) return [];
+
+    const itemBehaviours = this.getItemBehaviours(item.nid, item);
+    const availableBehaviours = [];
+
+    // Check all registered behaviours
+    for (const [behaviourId, behaviour] of this.behaviours.entries()) {
+      // Only include visible behaviours not already attached
+      if (behaviour.isVisible && !itemBehaviours.includes(behaviourId)) {
+        // Check if behaviour is compatible with this item
+        const canEquip = behaviour.canEquip
+          ? behaviour.canEquip(item.nid)
+          : true; // Default to true if canEquip not implemented
+
+        if (canEquip) {
+          availableBehaviours.push({
+            id: behaviourId,
+            name: behaviour.name,
+            behaviour: behaviour,
+          });
+        }
+      }
+    }
+
+    return availableBehaviours;
+  }
+
+  /**
+   * Add a behaviour to an item (equip, patch, and update UI)
+   */
+  addBehaviourToItem(item, behaviourId, skipFocus = false) {
+    const behaviour = this.behaviours.get(behaviourId);
+    if (!behaviour) {
+      throw new Error(`Behaviour ${behaviourId} not found`);
+    }
+
+    console.log(`✨ Adding behaviour ${behaviourId} to item ${item.nid}`);
+
+    // Get initial data from behaviour
+    const initialData = behaviour.getInitialData
+      ? behaviour.getInitialData(item)
+      : {};
+
+    // Store and patch behaviour data
+    behaviour.saveDirectModeData(item.nid, initialData);
+
+    // Let behaviour perform any additional setup
+    if (behaviour.onEquip) {
+      behaviour.onEquip(item.nid);
+    }
+
+    // Update hierarchy to refresh item buttons with new decorations
+    this.app.ui.editor_updateHierarchy();
+
+    // Update the main panel
+    this.app.ui.editor_updateWidgetMainPanel();
+
+    // Update the inspector for the current item (but skip if called from auto-equip to avoid loop)
+    if (!skipFocus) {
+      this.app.widgetsHub.focusOnItem({ id: item.nid, wid: this.id });
+    }
+
+    return this;
+  }
+
+  /**
+   * Get the "Add Behaviour/Capability" button for the inspector
+   * Returns null if no behaviours or capabilities are available to add
    */
   getAddCapabilityButton(item) {
     if (!item) return null;
 
+    // Get available behaviours and capabilities
+    const availableBehaviours = this.getAvailableBehaviours(item);
     const availableCapabilities = this.getAvailableCapabilities(item);
 
-    // No button if no capabilities available
-    if (availableCapabilities.length === 0) return null;
+    // Combine both
+    const allAvailable = [];
 
-    // Create dropdown items
-    const dropdownItems = availableCapabilities.map((cap) => ({
-      text: cap.name,
-      onClick: () => {
-        this.addCapabilityToItem(item, cap.id);
-      },
-    }));
+    // Add behaviours
+    availableBehaviours.forEach((b) => {
+      allAvailable.push({
+        text: b.name,
+        onClick: () => {
+          this.addBehaviourToItem(item, b.id);
+        },
+      });
+    });
+
+    // Add legacy capabilities
+    availableCapabilities.forEach((c) => {
+      allAvailable.push({
+        text: c.name,
+        onClick: () => {
+          this.addCapabilityToItem(item, c.id);
+        },
+      });
+    });
+
+    // No button if nothing available
+    if (allAvailable.length === 0) return null;
 
     // Create and return the dropdown button
     return this.app.uikit.createDropdownButton({
-      text: " Add Capability",
+      text: " Add Behaviour",
       variant: "success",
-      items: dropdownItems,
+      items: allAvailable,
     });
   }
 
@@ -614,15 +873,19 @@ export class Widget {
    * Get actions for this widget
    * Returns array of action objects that can be assigned to items at runtime
    * Override in subclasses to provide widget-specific actions
-   * Capabilities can augment actions via addActions()
+   * Behaviours with action mode support are automatically included
    * @returns {Array} Array of action objects
    */
   getActions() {
     let actions = [];
 
-    // Get actions from all registered capabilities
-    // Note: We get actions from ALL capabilities, not just equipped ones
+    // Get actions from behaviours that support action mode
+    // Note: We get actions from ALL behaviours, not just equipped ones
     // This is because the action catalog should show what's possible
+    const behaviourActions = this.getActionModeBehaviours();
+    actions = actions.concat(behaviourActions);
+
+    // Legacy: Get actions from capabilities (backward compatibility)
     this.capabilities.forEach((capability) => {
       if (capability?.addActions) {
         const capActions = capability.addActions(this);

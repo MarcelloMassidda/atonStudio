@@ -1,6 +1,6 @@
 import { Template } from './Template.js';
 import { LibraryLayerWidget } from '../widgets/LibraryLayerWidget.js';
-import { ScreenOverrideCapability } from '../capabilities/ScreenOverrideCapability.js';
+import { ScreenOverrideBehaviour } from '../behaviours/ScreenOverrideBehaviour.js';
 
 export class ExhibitionTemplate extends Template {
     constructor(app) {
@@ -9,9 +9,9 @@ export class ExhibitionTemplate extends Template {
             name: 'Exhibition Design'
         });
 
-        // Create library widget with screen override capability
+        // Create library widget with screen override behaviour
         const libraryWidget = new LibraryLayerWidget(app);
-        libraryWidget.registerCapability(new ScreenOverrideCapability());
+        libraryWidget.registerBehaviour(new ScreenOverrideBehaviour());
         
         this.registerWidget(libraryWidget);
     }
