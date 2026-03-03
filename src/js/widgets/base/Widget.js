@@ -533,6 +533,39 @@ export class Widget {
   }
 
   /**
+   * Check and auto-equip behaviours that should be automatically equipped
+   * @param {Object} item - The item to check
+   */
+  checkAutoEquipBehaviours(item) {
+    if (!item) return;
+
+    // Get all behaviours that support direct mode
+    const directBehaviours = this.getDirectModeBehaviours();
+    
+    for (const behaviour of directBehaviours) {
+      // Skip if not auto-equip
+      if (!behaviour.autoEquip) continue;
+      
+      // Skip if not visible (optional, but good practice)
+      // if (!behaviour.visible) continue;
+      
+      // Check if behaviour can be equipped
+      if (!behaviour.canEquip(item.nid)) continue;
+      
+      // Check if already equipped
+      const equipped = this.getItemBehaviours(item.nid, item);
+      if (equipped.includes(behaviour.id)) {
+        console.log(`✅ Behaviour ${behaviour.id} already equipped on ${item.nid}`);
+        continue;
+      }
+      
+      // Auto-equip this behaviour
+      console.log(`🔧 Auto-equipping behaviour ${behaviour.id} on ${item.nid}`);
+      this.addBehaviourToItem(item, behaviour.id);
+    }
+  }
+
+  /**
    * Remove a behaviour from an item (manual unequip)
    * @param {string} itemId - ID of the item
    * @param {string} behaviourId - ID of the behaviour to remove

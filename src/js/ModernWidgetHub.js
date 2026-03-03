@@ -94,6 +94,11 @@ export class ModernWidgetHub {
     this.app.editor.activeNode = item;
     this.app.editor.activeWidget = widget;
 
+    // Check for auto-equip behaviours
+    if (widget.checkAutoEquipBehaviours) {
+      widget.checkAutoEquipBehaviours(item);
+    }
+
     // Set focus (zoom)
     if (widget.focusItem) {
       widget.focusItem(item);

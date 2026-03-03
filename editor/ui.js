@@ -308,7 +308,8 @@ ui.editor_topBar = (s = null) => {
     id: "IDeditor_topBar",
     brand: { title: "You are editing: " + s.title },
     links: [
-      //    backBtn, sceneName
+          backBtn
+      //  sceneName
       //wrapInLI(titleTopBar),
       //wrapInLI(saveSceneBtn),
       //wrapInLI(openInHathorBtn)

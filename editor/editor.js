@@ -179,10 +179,10 @@ editor.setupFromScene = async (s = null) => {
   editor.autoSaveMode = true;
 
   // Use exhibition template for now
-  //const template = new ExhibitionTemplate(APP);
+  const template = new ExhibitionTemplate(APP);
 
   //Use Free template:
-  const template = createFreeTemplate(APP);
+  //const template = createFreeTemplate(APP);
   await template.applyToEditor(editor);
 
   //Setup UI:
