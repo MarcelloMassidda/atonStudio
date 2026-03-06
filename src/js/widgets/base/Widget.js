@@ -2,6 +2,10 @@
  * Base Widget class that defines the common interface and functionality for all widgets
  */
 export class Widget {
+
+// ============================================================
+// #region Core
+// ============================================================
   constructor(app, options) {
     if (!options.id) {
       throw new Error("ID is required for widget");
@@ -12,12 +16,213 @@ export class Widget {
     this.editor = app.editor;
     this.options = options;
     this.items = new Map();
-    this.capabilities = new Map(); // Legacy - for backward compatibility
+    this.capabilities = new Map(); // Legacy - for backward compatibility TO REMOVE
     this.behaviours = new Map(); // New unified behaviours system
+  }
+  // #endregion
+
+// ============================================================
+// #region Data & State
+// ============================================================
+   //   /* Initialize the widget*/
+  init() {
+    if (this.options.items) {
+      const items = this.getItems();
+      if (!items) {
+        console.log(`NO ${this.id} IN SCENE`);
+        return;
+      }
+
+      for (const [id, item] of Object.entries(items)) {
+        this.addItemToScene(id, item);
+      }
+    }
+  }
+  /**
+   * Get properties including behaviour/capability-provided properties
+   * @param {Object} item - The item to get properties for. If null, returns base widget properties.
+   * @returns {Object} Combined properties from widget, behaviours, and capabilities
+   */
+  getProperties(item = null) {
+    // Start with base widget properties
+    let props = { ...this.options.props };
+
+    // If no item provided, return base properties only
+    if (!item) return props;
+
+    // Get properties from behaviours (direct mode)
+    const itemBehaviours = this.getItemBehaviours(item.nid, item);
+    console.log(
+      "Getting properties via behaviours for item:",
+      item.nid,
+      item,
+      itemBehaviours
+    );
+    itemBehaviours.forEach((behaviourId) => {
+      const behaviour = this.behaviours.get(behaviourId);
+      if (behaviour?.supportsMode('direct') && behaviour.getProperties) {
+        const behaviourProps = behaviour.getProperties(item.nid, this);
+        console.log(`Properties from behaviour ${behaviourId}:`, behaviourProps);
+        // Merge behaviour properties (same pattern as capabilities)
+        props = { ...props, ...behaviourProps };
+      }
+    });
+
+    // Legacy: Get additional properties from item's capabilities (backward compatibility)
+    const itemCaps = this.getItemCapabilities(item.nid, item);
+    console.log(
+      "Getting properties via capabilities for item:",
+      item.nid,
+      item,
+      itemCaps
+    );
+    itemCaps.forEach((capId) => {
+      const capability = this.capabilities.get(capId);
+      if (capability?.getProperties) {
+        const capProps = capability.getProperties(item, this);
+        console.log(`Properties from capability ${capId}:`, capProps);
+        props = { ...props, ...capProps };
+      }
+    });
+
+    return props;
   }
 
   /**
-   * Register a behaviour with this widget
+   * Compose a patch with capability modifications
+   */
+  composePatch(patch, mode) {
+    // Let capabilities modify the patch
+    const activeNode = this.editor.activeNode;
+    if (activeNode) {
+      const itemCaps = this.getItemCapabilities(activeNode);
+      itemCaps.forEach((capId) => {
+        const capability = this.capabilities.get(capId);
+        if (capability?.modifyPatchData) {
+          // Get current capability data for context
+          const currentData = this.getItemCapabilityData(activeNode, capId);
+
+          // Let capability modify the patch
+          patch = capability.modifyPatchData(
+            patch,
+            activeNode,
+            this,
+            currentData
+          );
+        }
+      });
+
+      // Handle legacy texturized data migration if present
+      const scene = this.getCurrentScene();
+      if (scene.texturized && scene.texturized[activeNode.nid]) {
+        // Migrate texturized data to new capability structure
+        const texturizedData = scene.texturized[activeNode.nid];
+        if (texturizedData.imageScreenPath) {
+          patch = {
+            ...patch,
+            capabilities: {
+              ...patch.capabilities,
+              override: {
+                [activeNode.nid]: {
+                  materials: {
+                    screen: {
+                      texturePath: texturizedData.imageScreenPath,
+                    },
+                  },
+                },
+              },
+            },
+            // Mark texturized for removal
+            texturized: {
+              [activeNode.nid]: null,
+            },
+          };
+        }
+      }
+    }
+
+    // Send the final patch
+    this.editor.patch = patch;
+    this.editor.modePatch = mode;
+    this.editor.OnPatchChanged();
+  }
+
+   /**
+   * Get the current scene
+   */
+  getCurrentScene() {
+    return this.app.db.data.currScene;
+  }
+  // #endregion
+
+// ============================================================
+// #region Item Management
+// ============================================================
+  /* Virtual method for adding an item to the scene*/
+  addItemToScene(id, item) {
+    // To be implemented by child classes
+  }
+
+  
+  /* Get all items for this widget from the current scene */
+  getItems() {
+    if (this.options.items) {
+      return this.options.items();
+    }
+
+    const scene = this.getCurrentScene();
+    return scene[this.id] || null;
+  }
+
+  /* Get a specific item by ID */
+  getItem(id) {
+    if (this.options.returnItem) {
+      return this.options.returnItem(id);
+    }
+    return ATON.getSceneNode(id);
+  }
+
+  /* Focus on a specific item */
+  focusItem(node) {
+    if (!node) {
+      console.error("ATON NODE NOT FOUND");
+      return;
+    }
+
+    // Check for auto-equip capabilities
+    this.checkAutoEquipCapabilities(node);
+
+    if (this.options.focusItem) {
+      return this.options.focusItem(node);
+    }
+
+    ATON.Nav.requestPOVbyNode(node, 0.3);
+  }
+
+    /**
+   * Virtual method called when widget loses focus (before switching to another item/widget)
+   * Allows widgets to cleanup temporary resources like 3D icons
+   * @param {Object} item - The item that is losing focus
+   */
+  onLoseFocus(item) {
+    // To be implemented by child classes that need cleanup
+  }
+
+  
+  /**
+   * Delete an item
+   */
+  deleteItem(id) {
+    if (this.options.deleteItem) {
+      return this.options.deleteItem(id);
+    }
+  }
+  // #endregion
+
+// ============================================================  
+// #region Behaviour System
+// ============================================================
+  /* Register a behaviour with this widget
    * @param {Behaviour} behaviour - The behaviour to register
    */
   registerBehaviour(behaviour) {
@@ -27,19 +232,6 @@ export class Widget {
     behaviour.setWidget(this);
     this.behaviours.set(behaviour.id, behaviour);
     console.log(`✨ Registered behaviour ${behaviour.id} for widget ${this.id}`);
-    return this;
-  }
-
-  /**
-   * Register a capability with this widget (LEGACY - for backward compatibility)
-   * @deprecated Use registerBehaviour() instead
-   */
-  registerCapability(capability) {
-    if (!capability.id) {
-      throw new Error("Capability must have an ID");
-    }
-    this.capabilities.set(capability.id, capability);
-    console.log(`Registered capability ${capability.id} for widget ${this.id}`);
     return this;
   }
 
@@ -72,18 +264,6 @@ export class Widget {
       }
     }
     return actions;
-  }
-
-  /**
-   * Get all capabilities registered to this widget
-   * @returns {Object} Object with capability id as key and capability instance as value
-   */
-  getCapabilities() {
-    const capsObject = {};
-    for (const [id, capability] of this.capabilities.entries()) {
-      capsObject[id] = capability;
-    }
-    return capsObject;
   }
 
   /**
@@ -144,152 +324,142 @@ export class Widget {
     return itemBehaviours;
   }
 
-  /**
-   * Get capabilities for a specific item by checking scene JSON structure (LEGACY)
-   * @deprecated Use getItemBehaviours() instead for new code
+   /**
+   * Check and auto-equip behaviours that should be automatically equipped
+   * @param {Object} item - The item to check
    */
-  getItemCapabilities(id, item) {
-    const scene = this.getCurrentScene();
-    if (!scene.capabilities) {
-      console.log(`No capabilities in scene`);
-      return [];
-    }
+  checkAutoEquipBehaviours(item) {
+    if (!item) return;
 
-    // Get the actual item ID - could be passed as first param or from item.nid
-    const itemId = id || (item && item.nid);
-
-    if (!itemId) {
-      console.log(`No item ID provided to getItemCapabilities`);
-      return [];
-    }
-
-    // ALWAYS get the actual ATON node for capability checks
-    // The 'item' parameter might be the JSON scene object, not the node
-    const atonNode = this.getItem(itemId);
-    if (!atonNode) {
-      console.log(`Could not get ATON node for ${itemId}`);
-      return [];
-    }
-
-    // Get capabilities for this item
-    const itemCapabilities = [];
-
-    // Check registered capabilities using their detection logic
-    for (const [registeredCapId, capability] of this.capabilities.entries()) {
-      console.log(`Checking capability ${registeredCapId} for item ${itemId}`);
-      // If capability has custom detection method, use it
-      if (capability.hasCapabilityForItem) {
-        console.log(`Using custom detection for capability ${registeredCapId}`);
-        const hasCapability = capability.hasCapabilityForItem(atonNode, this);
-        console.log(hasCapability);
-
-        // null means "use default check"
-        if (hasCapability === null) {
-          // Fall back to standard JSON check
-          if (scene.capabilities[capability.id]?.[itemId]) {
-            itemCapabilities.push(registeredCapId);
-          }
-        } else if (hasCapability === true) {
-          itemCapabilities.push(registeredCapId);
-        }
-      } else {
-        // Standard check: look in scene.capabilities[capability.id][itemId]
-        if (scene.capabilities[capability.id]?.[itemId]) {
-          itemCapabilities.push(registeredCapId);
-        }
+    // Get all behaviours that support direct mode
+    const directBehaviours = this.getDirectModeBehaviours();
+    
+    for (const behaviour of directBehaviours) {
+      // Skip if not auto-equip
+      if (!behaviour.autoEquip) continue;
+      
+      // Skip if not visible (optional, but good practice)
+      // if (!behaviour.visible) continue;
+      
+      // Check if behaviour can be equipped
+      if (!behaviour.canEquip(item.nid)) continue;
+      
+      // Check if already equipped
+      const equipped = this.getItemBehaviours(item.nid, item);
+      if (equipped.includes(behaviour.id)) {
+        console.log(`✅ Behaviour ${behaviour.id} already equipped on ${item.nid}`);
+        continue;
       }
+      
+      // Auto-equip this behaviour
+      console.log(`🔧 Auto-equipping behaviour ${behaviour.id} on ${item.nid}`);
+      this.addBehaviourToItem(item, behaviour.id);
     }
-
-    console.log(
-      `✅ Item ${itemId} has ${itemCapabilities.length} capabilities:`,
-      itemCapabilities
-    );
-    return itemCapabilities;
   }
 
   /**
-   * Get capabilities available to add to an item
-   * Returns visible capabilities that are not yet attached to the item
+   * Remove a behaviour from an item (manual unequip)
+   * @param {string} itemId - ID of the item
+   * @param {string} behaviourId - ID of the behaviour to remove
+   */
+  removeBehaviourFromItem(itemId, behaviourId) {
+    const behaviour = this.behaviours.get(behaviourId);
+    if (!behaviour) {
+      console.warn(`Behaviour ${behaviourId} not found`);
+      return;
+    }
+
+    // Call lifecycle hook
+    if (behaviour.onUnequip) {
+      behaviour.onUnequip(itemId);
+    }
+
+    // Delete from scene data
+    const scene = this.getCurrentScene();
+    if (scene.behaviours?.[behaviourId]?.[itemId]) {
+      delete scene.behaviours[behaviourId][itemId];
+
+      // If no more items have this behaviour, clean up the behaviour entry
+      if (Object.keys(scene.behaviours[behaviourId]).length === 0) {
+        delete scene.behaviours[behaviourId];
+      }
+    }
+
+    // Send delete patch
+    this.composePatch(
+      {
+        behaviours: {
+          [behaviourId]: {
+            [itemId]: {}
+          }
+        }
+      },
+      ATON.SceneHub.MODE_DEL
+    );
+
+    console.log(`🗑️ Removed behaviour ${behaviourId} from item ${itemId}`);
+
+    // Refresh UI
+    this.app.ui.editor_updateHierarchy();
+    this.app.ui.editor_updateWidgetMainPanel();
+    this.app.widgetsHub.focusOnItem({ id: itemId, wid: this.id });
+  }
+
+   /**
+   * Get behaviours available to add to an item
+   * Returns visible behaviours that are not yet attached to the item
    * and are compatible with the item (via canEquip check)
    */
-  getAvailableCapabilities(item) {
+  getAvailableBehaviours(item) {
     if (!item) return [];
 
-    const itemCapabilities = this.getItemCapabilities(item.nid, item);
-    const availableCapabilities = [];
+    const itemBehaviours = this.getItemBehaviours(item.nid, item);
+    const availableBehaviours = [];
 
-    // Check all registered capabilities
-    for (const [capId, capability] of this.capabilities.entries()) {
-      // Only include visible capabilities not already attached
-      if (capability.isVisible && !itemCapabilities.includes(capId)) {
-        // Check if capability is compatible with this item
-        const canEquip = capability.canEquip
-          ? capability.canEquip(item, this)
+    // Check all registered behaviours
+    for (const [behaviourId, behaviour] of this.behaviours.entries()) {
+      // Only include visible behaviours not already attached
+      if (behaviour.isVisible && !itemBehaviours.includes(behaviourId)) {
+        // Check if behaviour is compatible with this item
+        const canEquip = behaviour.canEquip
+          ? behaviour.canEquip(item.nid)
           : true; // Default to true if canEquip not implemented
 
         if (canEquip) {
-          availableCapabilities.push({
-            id: capId,
-            name: capability.name,
-            capability: capability,
+          availableBehaviours.push({
+            id: behaviourId,
+            name: behaviour.name,
+            behaviour: behaviour,
           });
         }
       }
     }
 
-    return availableCapabilities;
-  }
-
-  // Data management methods moved to Capability class
-
-  /**
-   * Equip an item with a capability
-   */
-  equipItemWithCapability(item, capabilityId) {
-    const capability = this.capabilities.get(capabilityId);
-    if (!capability) {
-      throw new Error(`Capability ${capabilityId} not found`);
-    }
-
-    // Get or create initial data for this capability
-    const initialData = capability.getInitialData
-      ? capability.getInitialData(item)
-      : {};
-
-    // Store the capability data
-    this.setItemCapabilityData(item, capabilityId, initialData);
-
-    // Let the capability perform any setup
-    if (capability.equip) {
-      capability.equip(item, this);
-    }
-
-    this.app.ui.editor_updateWidgetMainPanel();
-    return this;
+    return availableBehaviours;
   }
 
   /**
-   * Add a capability to an item (attach, patch, and update UI)
+   * Add a behaviour to an item (equip, patch, and update UI)
    */
-  addCapabilityToItem(item, capabilityId, skipFocus = false) {
-    const capability = this.capabilities.get(capabilityId);
-    if (!capability) {
-      throw new Error(`Capability ${capabilityId} not found`);
+  addBehaviourToItem(item, behaviourId, skipFocus = false) {
+    const behaviour = this.behaviours.get(behaviourId);
+    if (!behaviour) {
+      throw new Error(`Behaviour ${behaviourId} not found`);
     }
 
-    console.log(`Adding capability ${capabilityId} to item ${item.nid}`);
+    console.log(`✨ Adding behaviour ${behaviourId} to item ${item.nid}`);
 
-    // Get initial data from capability
-    const initialData = capability.getInitialData
-      ? capability.getInitialData(item)
+    // Get initial data from behaviour
+    const initialData = behaviour.getInitialData
+      ? behaviour.getInitialData(item)
       : {};
 
-    // Use setItemData from capability to store and patch
-    capability.setItemData(item, this, initialData);
+    // Store and patch behaviour data
+    behaviour.saveDirectModeData(item.nid, initialData);
 
-    // Let capability perform any additional setup
-    if (capability.equip) {
-      capability.equip(item, this);
+    // Let behaviour perform any additional setup
+    if (behaviour.onEquip) {
+      behaviour.onEquip(item.nid);
     }
 
     // Update hierarchy to refresh item buttons with new decorations
@@ -305,24 +475,11 @@ export class Widget {
 
     return this;
   }
+  // #endregion
 
-  /**
-   * Initialize the widget
-   */
-  init() {
-    if (this.options.items) {
-      const items = this.getItems();
-      if (!items) {
-        console.log(`NO ${this.id} IN SCENE`);
-        return;
-      }
-
-      for (const [id, item] of Object.entries(items)) {
-        this.addItemToScene(id, item);
-      }
-    }
-  }
-
+// ============================================================
+// #region UI Components
+// ============================================================
   /**
    * Get the main button for the widget
    */
@@ -411,50 +568,86 @@ export class Widget {
     }
   }
 
-  /**
-   * Get all items for this widget from the current scene
+    /**
+   * Get the inspector header for an item
    */
-  getItems() {
-    if (this.options.items) {
-      return this.options.items();
+  getInspectorHeader(id) {
+    if (this.options.item_inspector_header) {
+      return this.options.item_inspector_header(id);
     }
-
-    const scene = this.getCurrentScene();
-    return scene[this.id] || null;
+    return `${id}`;
   }
 
-  /**
-   * Get a specific item by ID
+    /**
+   * Get inspector blocks including capability-provided blocks
    */
-  getItem(id) {
-    if (this.options.returnItem) {
-      return this.options.returnItem(id);
+  getInspectorBlocks(item) {
+    let blocks = [];
+
+    // Add base inspector blocks
+    if (this.options.inspectorBlocks) {
+      blocks = blocks.concat(this.options.inspectorBlocks(item));
     }
-    return ATON.getSceneNode(id);
+
+    // Add capability-provided blocks
+    const itemCaps = this.getItemCapabilities(item);
+    itemCaps.forEach((capId) => {
+      const capability = this.capabilities.get(capId);
+      if (capability?.getInspectorBlocks) {
+        const capBlocks = capability.getInspectorBlocks(item, this);
+        
+        // Wrap capability blocks in a section with micro-title
+        if (capBlocks.length > 0) {
+          const capSection = this.app.uikit.inspectorSection(
+            capability.name || capId,
+            capBlocks
+          );
+          blocks.push(capSection);
+        }
+      }
+    });
+
+    return blocks;
   }
 
+
+
+
+
+
+
+  // #endregion
+
+// ============================================================
+// #region 3D & Gizmo
+// ============================================================
   /**
-   * Focus on a specific item
+   * Setup the gizmo for an item
    */
-  focusItem(node) {
-    if (!node) {
-      console.error("ATON NODE NOT FOUND");
-      return;
+  setupGizmo(id) {
+    if (this.options.setupGizmo) {
+      this.options.setupGizmo(id);
     }
-
-    // Check for auto-equip capabilities
-    this.checkAutoEquipCapabilities(node);
-
-    if (this.options.focusItem) {
-      return this.options.focusItem(node);
-    }
-
-    ATON.Nav.requestPOVbyNode(node, 0.3);
   }
 
+  // #endregion
+
+// ============================================================
+// #region Legacy (TO REMOVE)
+// ============================================================
   /**
+   * Method to be overridden by widgets that need to handle component features
+   */
+  getComponents() {
+    return this.options.components || {};
+  }
+
+    /**
+   * TO REMOVE
    * Check and auto-equip capabilities that have autoEquip=true
    */
+  
+    
   checkAutoEquipCapabilities(item) {
     if (!item) return;
 
@@ -505,342 +698,194 @@ export class Widget {
       }
     }
   }
-
-  /**
-   * Setup the gizmo for an item
-   */
-  setupGizmo(id) {
-    if (this.options.setupGizmo) {
-      this.options.setupGizmo(id);
-    }
-  }
-
-  /**
-   * Get the current scene
-   */
-  getCurrentScene() {
-    return this.app.db.data.currScene;
-  }
-
-  /**
-   * Get the inspector header for an item
-   */
-  getInspectorHeader(id) {
-    if (this.options.item_inspector_header) {
-      return this.options.item_inspector_header(id);
-    }
-    return `${id}`;
-  }
-
-  /**
-   * Check and auto-equip behaviours that should be automatically equipped
-   * @param {Object} item - The item to check
-   */
-  checkAutoEquipBehaviours(item) {
-    if (!item) return;
-
-    // Get all behaviours that support direct mode
-    const directBehaviours = this.getDirectModeBehaviours();
     
-    for (const behaviour of directBehaviours) {
-      // Skip if not auto-equip
-      if (!behaviour.autoEquip) continue;
-      
-      // Skip if not visible (optional, but good practice)
-      // if (!behaviour.visible) continue;
-      
-      // Check if behaviour can be equipped
-      if (!behaviour.canEquip(item.nid)) continue;
-      
-      // Check if already equipped
-      const equipped = this.getItemBehaviours(item.nid, item);
-      if (equipped.includes(behaviour.id)) {
-        console.log(`✅ Behaviour ${behaviour.id} already equipped on ${item.nid}`);
-        continue;
-      }
-      
-      // Auto-equip this behaviour
-      console.log(`🔧 Auto-equipping behaviour ${behaviour.id} on ${item.nid}`);
-      this.addBehaviourToItem(item, behaviour.id);
-    }
-  }
 
-  /**
-   * Remove a behaviour from an item (manual unequip)
-   * @param {string} itemId - ID of the item
-   * @param {string} behaviourId - ID of the behaviour to remove
+    /**
+   * TO REMOVE
+   *  Register a capability with this widget (LEGACY - for backward compatibility)
    */
-  removeBehaviourFromItem(itemId, behaviourId) {
-    const behaviour = this.behaviours.get(behaviourId);
-    if (!behaviour) {
-      console.warn(`Behaviour ${behaviourId} not found`);
-      return;
+  
+  registerCapability(capability) {
+    if (!capability.id) {
+      throw new Error("Capability must have an ID");
     }
+    this.capabilities.set(capability.id, capability);
+    console.log(`Registered capability ${capability.id} for widget ${this.id}`);
+    return this;
+  }
+  
 
-    // Call lifecycle hook
-    if (behaviour.onUnequip) {
-      behaviour.onUnequip(itemId);
+  
+  /**
+   * TO REMOVE
+   * Get all capabilities registered to this widget
+   * @returns {Object} Object with capability id as key and capability instance as value
+   */
+  
+  getCapabilities() {
+    const capsObject = {};
+    for (const [id, capability] of this.capabilities.entries()) {
+      capsObject[id] = capability;
     }
-
-    // Delete from scene data
+    return capsObject;
+  }
+    
+  /**
+   * TO REMOVE
+   * Get capabilities for a specific item by checking scene JSON structure (LEGACY)
+   * @deprecated Use getItemBehaviours() instead for new code
+   */
+  
+  getItemCapabilities(id, item) {
     const scene = this.getCurrentScene();
-    if (scene.behaviours?.[behaviourId]?.[itemId]) {
-      delete scene.behaviours[behaviourId][itemId];
-
-      // If no more items have this behaviour, clean up the behaviour entry
-      if (Object.keys(scene.behaviours[behaviourId]).length === 0) {
-        delete scene.behaviours[behaviourId];
-      }
+    if (!scene.capabilities) {
+      console.log(`No capabilities in scene`);
+      return [];
     }
 
-    // Send delete patch
-    this.composePatch(
-      {
-        behaviours: {
-          [behaviourId]: {
-            [itemId]: {}
+    // Get the actual item ID - could be passed as first param or from item.nid
+    const itemId = id || (item && item.nid);
+
+    if (!itemId) {
+      console.log(`No item ID provided to getItemCapabilities`);
+      return [];
+    }
+
+    // ALWAYS get the actual ATON node for capability checks
+    // The 'item' parameter might be the JSON scene object, not the node
+    const atonNode = this.getItem(itemId);
+    if (!atonNode) {
+      console.log(`Could not get ATON node for ${itemId}`);
+      return [];
+    }
+
+    // Get capabilities for this item
+    const itemCapabilities = [];
+
+    // Check registered capabilities using their detection logic
+    for (const [registeredCapId, capability] of this.capabilities.entries()) {
+      console.log(`Checking capability ${registeredCapId} for item ${itemId}`);
+      // If capability has custom detection method, use it
+      if (capability.hasCapabilityForItem) {
+        console.log(`Using custom detection for capability ${registeredCapId}`);
+        const hasCapability = capability.hasCapabilityForItem(atonNode, this);
+        console.log(hasCapability);
+
+        // null means "use default check"
+        if (hasCapability === null) {
+          // Fall back to standard JSON check
+          if (scene.capabilities[capability.id]?.[itemId]) {
+            itemCapabilities.push(registeredCapId);
           }
+        } else if (hasCapability === true) {
+          itemCapabilities.push(registeredCapId);
         }
-      },
-      ATON.SceneHub.MODE_DEL
-    );
-
-    console.log(`🗑️ Removed behaviour ${behaviourId} from item ${itemId}`);
-
-    // Refresh UI
-    this.app.ui.editor_updateHierarchy();
-    this.app.ui.editor_updateWidgetMainPanel();
-    this.app.widgetsHub.focusOnItem({ id: itemId, wid: this.id });
-  }
-
-  /**
-   * Delete an item
-   */
-  deleteItem(id) {
-    if (this.options.deleteItem) {
-      return this.options.deleteItem(id);
+      } else {
+        // Standard check: look in scene.capabilities[capability.id][itemId]
+        if (scene.capabilities[capability.id]?.[itemId]) {
+          itemCapabilities.push(registeredCapId);
+        }
+      }
     }
-  }
 
-  /**
-   * Method to be overridden by widgets that need to handle component features
-   */
-  getComponents() {
-    return this.options.components || {};
-  }
-
-  /**
-   * Get properties including behaviour/capability-provided properties
-   * @param {Object} item - The item to get properties for. If null, returns base widget properties.
-   * @returns {Object} Combined properties from widget, behaviours, and capabilities
-   */
-  getProperties(item = null) {
-    // Start with base widget properties
-    let props = { ...this.options.props };
-
-    // If no item provided, return base properties only
-    if (!item) return props;
-
-    // Get properties from behaviours (direct mode)
-    const itemBehaviours = this.getItemBehaviours(item.nid, item);
     console.log(
-      "Getting properties via behaviours for item:",
-      item.nid,
-      item,
-      itemBehaviours
+      `✅ Item ${itemId} has ${itemCapabilities.length} capabilities:`,
+      itemCapabilities
     );
-    itemBehaviours.forEach((behaviourId) => {
-      const behaviour = this.behaviours.get(behaviourId);
-      if (behaviour?.supportsMode('direct') && behaviour.getProperties) {
-        const behaviourProps = behaviour.getProperties(item.nid, this);
-        console.log(`Properties from behaviour ${behaviourId}:`, behaviourProps);
-        // Merge behaviour properties (same pattern as capabilities)
-        props = { ...props, ...behaviourProps };
-      }
-    });
-
-    // Legacy: Get additional properties from item's capabilities (backward compatibility)
-    const itemCaps = this.getItemCapabilities(item.nid, item);
-    console.log(
-      "Getting properties via capabilities for item:",
-      item.nid,
-      item,
-      itemCaps
-    );
-    itemCaps.forEach((capId) => {
-      const capability = this.capabilities.get(capId);
-      if (capability?.getProperties) {
-        const capProps = capability.getProperties(item, this);
-        console.log(`Properties from capability ${capId}:`, capProps);
-        props = { ...props, ...capProps };
-      }
-    });
-
-    return props;
+    return itemCapabilities;
   }
+  
 
   /**
-   * Get inspector blocks including capability-provided blocks
-   */
-  getInspectorBlocks(item) {
-    let blocks = [];
-
-    // Add base inspector blocks
-    if (this.options.inspectorBlocks) {
-      blocks = blocks.concat(this.options.inspectorBlocks(item));
-    }
-
-    // Add capability-provided blocks
-    const itemCaps = this.getItemCapabilities(item);
-    itemCaps.forEach((capId) => {
-      const capability = this.capabilities.get(capId);
-      if (capability?.getInspectorBlocks) {
-        const capBlocks = capability.getInspectorBlocks(item, this);
-        
-        // Wrap capability blocks in a section with micro-title
-        if (capBlocks.length > 0) {
-          const capSection = this.app.uikit.inspectorSection(
-            capability.name || capId,
-            capBlocks
-          );
-          blocks.push(capSection);
-        }
-      }
-    });
-
-    return blocks;
-  }
-
-  /**
-   * Compose a patch with capability modifications
-   */
-  composePatch(patch, mode) {
-    // Let capabilities modify the patch
-    const activeNode = this.editor.activeNode;
-    if (activeNode) {
-      const itemCaps = this.getItemCapabilities(activeNode);
-      itemCaps.forEach((capId) => {
-        const capability = this.capabilities.get(capId);
-        if (capability?.modifyPatchData) {
-          // Get current capability data for context
-          const currentData = this.getItemCapabilityData(activeNode, capId);
-
-          // Let capability modify the patch
-          patch = capability.modifyPatchData(
-            patch,
-            activeNode,
-            this,
-            currentData
-          );
-        }
-      });
-
-      // Handle legacy texturized data migration if present
-      const scene = this.getCurrentScene();
-      if (scene.texturized && scene.texturized[activeNode.nid]) {
-        // Migrate texturized data to new capability structure
-        const texturizedData = scene.texturized[activeNode.nid];
-        if (texturizedData.imageScreenPath) {
-          patch = {
-            ...patch,
-            capabilities: {
-              ...patch.capabilities,
-              override: {
-                [activeNode.nid]: {
-                  materials: {
-                    screen: {
-                      texturePath: texturizedData.imageScreenPath,
-                    },
-                  },
-                },
-              },
-            },
-            // Mark texturized for removal
-            texturized: {
-              [activeNode.nid]: null,
-            },
-          };
-        }
-      }
-    }
-
-    // Send the final patch
-    this.editor.patch = patch;
-    this.editor.modePatch = mode;
-    this.editor.OnPatchChanged();
-  }
-
-  /**
-   * Virtual method for adding an item to the scene
-   */
-  addItemToScene(id, item) {
-    // To be implemented by child classes
-  }
-
-  /**
-   * Virtual method called when widget loses focus (before switching to another item/widget)
-   * Allows widgets to cleanup temporary resources like 3D icons
-   * @param {Object} item - The item that is losing focus
-   */
-  onLoseFocus(item) {
-    // To be implemented by child classes that need cleanup
-  }
-
-  /**
-   * Get behaviours available to add to an item
-   * Returns visible behaviours that are not yet attached to the item
+   * TO REMOVE
+   * Get capabilities available to add to an item
+   * Returns visible capabilities that are not yet attached to the item
    * and are compatible with the item (via canEquip check)
    */
-  getAvailableBehaviours(item) {
+  
+  getAvailableCapabilities(item) {
     if (!item) return [];
 
-    const itemBehaviours = this.getItemBehaviours(item.nid, item);
-    const availableBehaviours = [];
+    const itemCapabilities = this.getItemCapabilities(item.nid, item);
+    const availableCapabilities = [];
 
-    // Check all registered behaviours
-    for (const [behaviourId, behaviour] of this.behaviours.entries()) {
-      // Only include visible behaviours not already attached
-      if (behaviour.isVisible && !itemBehaviours.includes(behaviourId)) {
-        // Check if behaviour is compatible with this item
-        const canEquip = behaviour.canEquip
-          ? behaviour.canEquip(item.nid)
+    // Check all registered capabilities
+    for (const [capId, capability] of this.capabilities.entries()) {
+      // Only include visible capabilities not already attached
+      if (capability.isVisible && !itemCapabilities.includes(capId)) {
+        // Check if capability is compatible with this item
+        const canEquip = capability.canEquip
+          ? capability.canEquip(item, this)
           : true; // Default to true if canEquip not implemented
 
         if (canEquip) {
-          availableBehaviours.push({
-            id: behaviourId,
-            name: behaviour.name,
-            behaviour: behaviour,
+          availableCapabilities.push({
+            id: capId,
+            name: capability.name,
+            capability: capability,
           });
         }
       }
     }
 
-    return availableBehaviours;
+    return availableCapabilities;
   }
 
+  // Data management methods moved to Capability class
+
   /**
-   * Add a behaviour to an item (equip, patch, and update UI)
+   * TO REMOVE
+   * Equip an item with a capability
    */
-  addBehaviourToItem(item, behaviourId, skipFocus = false) {
-    const behaviour = this.behaviours.get(behaviourId);
-    if (!behaviour) {
-      throw new Error(`Behaviour ${behaviourId} not found`);
+  
+  equipItemWithCapability(item, capabilityId) {
+    const capability = this.capabilities.get(capabilityId);
+    if (!capability) {
+      throw new Error(`Capability ${capabilityId} not found`);
     }
 
-    console.log(`✨ Adding behaviour ${behaviourId} to item ${item.nid}`);
-
-    // Get initial data from behaviour
-    const initialData = behaviour.getInitialData
-      ? behaviour.getInitialData(item)
+    // Get or create initial data for this capability
+    const initialData = capability.getInitialData
+      ? capability.getInitialData(item)
       : {};
 
-    // Store and patch behaviour data
-    behaviour.saveDirectModeData(item.nid, initialData);
+    // Store the capability data
+    this.setItemCapabilityData(item, capabilityId, initialData);
 
-    // Let behaviour perform any additional setup
-    if (behaviour.onEquip) {
-      behaviour.onEquip(item.nid);
+    // Let the capability perform any setup
+    if (capability.equip) {
+      capability.equip(item, this);
+    }
+
+    this.app.ui.editor_updateWidgetMainPanel();
+    return this;
+  }
+    
+
+  /**
+   * TO REMOVE
+   * Add a capability to an item (attach, patch, and update UI)
+   */
+  
+  addCapabilityToItem(item, capabilityId, skipFocus = false) {
+    const capability = this.capabilities.get(capabilityId);
+    if (!capability) {
+      throw new Error(`Capability ${capabilityId} not found`);
+    }
+
+    console.log(`Adding capability ${capabilityId} to item ${item.nid}`);
+
+    // Get initial data from capability
+    const initialData = capability.getInitialData
+      ? capability.getInitialData(item)
+      : {};
+
+    // Use setItemData from capability to store and patch
+    capability.setItemData(item, this, initialData);
+
+    // Let capability perform any additional setup
+    if (capability.equip) {
+      capability.equip(item, this);
     }
 
     // Update hierarchy to refresh item buttons with new decorations
@@ -856,11 +901,13 @@ export class Widget {
 
     return this;
   }
+  
 
-  /**
+  /** TO REMOVE
    * Get the "Add Behaviour/Capability" button for the inspector
    * Returns null if no behaviours or capabilities are available to add
    */
+  
   getAddCapabilityButton(item) {
     if (!item) return null;
 
@@ -901,14 +948,17 @@ export class Widget {
       items: allAvailable,
     });
   }
+    
 
   /**
+   * TO REMOVE
    * Get actions for this widget
    * Returns array of action objects that can be assigned to items at runtime
    * Override in subclasses to provide widget-specific actions
    * Behaviours with action mode support are automatically included
    * @returns {Array} Array of action objects
    */
+  
   getActions() {
     let actions = [];
 
@@ -930,4 +980,5 @@ export class Widget {
 
     return actions;
   }
+  // #endregion
 }

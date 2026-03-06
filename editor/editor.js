@@ -179,10 +179,10 @@ editor.setupFromScene = async (s = null) => {
   editor.autoSaveMode = true;
 
   // Use exhibition template for now
-  const template = new ExhibitionTemplate(APP);
+  //const template = new ExhibitionTemplate(APP);
 
   //Use Free template:
-  //const template = createFreeTemplate(APP);
+  const template = createFreeTemplate(APP);
   await template.applyToEditor(editor);
 
   //Setup UI:
@@ -198,9 +198,9 @@ editor.setupFromScene = async (s = null) => {
 /**
  * Register all available widgets for the editor
  */
-/**
+/** NO SENSE
  * Get appropriate template based on scene configuration
- */
+
 editor.getTemplateForScene = (scene) => {
   const {
     createFreeTemplate,
@@ -212,9 +212,10 @@ editor.getTemplateForScene = (scene) => {
     return createExhibitionTemplate(APP);
   }
 
-  // Default to free template
+  // Default to free templatew
   return createFreeTemplate(APP);
 };
+ */
 
 //GIZMO HANDLERS:
 editor.setGizmoByNode = (node, mode = null) => {

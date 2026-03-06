@@ -21,6 +21,8 @@ class Behaviour {
      * @param {string} config.actionLabel - Label for action mode UI (default: name)
      * @param {Array<string>} config.eventTypes - Supported event types (default: ['onSelect'])
      */
+
+    // #region Core
     constructor(config = {}) {
         this.id = config.id || 'behaviour';
         this.name = config.name || 'Behaviour';
@@ -32,8 +34,15 @@ class Behaviour {
         
         this._widget = null;
     }
+    // #endregion
 
-    /**
+  
+    // ============================================================
+    //#region Lifecycle
+    // ============================================================
+
+
+     /**
      * Check if this behaviour supports a specific mode
      * @param {string} mode - Mode to check ('direct', 'action', etc.)
      * @returns {boolean}
@@ -58,9 +67,13 @@ class Behaviour {
         return this._widget;
     }
 
-    // ============================================================
-    // Lifecycle Hooks
-    // ============================================================
+    /**
+     * Get the scene object
+     * @returns {Object}
+     */
+    getScene() {
+        return this._widget?.getCurrentScene();
+    }
 
     /**
      * Check if this behaviour can be equipped on an item
@@ -120,13 +133,28 @@ class Behaviour {
         // Override in subclass to clean up references
     }
 
-    // ============================================================
-    // Authoring UI - Single Source of Truth
-    // ============================================================
+       /**
+     * Focus on an item to refresh UI
+     * @param {string} itemId
+     */
+    focusOnItem(itemId) {
+        if (this._widget?.app?.widgetsHub) {
+            this._widget.app.widgetsHub.focusOnItem({ 
+                id: itemId, 
+                wid: this._widget.id 
+            });
+        }
+    }
 
+    
+    
+    // ============================================================
+    // Authoring UI
+    // ============================================================
+    
     /**
      * Create the authoring UI for this behaviour
-     * This is the SINGLE SOURCE OF TRUTH for configuration UI
+     * This is the SINGLE SOURCE for configuration UI
      * Must be implemented by subclass
      * 
      * @param {Object} context - Authoring context
@@ -136,15 +164,21 @@ class Behaviour {
      * @param {Object} context.actionData - Current action data (for action mode)
      * @param {Function} context.onSave - Save callback (for action mode)
      * @returns {HTMLElement} - UI container element
-     */
-    createAuthoringUI(context) {
-        throw new Error('createAuthoringUI() must be implemented by subclass');
+    */
+   createAuthoringUI(context) {
+       throw new Error('createAuthoringUI() must be implemented by subclass');
     }
-
+    //#endregion
+    
+    
     // ============================================================
+    //#region Data and State
+    // ============================================================
+
+
     // Direct Mode Integration
-    // ============================================================
-
+    // ==========================
+    
     /**
      * Get properties for direct mode inspector
      * Returns properties object matching capability pattern
@@ -204,9 +238,8 @@ class Behaviour {
         );
     }
 
-    // ============================================================
     // Action Mode Integration
-    // ============================================================
+    // ==========================
 
     /**
      * Get action definition for action mode
@@ -285,15 +318,7 @@ class Behaviour {
     // ============================================================
     // Utility Methods
     // ============================================================
-
-    /**
-     * Get the scene object
-     * @returns {Object}
-     */
-    getScene() {
-        return this._widget?.getCurrentScene();
-    }
-
+    
     /**
      * Send a patch to the server
      * @param {string} path - Patch path (e.g., 'behaviours/override/itemId')
@@ -319,18 +344,7 @@ class Behaviour {
         this._widget.composePatch(patchData, mode);
     }
 
-    /**
-     * Focus on an item to refresh UI
-     * @param {string} itemId
-     */
-    focusOnItem(itemId) {
-        if (this._widget?.app?.widgetsHub) {
-            this._widget.app.widgetsHub.focusOnItem({ 
-                id: itemId, 
-                wid: this._widget.id 
-            });
-        }
-    }
+ 
 }
 
 export { Behaviour };

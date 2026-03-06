@@ -205,7 +205,8 @@ export class OverrideBehaviour extends Behaviour {
     // Create a texture selector for each material
     materials.forEach(material => {
       const matName = material.name;
-      const currentTexture = currentData?.materials?.[matName]?.texturePath;
+      const rawTexture = currentData?.materials?.[matName]?.texturePath;
+      const currentTexture = typeof rawTexture === 'string' && rawTexture ? rawTexture : null;
       
       // Create texture selector block
       const textureBlock = widgetInstance.app.uikit.TextureSelectorBlock(
@@ -352,6 +353,11 @@ export class OverrideBehaviour extends Behaviour {
    * Apply texture to material in 3D scene (matches capability exactly)
    */
   applyTextureToMaterial(itemId, materialName, texturePath) {
+    if (typeof texturePath !== 'string' || !texturePath) {
+      console.warn(`⚠️ applyTextureToMaterial: invalid texturePath for ${itemId}/${materialName}`, texturePath);
+      return;
+    }
+
     const item = this._widget.getItem(itemId);
     if (!item) {
       console.warn(`⚠️ Item not found: ${itemId}`);
@@ -703,6 +709,11 @@ export class OverrideBehaviour extends Behaviour {
 
     // Update material configuration
     const { materialName, texturePath } = data;
+
+    if (texturePath !== null && (typeof texturePath !== 'string' || !texturePath)) {
+      console.warn(`⚠️ updateActionModeData: invalid texturePath, skipping`, texturePath);
+      return;
+    }
 
     if (texturePath === null) {
       // Restore original: remove from config

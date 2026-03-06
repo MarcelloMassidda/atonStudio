@@ -313,12 +313,11 @@ constructor(app) {
     this.app.ui.editor_updateWidgetMainPanel();
     this.editor.onCloseInspectorBtnClicked();
 
-    // Send delete patch
+    // Send delete patch — only delete the node entry.
     this.composePatch(
       {
         scenegraph: { 
-          nodes: { [nid]: {} },
-          edges: edges
+          nodes: { [nid]: {} }
         }
       },
       ATON.SceneHub.MODE_DEL
