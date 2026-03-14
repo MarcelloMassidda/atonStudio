@@ -292,7 +292,16 @@ export class OverrideBehaviour extends Behaviour {
           actionId,
           onSave
         );
-      }
+      },
+      onAddFileBtnClicked: () => {
+        this._widget.app.db.openFileDialog({
+          callback: () => {
+            console.log("updating media picker gallery");
+            this.openTextureSelectorForMaterial(itemId, materialName, mode, actionId, onSave);
+            this._widget.app.uikit.setLoadingCursor(false);
+          },
+        });
+      },
     });
   }
 
