@@ -26,7 +26,7 @@ dashboard.init = () => {
         // If user is not logged -> redirect to login
         if (Object.keys(user).length === 0) {
             var _url = window.location.href;
-            window.location.href = window.location.origin + "/shu/auth" + "?url=" + _url;
+            window.location.href = window.location.origin + /*"/shu/auth"*/ "/login/" + "?u=" + _url;
         }
 
         // Get data

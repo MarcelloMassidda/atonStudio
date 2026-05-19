@@ -23,6 +23,11 @@
   backdrop-filter: blur(var(--aton-blur-radius));
 }
 
+
+#IDeditor_gizmoToolbox button{
+  justify-content: center;
+}
+
 /*SITEM*/
 .customModal {
   height: 730px;

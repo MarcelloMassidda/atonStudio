@@ -177,8 +177,8 @@ export class OverrideBehaviour extends Behaviour {
       });
     }
 
-    // Get materials from the item (same as capability)
-    const materials = this.getMaterialsFromNode(item);
+    // Get materials from the item - filtered by subclass if needed
+    const materials = this.getFilteredMaterials(this.getMaterialsFromNode(item));
     
     if (materials.length === 0) {
       return widgetInstance.app.uikit.createText({
@@ -241,6 +241,16 @@ export class OverrideBehaviour extends Behaviour {
   }
 
   /**
+   * Filter materials shown in authoring UI.
+   * Override in subclasses to restrict to specific materials.
+   * @param {Array} materials - All extracted materials
+   * @returns {Array}
+   */
+  getFilteredMaterials(materials) {
+    return materials;
+  }
+
+  /**
    * Extract all materials from a node recursively (same as capability)
    */
   extractMaterials(node) {
@@ -295,10 +305,32 @@ export class OverrideBehaviour extends Behaviour {
       },
       onAddFileBtnClicked: () => {
         this._widget.app.db.openFileDialog({
-          callback: () => {
-            console.log("updating media picker gallery");
-            this.openTextureSelectorForMaterial(itemId, materialName, mode, actionId, onSave);
-            this._widget.app.uikit.setLoadingCursor(false);
+          callback: (result) => {
+            if (!result?.success) {
+              this._widget.app.uikit.setLoadingCursor(false);
+              return;
+            }
+
+            // Poll until the uploaded file appears in media, then reopen gallery
+            const uploadedName = result.fileName;
+            const maxAttempts = 10;
+            const intervalMs = 800;
+            let attempts = 0;
+
+            const poll = () => {
+              attempts++;
+              this._widget.app.db.getOnlyUserMedia((mediaList) => {
+                const found = mediaList.some(m => m.endsWith(uploadedName));
+                if (found || attempts >= maxAttempts) {
+                  this._widget.app.uikit.setLoadingCursor(false);
+                  this.openTextureSelectorForMaterial(itemId, materialName, mode, actionId, onSave);
+                } else {
+                  setTimeout(poll, intervalMs);
+                }
+              });
+            };
+
+            poll();
           },
         });
       },

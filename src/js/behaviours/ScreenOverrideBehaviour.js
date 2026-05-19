@@ -111,6 +111,13 @@ export class ScreenOverrideBehaviour extends OverrideBehaviour {
     }
 
     /**
+     * Only expose the "screen" material in the authoring UI
+     */
+    getFilteredMaterials(materials) {
+        return materials.filter(mat => mat.name === 'screen');
+    }
+
+    /**
      * Equip the behaviour on an item (called when auto-equipping)
      */
     onEquip(itemId) {

@@ -164,7 +164,7 @@ editor.checkUser = (callback) => {
     if (Object.keys(user).length === 0) {
       var _url = window.location.href;
       window.location.href =
-        window.location.origin + "/shu/auth" + "?url=" + _url;
+        window.location.origin + "/login/" + "?u=" + _url;
     } else {
       db.data.user = user;
     }
