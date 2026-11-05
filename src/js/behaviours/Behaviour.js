@@ -76,6 +76,18 @@ class Behaviour {
     }
 
     /**
+     * Get the runtime of this behaviour from the prototyper flare.
+     * The flare is the single implementation of behaviour logic (editor preview + Hathor);
+     * the editor only authors data and calls the runtime.
+     * @returns {Object|null} - e.g. { applyDirect, executeAction, ... } or null if not registered
+     */
+    getRuntime() {
+        const runtime = ATON.getFlare("prototyper")?.getRuntime?.(this.id) || null;
+        if (!runtime) console.warn(`⚠️ No runtime registered in prototyper flare for behaviour: ${this.id}`);
+        return runtime;
+    }
+
+    /**
      * Check if this behaviour can be equipped on an item
      * @param {string} itemId - ID of the item
      * @returns {boolean}

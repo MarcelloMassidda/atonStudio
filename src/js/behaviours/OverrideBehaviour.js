@@ -18,69 +18,9 @@ export class OverrideBehaviour extends Behaviour {
       eventTypes: ['onSelect'],
       ...config,
     });
-
-    // Store original materials for each item (shared with flare if available)
-    this._originalMaterials = null; // Will be set to flare's storage or new Map
+    // Runtime logic (apply / restore textures, original materials storage, cache)
+    // lives in the prototyper flare: see getRuntime() → F.overrideRuntime
   }
-
-  /**
-   * Get the original materials storage (from flare or local)
-   */
-  getOriginalMaterialsStorage() {
-    if (this._originalMaterials) return this._originalMaterials;
-
-    // Try to use flare's storage if available
-    const flare = ATON.getFlare("Prototyper_flare");
-    if (flare && flare._originalMaterials) {
-      this._originalMaterials = flare._originalMaterials;
-      console.log("📦 Using shared original materials storage from flare");
-    } else {
-      this._originalMaterials = new Map();
-      console.log("📦 Created local original materials storage");
-    }
-
-    return this._originalMaterials;
-  }
-
-  /**
-   * Get the original materials storage (from flare or local)
-   */
-  getOriginalMaterialsStorage() {
-    if (this._originalMaterials) return this._originalMaterials;
-
-    // Try to use flare's storage if available
-    const flare = ATON.getFlare("Prototyper_flare");
-    if (flare && flare._originalMaterials) {
-      this._originalMaterials = flare._originalMaterials;
-      console.log("📦 Using shared original materials storage from flare");
-    } else {
-      this._originalMaterials = new Map();
-      console.log("📦 Created local original materials storage");
-    }
-
-    return this._originalMaterials;
-  }
-
-  /**
-   * Get the material from the item
-   */
-  getItemMaterial(item, materialName) {
-    let foundMaterial = null;
-
-    item.traverse((child) => {
-      if (child.isMesh && child.material && !foundMaterial) {
-        const materials = Array.isArray(child.material)
-          ? child.material
-          : [child.material];
-
-        foundMaterial = materials.find((mat) => mat.name === materialName);
-      }
-    });
-
-    return foundMaterial;
-  }
-
-
 
   /**
    * Check if behaviour can be equipped on an item
@@ -110,12 +50,8 @@ export class OverrideBehaviour extends Behaviour {
    * NOTE: Don't send patch here - ModernWidgetHub.cleanupBehavioursForDeletedItem handles patching
    */
   onItemDeleted(itemId) {
-    // Clean up original materials storage
-    const storage = this.getOriginalMaterialsStorage();
-    if (storage.has(itemId)) {
-      storage.delete(itemId);
-      console.log(`\ud83e\uddf9 Cleaned up original materials storage for item ${itemId}`);
-    }
+    // Clean up original materials storage (in the flare runtime)
+    this.getRuntime()?.forget(itemId);
 
     // Local scene data cleanup (patch sent by widget hub)
     if (this.supportsMode('direct')) {
@@ -346,8 +282,11 @@ export class OverrideBehaviour extends Behaviour {
     );
 
     if (mode === "direct") {
-      // Direct mode: Apply immediately to 3D model + patch
-      this.applyTextureToMaterial(itemId, materialName, texturePath);
+      // Direct mode: Apply immediately to 3D model (preview via flare runtime,
+      // which also invalidates the ATON asset cache) + patch
+      this.getRuntime()?.applyTexture(itemId, materialName, texturePath, {
+        scene: this._widget.getCurrentScene(),
+      });
 
       // Get or create override data
       let data = this.getDirectModeData(itemId);
@@ -363,12 +302,6 @@ export class OverrideBehaviour extends Behaviour {
 
       // Save to scene + patch
       this.saveDirectModeData(itemId, data);
-
-      // CACHE INVALIDATION: Clear ATON._assetsManager cache for this item's URLs
-      const item = this._widget.getItem(itemId);
-      if (item) {
-        this.invalidateItemCache(item);
-      }
 
       // Update UI - refresh hierarchy to update item buttons with badges
       this._widget.app.ui.editor_updateHierarchy();
@@ -391,107 +324,7 @@ export class OverrideBehaviour extends Behaviour {
   }
 
   /**
-   * Apply texture to material in 3D scene (matches capability exactly)
-   */
-  applyTextureToMaterial(itemId, materialName, texturePath) {
-    if (typeof texturePath !== 'string' || !texturePath) {
-      console.warn(`⚠️ applyTextureToMaterial: invalid texturePath for ${itemId}/${materialName}`, texturePath);
-      return;
-    }
-
-    const item = this._widget.getItem(itemId);
-    if (!item) {
-      console.warn(`⚠️ Item not found: ${itemId}`);
-      return;
-    }
-
-    const itemMaterial = this.getItemMaterial(item, materialName);
-    if (!itemMaterial) {
-      console.error(`Material '${materialName}' not found for item ${itemId}`);
-      return;
-    }
-
-    // Get shared storage
-    const storage = this.getOriginalMaterialsStorage();
-    if (!storage.has(item.nid)) {
-      storage.set(item.nid, new Map());
-    }
-    const itemOriginals = storage.get(item.nid);
-
-    const resolvedUrl = ATON.Utils.resolveCollectionURL(texturePath);
-    const loader = new THREE.TextureLoader();
-    loader.load(resolvedUrl, (texture) => {
-      texture.encoding = THREE.sRGBEncoding;
-      texture.flipY = false;
-
-      // Clone and replace materials when texture is loaded
-      item.traverse((child) => {
-        if (child.isMesh && child.material) {
-          const materials = Array.isArray(child.material)
-            ? child.material
-            : [child.material];
-
-          // Clone materials and apply texture
-          const newMaterials = materials.map((mat) => {
-            if (mat.name === materialName) {
-              // Save original before cloning if not already saved
-              if (!itemOriginals.has(materialName)) {
-                itemOriginals.set(materialName, mat.clone());
-                console.log(
-                  `💾 [Behaviour] Saved original material '${materialName}' for item ${item.nid}`
-                );
-              }
-
-              const clonedMat = mat.clone();
-              clonedMat.map = texture;
-              clonedMat.needsUpdate = true;
-              console.log(
-                `✅ [Behaviour] Applied texture to cloned material '${materialName}' for item ${item.nid}`
-              );
-              return clonedMat;
-            }
-            return mat;
-          });
-
-          // Replace with cloned materials
-          child.material = Array.isArray(child.material)
-            ? newMaterials
-            : newMaterials[0];
-        }
-      });
-    });
-  }
-
-  /**
-   * Invalidate ATON cache for item's URLs to force fresh loads
-   */
-  invalidateItemCache(item) {
-    const scene = this._widget.getCurrentScene();
-    const itemData = scene.scenegraph?.nodes?.[item.nid];
-    if (!itemData || !itemData.urls || !Array.isArray(itemData.urls)) {
-      console.warn(`⚠️ No URLs found for item ${item.nid} in scene data`);
-      return;
-    }
-
-    // Resolve each URL and clear from cache
-    itemData.urls.forEach((url) => {
-      const resolvedUrl = ATON.Utils.resolveCollectionURL(url);
-      if (
-        ATON._assetsManager &&
-        ATON._assetsManager[resolvedUrl] !== undefined
-      ) {
-        ATON._assetsManager[resolvedUrl] = undefined;
-        console.log(`🗑️ Invalidated cache for: ${resolvedUrl}`);
-      }
-    });
-
-    console.log(
-      `✨ Cache cleared for ${itemData.urls.length} URL(s) of item ${item.nid}`
-    );
-  }
-
-  /**
-   * Restore original texture for a material (matches capability exactly)
+   * Restore original texture for a material
    */
   restoreOriginalTexture(itemId, materialName, mode, actionId, onSave) {
     console.log(
@@ -499,51 +332,9 @@ export class OverrideBehaviour extends Behaviour {
     );
 
     if (mode === "direct") {
-      // Direct mode: Restore 3D model material + delete from scene data
-      const item = this._widget.getItem(itemId);
-      if (!item) {
-        console.error(`Item ${itemId} not found`);
-        return;
-      }
-
-      const storage = this.getOriginalMaterialsStorage();
-      const itemOriginals = storage.get(item.nid);
-      if (!itemOriginals || !itemOriginals.has(materialName)) {
-        console.warn(
-          `No original material found for '${materialName}' in item ${item.nid}`
-        );
-        return;
-      }
-
-      const originalMaterial = itemOriginals.get(materialName);
-
-      // Replace the material on the mesh with the original
-      item.traverse((child) => {
-        if (child.isMesh && child.material) {
-          const materials = Array.isArray(child.material)
-            ? child.material
-            : [child.material];
-          const index = materials.findIndex((mat) => mat.name === materialName);
-
-          if (index !== -1) {
-            const restoredMaterial = originalMaterial.clone();
-            restoredMaterial.needsUpdate = true;
-
-            if (Array.isArray(child.material)) {
-              child.material[index] = restoredMaterial;
-            } else {
-              child.material = restoredMaterial;
-            }
-            console.log(
-              `↩️ Restored original material '${materialName}' for item ${item.nid}`
-            );
-          }
-        }
-      });
-
-      // Update light probes to fix lighting after material restoration
-      ATON.getRootScene().assignLightProbesByProximity();
-      ATON.updateLightProbes();
+      // Direct mode: Restore 3D model material (flare runtime) + delete from scene data
+      const restored = this.getRuntime()?.restore(itemId, materialName);
+      if (!restored) return;
 
       // Remove from scene data
       const data = this.getDirectModeData(itemId);
