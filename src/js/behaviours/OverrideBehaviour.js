@@ -3,7 +3,7 @@ import { Behaviour } from "./Behaviour.js";
 /**
  * Material Override Behaviour
  * 
- * Unified behaviour that replaces OverrideCapability
+ * Overrides material textures of an item
  * Supports both direct mode (immediate application) and action mode (deferred execution)
  */
 export class OverrideBehaviour extends Behaviour {
@@ -169,7 +169,7 @@ export class OverrideBehaviour extends Behaviour {
   }
 
   /**
-   * Get all materials from a node (same as capability)
+   * Get all materials from a node
    */
   getMaterialsFromNode(item) {
     const node = item;
@@ -187,7 +187,7 @@ export class OverrideBehaviour extends Behaviour {
   }
 
   /**
-   * Extract all materials from a node recursively (same as capability)
+   * Extract all materials from a node recursively
    */
   extractMaterials(node) {
     let materials = [];
@@ -208,7 +208,7 @@ export class OverrideBehaviour extends Behaviour {
   }
 
   /**
-   * Get current texture for material (same as capability)
+   * Get current texture for material
    */
   getMaterialTexture(material) {
     let t = material.map?.source?.data?.currentSrc;
@@ -223,7 +223,7 @@ export class OverrideBehaviour extends Behaviour {
    * Open texture selector for a specific material
    */
   openTextureSelectorForMaterial(itemId, materialName, mode, actionId, onSave) {
-    // Open media gallery using uikit (same as capability)
+    // Open media gallery using uikit
     this._widget.app.uikit.createMediaGallery({
       title: `Select Texture for ${materialName}`,
       onMediaItemClicked: ({ url }) => {

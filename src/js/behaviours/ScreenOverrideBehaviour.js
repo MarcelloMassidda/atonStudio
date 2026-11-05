@@ -50,40 +50,15 @@ export class ScreenOverrideBehaviour extends OverrideBehaviour {
     }
 
     /**
-     * Custom detection for this behaviour on an item
-     * Checks if the override behaviour data contains a "screen" key
-     */
-    hasCapabilityForItem(item, widget) {
-        // Check if there's override data for this item with "screen" material
-        const scene = widget.getCurrentScene();
-        
-        // Check both behaviours and capabilities namespaces (for migration support)
-        const behaviourData = scene.behaviours?.[this.id]?.[item.nid];
-        const capabilityData = scene.capabilities?.[this.id]?.[item.nid];
-        const data = behaviourData || capabilityData;
-        
-        if (data?.materials?.screen) {
-            console.log(`✅ Found screen override data for ${item.nid}`);
-            return true;
-        }
-
-        // Also check if the item physically has a screen material (for auto-equip)
-        return this.canEquip(item.nid);
-    }
-
-    /**
      * Decorate item button with screen indicator badge
+     * @param {Object} btnOptions - Button options to decorate
+     * @param {string} itemId - ID of the item
      */
-    decorateItemBtn(btnOptions, item, widget) {
-        const scene = widget.getCurrentScene();
-        
-        // Check both behaviours and capabilities for screen texture
-        const behaviourData = scene.behaviours?.[this.id]?.[item.nid];
-        const capabilityData = scene.capabilities?.[this.id]?.[item.nid];
-        const data = behaviourData || capabilityData;
-        
+    decorateItemBtn(btnOptions, itemId) {
+        const data = this.getDirectModeData(itemId);
+
         if (data?.materials?.screen) {
-            console.log(`🎨 ScreenOverride decorating button for ${item.nid}`);
+            console.log(`🎨 ScreenOverride decorating button for ${itemId}`);
             
             if (!btnOptions.badges) btnOptions.badges = [];
             

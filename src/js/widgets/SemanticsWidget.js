@@ -93,7 +93,7 @@ export class SemanticsWidget extends Widget {
       text: id,
       attr: { "data-id": id, "data-wid": this.id },
       onClick: (event) => {
-        this.app.widgetsHub.onClicked_itemBtn_base(event.target);
+        this.app.widgetsHub.onItemButtonClicked(event.target);
       },
     };
 
@@ -116,7 +116,7 @@ export class SemanticsWidget extends Widget {
       }
     }
 
-    return this.app.widgetsHub.itemBtn_base(btnOptions);
+    return this.app.widgetsHub.createItemButton(btnOptions);
   }
 
   /**

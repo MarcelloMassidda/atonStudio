@@ -28,20 +28,6 @@ constructor(app) {
         if (!scene.scenegraph.nodes) return null;
         return scene.scenegraph.nodes;
       },
-      // item button renderer (backwards-compatible)
-      old_itemBtn: (id, item) => {
-        const objNum = item.urls ? item.urls.length : 0;
-        let _itemName = id;
-        // Badge handling moved to ScreenOverrideCapability.decorateItemBtn
-        console.log("CREATING from LAYER WIDGET ITEM BTN for item:", id, item);
-        return app.widgetsHub.mainBtn_base({
-          text: _itemName,
-          attr: { "data-id": id, "data-wid": "layers" },
-          onClick: function () {
-            app.widgetsHub.onClicked_itemBtn_base(this);
-          },
-        });
-      },
       // Define how to get a specific item
       returnItem: (nid) => ATON.getSceneNode(nid),
       props: {
@@ -184,22 +170,6 @@ constructor(app) {
       scene.scenegraph.edges["."].push(nodeName);
     }
 
-    // If customizables, set default texture entry
-    if (type === "customizables") {
-      const getDefaultTexturePathByNodeId = (modelId) => {
-        const customizables = this.app.config?.models?.customizables;
-        if (!customizables) return null;
-        const basePath = this.app.config.baseCustomizablesDefaultTexturesPath;
-        const obj = customizables.find((item) => item.nodeId === modelId);
-        return obj ? basePath + obj.textureDefaultPath : null;
-      };
-
-      scene.texturized = scene.texturized ? scene.texturized : {};
-      scene.texturized[nodeName] = {
-        imageScreenPath: getDefaultTexturePathByNodeId(nodeName),
-      };
-    }
-
     // Focus on the new node
     this.app.widgetsHub.focusOnItem({ id: nodeName, wid: this.id });
 
@@ -323,19 +293,8 @@ constructor(app) {
       ATON.SceneHub.MODE_DEL
     );
 
-    // Clean up any actions referencing this layer (AFTER delete patch sent)
-    // Check all behaviour actions registered to this widget
-    for (const [behaviourId, behaviour] of this.behaviours.entries()) {
-      if (behaviour.supportsMode('action')) {
-        this.app.widgetsHub.cleanupActionsForDeletedItem({
-          deletedItemId: nid,
-          widgetId: this.id,
-          actionType: behaviourId
-        });
-      }
-    }
-    
-    // Also check legacy capability actions
+    // Clean up any actions referencing this layer (AFTER delete patch sent):
+    // behaviour actions and widget-native ones (toggleVisible)
     const actions = this.getActions();
     for (const action of actions) {
       if (action.widgetId === this.id && action.onReferencedItemDeleted) {
@@ -349,12 +308,6 @@ constructor(app) {
 
     // Clean up any behaviour data for this layer
     this.app.widgetsHub.cleanupBehavioursForDeletedItem({
-      deletedItemId: nid,
-      widgetId: this.id
-    });
-
-    // Clean up any capability data for this layer
-    this.app.widgetsHub.cleanupCapabilitiesForDeletedItem({
       deletedItemId: nid,
       widgetId: this.id
     });
@@ -409,18 +362,11 @@ constructor(app) {
   }
 
   /**
-   * Get texture for node
-   */
-  getTextureForNode(nid) {
-    return this.getCurrentScene().texturized?.[nid]?.imageScreenPath;
-  }
-
-  /**
    * Get actions for this widget
    * Provides widget-native actions like toggleVisible
    */
   getActions() {
-    // Get base actions from capabilities
+    // Get behaviour actions from the base widget
     const baseActions = super.getActions();
 
     // Add widget-specific actions

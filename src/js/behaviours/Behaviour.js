@@ -1,7 +1,7 @@
 /**
  * Behaviour Base Class
  * 
- * Unified entity that replaces both Actions and Capabilities.
+ * A unit of interactive logic equipped on widget items.
  * A behaviour can execute in different modes:
  * - 'direct': Immediate execution, applied directly to items
  * - 'action': Deferred execution, triggered by semantic graph events
@@ -193,7 +193,7 @@ class Behaviour {
     
     /**
      * Get properties for direct mode inspector
-     * Returns properties object matching capability pattern
+     * Returns properties object with an inspectorBlock
      * @param {string} itemId - ID of the item
      * @param {Widget} widget - The widget instance
      * @returns {Object} - Properties object with inspectorBlock methods
@@ -203,7 +203,7 @@ class Behaviour {
             return {};
         }
 
-        // Return object with inspectorBlock method (same pattern as capabilities)
+        // Return object with inspectorBlock method
         return {
             [this.id]: {
                 inspectorBlock: (item) => {
@@ -255,7 +255,7 @@ class Behaviour {
 
     /**
      * Get action definition for action mode
-     * Returns action configuration for semantic graph events (compatible with capability actions)
+     * Returns action configuration for semantic graph events
      * @param {Widget} widget - The widget instance
      * @returns {Object} - Action definition
      */
@@ -352,7 +352,7 @@ class Behaviour {
         }
         current[pathParts[pathParts.length - 1]] = data;
 
-        // Use widget's composePatch method (same as capabilities)
+        // Use widget's composePatch method
         this._widget.composePatch(patchData, mode);
     }
 

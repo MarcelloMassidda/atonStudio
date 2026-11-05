@@ -595,20 +595,6 @@ ui.editor_widgetsListPanel = () => {
   return widgetsBtnList;
 };
 
-ui.inspectorHeader = (headContent) => {
-  //OLD
-
-  return UI.flexBox({
-    dir: "row",
-    justifyContent: "space-between",
-    wrap: "nowrap",
-    content: [
-      UI.createEl({ content: headContent }),
-      UI.button({ icon: "cancel", onClick: editor.onCloseInspectorBtnClicked }),
-    ],
-  });
-};
-
 ui.updateVector3UI = (idContainer, _v) => {
   console.log(idContainer);
   console.log(_v);

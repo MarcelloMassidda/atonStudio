@@ -559,11 +559,5 @@ export class PointOfViewWidget extends Widget {
       widgetId: this.id,
       actionType: 'goToPov'
     });
-
-    // Clean up any capability data for this POV
-    this.app.widgetsHub.cleanupCapabilitiesForDeletedItem({
-      deletedItemId: nid,
-      widgetId: this.id
-    });
   }
 }

@@ -103,17 +103,6 @@ uikit.actionContainer = (actionId, actionType, content) => {
   return container;
 };
 
-uikit.wrapInGroupList = (options) => {
-  //NOT USED:
-  let list = uikit.createElfromString(`<div class="list-group"></div>`);
-  let { items } = options;
-
-  items.forEach((item) => {
-    list.append(item);
-  });
-  return list;
-};
-
 uikit.createOffCanvas = (options) => {
   let pos = options.pos || "start";
   let id = "offcanvas_" + pos;
