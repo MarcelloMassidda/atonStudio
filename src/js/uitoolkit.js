@@ -446,6 +446,18 @@ UI.form=(o)=>{ //wrap in form a set of UI.input HTML objects, combining a defaul
 }
 
 
+// Show the current value next to every range input of a form (updates live)
+UI.addRangeValueLabels=(_form)=>{
+    _form.querySelectorAll("input[type=range]").forEach((r)=>{
+        const row = createEl({classList:["promptRangeRow"]});
+        const out = createEl({tag:"output", classList:["promptRangeValue"]});
+        out.textContent = r.value;
+        r.addEventListener("input", ()=>{ out.textContent = r.value; });
+        r.replaceWith(row);
+        row.append(r, out);
+    });
+}
+
 /*Notes:
 checkbox false is not saved in getFormData
 */
@@ -535,29 +547,30 @@ UI.promptDialog = (o)=>{ // create an async form wrapped in a popup, using optio
         resolve(null);
     }
 
-    //header:
-    let _header = o.header? o.header : null;
-    let _title = o.title? o.title : null;
+    //header: custom element, or a string (header or title) rendered by showModal with the close button
+    let _header = o.header ? o.header : (o.title ? o.title : null);
 
-    /*
-    if(!o.header)_header = createEl({className:"dialogHeader", content:[
-        _title,
-        UI.button({icon:"cancel", className:"dialogHeaderCloseBtn", onClick:onResumeClicked})]
-    })*/
-
-    //body:
+    //body: styled by .promptForm (atonstudio.css, "Prompt dialogs")
     let _form = UI.form(o);
+    _form.classList.add("promptForm");
     _form.addEventListener("submit", onSubmittedPromptForm);
+    UI.addRangeValueLabels(_form);
     let _body = createEl({className:"dialogBody", content:_form});
 
     //footer:
-    var _footer = o.footer? o.footer : createEl({id:"formFooter", className:"dialogFooter", content:
+    var _footer = o.footer? o.footer : createEl({id:"formFooter", classList:["dialogFooter","promptFooter"], content:
     [
-        UI.button({id:"resumeBtn",text:"Cancel", onClick:onResumeClicked}),
-        UI.button({id:"confermBtn",text:"Confirm", attr:{type:"submit", form:o.id} })
+        UI.button({id:"resumeBtn",text:o.cancelText || "Cancel", classList:["btn-secondary"], onClick:onResumeClicked}),
+        UI.button({id:"confermBtn",text:o.confirmText || "Confirm", classList:["btn-primary"], attr:{type:"submit", form:o.id} })
     ]});
 
     UI.showModal({header:_header,body:_body,footer:_footer,onModalClose:onResumeClicked});
+
+    //focus the first editable field once the modal is visible
+    ATON.UI.elModal.addEventListener("shown.bs.modal", ()=>{
+        const first = _form.querySelector("input[type=text], input[type=number], input:not([type]), textarea");
+        if (first) { first.focus(); first.select?.(); }
+    }, {once:true});
     //const _promptDialog = UI.dialog({id:o.idPopup, content:createEl({className:"dialogContainer",content:[_header,_body,_footer]})});
     //document.body.appendChild(_promptDialog);
 

@@ -251,7 +251,7 @@ export class PointOfViewWidget extends Widget {
         {
           type: "text",
           name: "id",
-          legendText: "View Point ID",
+          legendText: "Viewpoint ID",
           value: newGeneratedId,
           required: true,
         },
@@ -259,11 +259,11 @@ export class PointOfViewWidget extends Widget {
           type: "checkbox",
           name: "fromCurrView",
           legendText: "Orientation",
-          labelText: "Set from current View",
+          labelText: "Use the current camera view",
           checked: "checked",
         },
       ],
-      title: "Add new ViewPoint",
+      title: "New viewpoint",
     });
 
     if (!dataPOV) return;

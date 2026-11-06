@@ -172,7 +172,7 @@ export class SemanticsWidget extends Widget {
         {
           name: "id",
           type: "text",
-          legendText: "Insert Annotation ID",
+          legendText: "Annotation ID",
           required: true,
         },
         {
@@ -204,7 +204,7 @@ export class SemanticsWidget extends Widget {
           attr: { min: 0.05, max: 1, step: 0.01 },
         },
       ],
-      title: "Add new semantic annotation",
+      title: "New annotation",
     });
 
     if (!dataUser) return;

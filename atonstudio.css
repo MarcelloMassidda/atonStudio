@@ -238,6 +238,162 @@
   /*color: black;*/
 }
 
+/*Prompt dialogs (UI.promptDialog: Add annotation / viewpoint, layer name, new scene)
+  Markup from UI.input: [fieldset > legend +] label > input + text
+---------------------------------------------------------------*/
+
+.promptForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: min(380px, 80vw);
+}
+
+.promptForm fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.promptForm legend {
+  float: none;
+  width: 100%;
+  margin: 0 0 2px;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+
+/* text-like inputs look like Bootstrap form controls */
+.promptForm input[type="text"],
+.promptForm input[type="number"],
+.promptForm input[type="email"],
+.promptForm input[type="url"],
+.promptForm input[type="search"],
+.promptForm input:not([type]) {
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.95rem;
+  color: var(--bs-body-color);
+  background-color: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.promptForm input[type="text"]:focus,
+.promptForm input[type="number"]:focus,
+.promptForm input:not([type]):focus {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* label wrapping a text input: its text acts as caption above the input */
+.promptForm label:has(> input[type="text"]),
+.promptForm label:has(> input[type="number"]) {
+  width: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+}
+
+/* checkbox: box + text on one row */
+.promptForm label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.promptForm input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--bs-primary);
+}
+
+/* radio group: segmented choice */
+.promptForm label:has(> input[type="radio"]) {
+  position: relative;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  background-color: var(--bs-tertiary-bg);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.promptForm label:has(> input[type="radio"]:checked) {
+  background-color: rgba(var(--bs-primary-rgb), 0.18);
+  border-color: var(--bs-primary);
+  color: var(--bs-emphasis-color);
+}
+
+.promptForm label:has(> input[type="radio"]:focus-visible) {
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.promptForm input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* range + live value */
+.promptRangeRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.promptRangeRow input[type="range"] {
+  flex: 1;
+  margin: 0;
+  accent-color: var(--bs-primary);
+}
+
+.promptRangeValue {
+  min-width: 3.5em;
+  padding: 0.2rem 0.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  background-color: var(--bs-tertiary-bg);
+}
+
+.promptFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+.promptFooter .aton-btn {
+  height: auto;
+  margin: 0;
+  padding: 0.4rem 1.1rem;
+}
+
 /*Authoring forms (inspector)
   Helpers in src/js/uikit.js: field, inspectorSection, actionContainer,
   iconButton, TextureSelectorBlock, inspectorSeparator.
