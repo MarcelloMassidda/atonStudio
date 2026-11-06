@@ -459,9 +459,24 @@ class LibraryView {
     if (!actions.length && this.o.actions.length) this.info.append(h("div", "mlib-hint", "No action available for this file type."));
   }
 
+  /**
+   * Close the library, THEN run the action. Actions often open another dialog in
+   * the same ATON modal: Bootstrap ignores show() while the hide transition is
+   * still running, so we wait for "hidden.bs.modal" (with a fallback timeout).
+   */
   run(action, item) {
-    ATON.UI.hideModal();
-    action.run(item);
+    const modal = ATON.UI.elModal;
+    let started = false;
+    const go = () => {
+      if (started) return;
+      started = true;
+      action.run(item);
+    };
+    if (modal?.classList.contains("show")) {
+      modal.addEventListener("hidden.bs.modal", go, { once: true });
+      setTimeout(go, 1000);
+      ATON.UI.hideModal();
+    } else go();
   }
 
   setStatus(text, kind = "") {
@@ -505,10 +520,16 @@ class LibraryView {
     const taken = new Set(this.items.map((i) => i.name));
     const done = [];
     const failed = [];
+    const already = []; // same name + same size already in the folder: not uploaded again
 
     this.uploadBtn.disabled = true;
     uikit.setLoadingCursor(true);
     for (let i = 0; i < files.length; i++) {
+      const same = this.items.find((it) => !it.isDir && it.name === files[i].name && it.size === files[i].size);
+      if (same) {
+        already.push(same.path);
+        continue;
+      }
       const name = this.uniqueName(files[i].name, taken);
       taken.add(name);
       this.setStatus(`Uploading ${i + 1}/${files.length}: ${name}…`);
@@ -519,11 +540,15 @@ class LibraryView {
     this.uploadBtn.disabled = false;
 
     if (this.folder !== folder) return;
-    await this.navigate(folder);
+    if (done.length) await this.navigate(folder);
 
-    const uploaded = this.items.filter((it) => done.some((d) => d.path === it.path));
+    // uploaded files + files that were already here: select them as if just uploaded
+    const uploaded = this.items.filter((it) => done.some((d) => d.path === it.path) || already.includes(it.path));
+    const msg = [];
+    if (done.length) msg.push(`Uploaded ${done.length} file${done.length > 1 ? "s" : ""}.`);
+    if (already.length) msg.push(`Already in this folder, not uploaded again: ${already.map((p) => p.split("/").pop()).join(", ")}.`);
     if (failed.length) this.setStatus(`Upload failed: ${failed.map((f) => f.fileName).join(", ")}`, "error");
-    else if (done.length) this.setStatus(`Uploaded ${done.length} file${done.length > 1 ? "s" : ""}.`, "ok");
+    else if (msg.length) this.setStatus(msg.join(" "), "ok");
 
     if (uploaded.length) {
       this.select(uploaded[uploaded.length - 1]);
