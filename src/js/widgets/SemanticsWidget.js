@@ -409,53 +409,6 @@ export class SemanticsWidget extends Widget {
   }
 
   /**
-   * Compose patch for semantic changes (when editing existing node)
-   */
-  composePatch(mode) {
-    const node = this.editor.activeNode;
-    if (!node) return;
-
-    const nid = node.nid;
-    let _patch = this.editor.patch || {};
-
-    if (!_patch.semanticgraph) {
-      _patch.semanticgraph = { nodes: {}, edges: {} };
-    }
-
-    // Get semantic info based on type
-    const semanticType = this.getSemanticsType(nid);
-    if (semanticType === "sphere") {
-      const p = this.getPositionFromNode();
-      const r = this.getRadiusFromNode();
-
-      if (!_patch.semanticgraph.nodes[nid]) {
-        _patch.semanticgraph.nodes[nid] = { spheres: [[0, 0, 0, 1]] };
-      }
-
-      const _spheres = _patch.semanticgraph.nodes[nid].spheres;
-      _spheres[0][0] = p.x;
-      _spheres[0][1] = p.y;
-      _spheres[0][2] = p.z;
-      _spheres[0][3] = r;
-
-      _patch.semanticgraph.nodes[nid].spheres = _spheres;
-    } else if (semanticType === "convex") {
-      _patch.semanticgraph.nodes[nid] = {
-        convexshapes: ATON.SceneHub.getJSONsemanticConvexShapes(nid),
-      };
-    }
-
-    // Add edges - required for ATON to create the node
-    _patch.semanticgraph.edges = ATON.SceneHub.getJSONgraphEdges(
-      ATON.NTYPES.SEM
-    );
-
-    this.editor.patch = _patch;
-    this.editor.modePatch = ATON.SceneHub.MODE_ADD;
-    this.editor.OnPatchChanged();
-  }
-
-  /**
    * Gizmo change handler
    */
   onGizmoChange(evt) {
