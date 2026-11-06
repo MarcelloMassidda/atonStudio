@@ -117,27 +117,21 @@ export class PointOfViewWidget extends Widget {
    * Create POV selection block for action inspector
    */
   createPOVSelectionBlock(node, actionId, args) {
-    const container = this.app.uikit.createContainer({ classList: ["inspector_Block"] });
-
     const selectedPOVId = args?.targetPOVId;
-
-    if (selectedPOVId) {
-      const btnText = `📍 ${selectedPOVId}`;
-      const btn = this.app.uikit.createButton({
-        text: btnText,
-        onClick: () => this.openPOVSelectionModal(node, actionId),
-      });
-      container.appendChild(btn);
-    } else {
-      const btn = this.app.uikit.createButton({
-        text: "Select Point of View",
-        onClick: () => this.openPOVSelectionModal(node, actionId),
-      });
-      container.appendChild(btn);
-    }
-
-    return container;
+    const btn = this.app.uikit.createButton({
+      text: selectedPOVId || "Select viewpoint…",
+      icon: "pov",
+      compact: true,
+      block: true,
+      onClick: () => this.openPOVSelectionModal(node, actionId),
+    });
+    btn.classList.add("insp-picker");
+    return this.app.uikit.createContainer({
+      classList: ["inspector_Block"],
+      content: [this.app.uikit.field({ label: "Viewpoint", control: btn })],
+    });
   }
+
 
   /**
    * Open modal to select POV
@@ -325,30 +319,16 @@ export class PointOfViewWidget extends Widget {
    */
   createPositionInspector(node) {
     const pos = node.children[0].children[0];
-    const inspectorBlock = this.app.uikit.createContainer({
-      classList: ["inspector_Block"],
-      content: [
-        this.app.uikit.createButton({
-          text: "position",
-          onClick: () => {
-            console.log("Position clicked");
-            this.editor.setGizmoByNode(pos);
-            this.editor.udpateGizmoOnMouseUpListener((evt) =>
-              this.onPositionGizmoChange(evt)
-            );
-          },
-        }),
-        this.app.widgetsHub.parsers.vector3({
-          id: "viewpoints_position_V3",
-          title: "Position",
-          property: "position",
-          v: pos.position,
-          target: pos,
-          onChange: (evt) => this.onPropertyChange(evt),
-        }),
-      ],
+    return this.app.widgetsHub.parsers.vector3({
+      id: "viewpoints_position_V3",
+      title: "Position",
+      property: "position",
+      v: pos.position,
+      target: pos,
+      onChange: (evt) => this.onPropertyChange(evt),
+      // setupGizmo attaches the gizmo to the position when the POV is focused
+      actions: [this.createGizmoButton("position", pos, true, (evt) => this.onPositionGizmoChange(evt))],
     });
-    return inspectorBlock;
   }
 
   /**
@@ -356,30 +336,37 @@ export class PointOfViewWidget extends Widget {
    */
   createTargetInspector(node) {
     const povTarget = node.children[0].children[2];
-    const inspectorBlock = this.app.uikit.createContainer({
-      classList: ["inspector_Block"],
-      content: [
-        this.app.uikit.createButton({
-          text: "target",
-          onClick: () => {
-            console.log("Target clicked");
-            this.editor.setGizmoByNode(povTarget);
-            this.editor.udpateGizmoOnMouseUpListener((evt) =>
-              this.onTargetGizmoChange(evt)
-            );
-          },
-        }),
-        this.app.widgetsHub.parsers.vector3({
-          id: "viewpoints_target_V3",
-          title: "target",
-          property: "position",
-          target: povTarget,
-          v: povTarget.position,
-          onChange: (evt) => this.onPropertyChange(evt),
-        }),
-      ],
+    return this.app.widgetsHub.parsers.vector3({
+      id: "viewpoints_target_V3",
+      title: "Target",
+      property: "position",
+      target: povTarget,
+      v: povTarget.position,
+      onChange: (evt) => this.onPropertyChange(evt),
+      actions: [this.createGizmoButton("target", povTarget, false, (evt) => this.onTargetGizmoChange(evt))],
     });
-    return inspectorBlock;
+  }
+
+  /**
+   * "Move" button next to a vector field: attaches the gizmo to that part of the POV
+   */
+  createGizmoButton(part, gizmoNode, active, onGizmoChange) {
+    const btn = this.app.uikit.createButton({
+      id: `viewpoints_btn_${part}`,
+      text: "Move",
+      icon: this.app.ui.baseIcons + "translate.svg",
+      compact: true,
+      onClick: () => {
+        for (const p of ["position", "target"]) {
+          document.getElementById(`viewpoints_btn_${p}`)?.classList.toggle("Inspector_activeBtn", p === part);
+        }
+        this.editor.setGizmoByNode(gizmoNode);
+        this.editor.udpateGizmoOnMouseUpListener(onGizmoChange);
+      },
+    });
+    btn.title = `Move the ${part} with the gizmo`;
+    if (active) btn.classList.add("Inspector_activeBtn");
+    return btn;
   }
 
   /**
@@ -390,9 +377,10 @@ export class PointOfViewWidget extends Widget {
     const vp = scene.viewpoints[node.nid];
     return this.app.widgetsHub.parsers.float({
       id: "viewpoints_fov",
-      title: "FOV",
+      title: "Field of view (°)",
       name: "fov",
       v: vp.fov,
+      step: 1,
       onChange: (evt) => this.onPropertyChange(evt),
     });
   }

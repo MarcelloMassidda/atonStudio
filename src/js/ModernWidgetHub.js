@@ -94,26 +94,42 @@ export class ModernWidgetHub {
           }
         };
 
-        return this.app.UI.vector3({
+        // UI.vector3 returns [label, control]: keep the control (its id is
+        // used by ui.updateVector3UI) and wrap it in a standard field
+        const v3 = this.app.UI.vector3({
           id: o.id,
           property: o.property,
           title: o.title,
           v: o.v,
           onChange: handler,
         });
+        const control = v3.lastElementChild;
+        control.classList.remove("mb-3");
+        return this.app.uikit.field({
+          label: o.title,
+          control,
+          actions: o.actions,
+        });
       },
 
       float: (o) => {
         const evt = o.onChange ? { change: o.onChange } : null;
 
-        return this.app.UI.input({
+        const input = this.app.UI.input({
           id: o.id,
           attr: { "data-property": o.property },
           name: o.name,
           type: "number",
           value: o.v,
-          labelText: o.title,
+          step: o.step,
           events: evt,
+        });
+        input.classList.add("form-control", "form-control-sm");
+        return this.app.uikit.field({
+          label: o.title,
+          labelFor: o.id,
+          control: input,
+          actions: o.actions,
         });
       },
 

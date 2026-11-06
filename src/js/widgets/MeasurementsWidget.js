@@ -388,7 +388,9 @@ export class MeasurementsWidget extends Widget {
     const btnId = `measure_inspector_btn_point_${pointType.toLowerCase()}`;
     const btn = this.app.uikit.createButton({
       id: btnId,
-      text: `Point ${pointType}`,
+      text: "Move",
+      icon: this.app.ui.baseIcons + "translate.svg",
+      compact: true,
       classList: pointType === "A" ? ["Inspector_activeBtn"] : [],
       onClick: () => {
         this.setActivePointButton(pointType);
@@ -396,20 +398,16 @@ export class MeasurementsWidget extends Widget {
         this.editor.udpateGizmoOnMouseUpListener(gizmoHandler);
       },
     });
+    btn.title = `Move point ${pointType} with the gizmo`;
 
-    return this.app.uikit.createContainer({
-      classList: ["inspector_Block"],
-      content: [
-        btn,
-        this.app.widgetsHub.parsers.vector3({
-          id: `measure_point${pointType}_v3`,
-          title: `Point ${pointType} position`,
-          property: "position",
-          v: point.position,
-          target: point,
-          onChange: (evt) => this.onMeasurementPropertyChange(evt),
-        }),
-      ],
+    return this.app.widgetsHub.parsers.vector3({
+      id: `measure_point${pointType}_v3`,
+      title: `Point ${pointType}`,
+      property: "position",
+      v: point.position,
+      target: point,
+      onChange: (evt) => this.onMeasurementPropertyChange(evt),
+      actions: [btn],
     });
   }
 

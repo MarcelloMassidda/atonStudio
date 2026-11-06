@@ -155,8 +155,10 @@ export class BasicSemanticInfoBehaviour extends Behaviour {
           description: {
             inspectorBlock: () => {
               const editBtn = widget.app.uikit.createButton({
-                text: "Edit Description",
+                text: "Edit text…",
                 icon: "edit",
+                compact: true,
+                block: true,
                 onClick: () => this.openDescriptionEditor(node, widget),
               });
 

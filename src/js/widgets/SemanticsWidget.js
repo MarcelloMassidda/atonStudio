@@ -555,15 +555,16 @@ export class SemanticsWidget extends Widget {
     // Create section with micro-title
     const actionsContent = [];
 
-    // Always show "Add Action" button at top
+    // "Add" button lives in the section title row
     const addBtn = this.app.uikit.createButton({
-      text: "Add Action",
+      text: "Add",
       icon: "add",
+      compact: true,
       onClick: () => {
         this.app.widgetsHub.assignActionToNode(node, this);
       },
     });
-    actionsContent.push(addBtn);
+    addBtn.title = "Add an action triggered when this node is selected";
 
     // If actions are assigned, render each action in its own container
     if (actionsDict && typeof actionsDict === 'object' && !Array.isArray(actionsDict)) {
@@ -594,23 +595,17 @@ export class SemanticsWidget extends Widget {
               }
             }
 
-            // Add "Remove This Action" button
-            const removeBtn = this.app.uikit.createButton({
-              text: "Remove This Action",
-              icon: "cancel",
-              variant: "warning",
-              classList: ["btn-sm", "mt-2"],
-              onClick: () => {
-                this.app.widgetsHub.removeActionFromNode(node, this, actionId);
-              },
-            });
-            actionContent.push(removeBtn);
-
-            // Wrap in action container
+            // Wrap in action card (readable name + remove button in the header)
             const actionContainer = this.app.uikit.actionContainer(
               actionId,
               actionData.actionType,
-              actionContent
+              actionContent,
+              {
+                title: action.name,
+                onRemove: () => {
+                  this.app.widgetsHub.removeActionFromNode(node, this, actionId);
+                },
+              }
             );
             actionsContent.push(actionContainer);
           }
@@ -618,8 +613,17 @@ export class SemanticsWidget extends Widget {
       });
     }
 
+    if (actionsContent.length === 0) {
+      actionsContent.push(
+        this.app.uikit.createText({
+          text: "No actions yet. Add one to define what happens when this node is selected.",
+          classList: ["insp-hint"],
+        })
+      );
+    }
+
     // Wrap everything in inspector section with micro-title
-    return this.app.uikit.inspectorSection("Actions", actionsContent);
+    return this.app.uikit.inspectorSection("Actions", actionsContent, addBtn);
   }
 
   /**

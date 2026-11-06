@@ -32,9 +32,12 @@ uikit.createButton = (options) => {
       )
     );
   }
-  ///Set variant:
+  ///Set variant and density (compact: used inside the inspector forms).
+  // NB: options.size is the toolkit icon size (UI.image), not the button size.
   let _variant = options.variant || uikit.default_buttonVariant;
-  el.classList.add("btn-" + _variant, "p-2");
+  el.classList.add("btn-" + _variant);
+  el.classList.add(options.compact ? "btn-sm" : "p-2");
+  if (options.block) el.classList.add("insp-btn-block");
 
   return el;
 };
@@ -44,63 +47,138 @@ uikit.deleteButton = (options) => {
   return uikit.createButton(options);
 };
 
+// ============================================================
+// Authoring forms (inspector). Styles: atonstudio.css, "Authoring forms".
+// ============================================================
+
+/** Append an element, an array of elements, or nothing. */
+const appendContent = (parent, content) => {
+  if (Array.isArray(content)) content.forEach((c) => c && parent.append(c));
+  else if (content) parent.append(content);
+};
+
 uikit.inspectorSeparator = () => {
-  return uikit.createElfromString(`<div class="p-2"></div>`);
+  return uikit.createElfromString(`<hr class="insp-sep">`);
+};
+
+/**
+ * Small square button with only an icon (tooltip as accessible name)
+ */
+uikit.iconButton = ({ id, icon, tooltip, onClick, variant = "dark", active = false }) => {
+  const el = uikit.createButton({ id, icon, variant, compact: true, onClick });
+  el.classList.add("insp-icon-btn");
+  if (tooltip) {
+    el.title = tooltip;
+    el.setAttribute("aria-label", tooltip);
+  }
+  if (active) el.classList.add("Inspector_activeBtn");
+  return el;
+};
+
+/**
+ * Labeled form field: label (+ optional actions on the right) above a control
+ * @param {Object} o
+ * @param {string} o.label - field label
+ * @param {string} [o.labelFor] - id of the control, for the <label for>
+ * @param {Element} o.control - the input / control element
+ * @param {Element[]} [o.actions] - small buttons shown next to the label
+ * @param {string} [o.hint] - muted help text under the control
+ */
+uikit.field = ({ label, labelFor, control, actions, hint }) => {
+  const field = document.createElement("div");
+  field.classList.add("insp-field");
+
+  const head = document.createElement("div");
+  head.classList.add("insp-field-head");
+  const lbl = document.createElement("label");
+  lbl.classList.add("insp-label");
+  lbl.textContent = label || "";
+  if (labelFor) lbl.htmlFor = labelFor;
+  head.append(lbl);
+  if (actions && actions.length) {
+    const act = document.createElement("div");
+    act.classList.add("insp-field-actions");
+    appendContent(act, actions);
+    head.append(act);
+  }
+  field.append(head);
+
+  appendContent(field, control);
+
+  if (hint) {
+    const h = document.createElement("div");
+    h.classList.add("insp-hint");
+    h.textContent = hint;
+    field.append(h);
+  }
+  return field;
 };
 
 /**
  * Create a micro-title for inspector sections
  */
-uikit.microTitle = (text) => {
-  return uikit.createElfromString(
-    `<div class="inspector-micro-title" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #6c757d; margin: 1rem 0 0.5rem 0; padding-bottom: 0.25rem; border-bottom: 1px solid #dee2e6;">${text}</div>`
-  );
+uikit.microTitle = (text, actions = null) => {
+  const el = document.createElement("div");
+  el.classList.add("insp-section-title");
+  const span = document.createElement("span");
+  span.textContent = text;
+  el.append(span);
+  if (actions) appendContent(el, actions);
+  return el;
 };
 
 /**
  * Create a section container with micro-title
+ * @param {string} title
+ * @param {Element|Element[]} content
+ * @param {Element|Element[]} [titleActions] - small buttons aligned right in the title row
  */
-uikit.inspectorSection = (title, content) => {
-  const section = uikit.createContainer({
-    classList: ["inspector-section", "mb-3"],
-    content: []
-  });
-  
-  if (title) {
-    section.appendChild(uikit.microTitle(title));
-  }
-  
-  if (Array.isArray(content)) {
-    content.forEach(item => section.appendChild(item));
-  } else if (content) {
-    section.appendChild(content);
-  }
-  
+uikit.inspectorSection = (title, content, titleActions = null) => {
+  const section = document.createElement("div");
+  section.classList.add("insp-section");
+  if (title) section.appendChild(uikit.microTitle(title, titleActions));
+  appendContent(section, content);
   return section;
 };
 
 /**
- * Create an action container for better visual grouping
+ * Card wrapping one action assigned to a semantic node
+ * @param {string} actionId
+ * @param {string} actionType
+ * @param {Element|Element[]} content
+ * @param {Object} [options]
+ * @param {string} [options.title] - readable action name (defaults to actionType)
+ * @param {Function} [options.onRemove] - shows a remove button in the header
  */
-uikit.actionContainer = (actionId, actionType, content) => {
-  const container = uikit.createElfromString(
-    `<div class="action-container" style="border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 0.75rem; margin-bottom: 0.75rem;"></div>`
-  );
-  
-  // Add action type label
-  const label = uikit.createElfromString(
-    `<div class="action-label" style="font-size: 0.7rem; font-weight: 600; color: #495057; margin-bottom: 0.5rem;">⚡ ${actionType}</div>`
-  );
-  container.appendChild(label);
-  
-  // Add content
-  if (Array.isArray(content)) {
-    content.forEach(item => container.appendChild(item));
-  } else if (content) {
-    container.appendChild(content);
+uikit.actionContainer = (actionId, actionType, content, options = {}) => {
+  const card = document.createElement("div");
+  card.classList.add("insp-action-card");
+  card.dataset.actionId = actionId;
+
+  const head = document.createElement("div");
+  head.classList.add("insp-action-head");
+  const title = document.createElement("div");
+  title.classList.add("insp-action-title");
+  title.textContent = options.title || actionType;
+  title.title = `${actionType} · ${actionId}`;
+  head.append(title);
+  if (options.onRemove) {
+    head.append(
+      uikit.iconButton({
+        icon: "cancel",
+        tooltip: "Remove this action",
+        onClick: options.onRemove,
+      })
+    );
   }
-  
-  return container;
+  card.append(head);
+
+  const body = document.createElement("div");
+  body.classList.add("insp-action-body");
+  appendContent(body, content);
+  card.append(body);
+
+  return card;
 };
 
 uikit.createOffCanvas = (options) => {
@@ -465,33 +543,49 @@ uikit.createText = (options) => {
   });
 };
 
-uikit.TextureSelectorBlock = (imgPath, onBtnClicked, materialName) => {
-  const imageThumb = (path) => {
-    let icon = ATON.Utils.resolveCollectionURL(path);
-    return UI.image(icon, "sm");
-  };
+/**
+ * One row per material: thumbnail, name, "Change" and (optional) "Restore"
+ * @param {string} imgPath - current texture (collection path)
+ * @param {Function} onBtnClicked - opens the texture picker
+ * @param {string} [materialName]
+ * @param {Function} [onRestore] - if given, the texture is overridden: show "Restore"
+ */
+uikit.TextureSelectorBlock = (imgPath, onBtnClicked, materialName, onRestore = null) => {
+  const row = document.createElement("div");
+  row.classList.add("insp-material-row");
+  if (onRestore) row.classList.add("is-overridden");
 
-  const btn = (click) =>
-    uikit.createButton({ text: "🖼️ Change texture", onClick: click });
-
-  // If material name provided, show it above
-  if (materialName) {
-    const nameLabel = uikit.createElfromString(
-      `<div class="material-name-label" style="font-weight:600; margin-bottom:5px; color: #495057;">Material: ${materialName}</div>`
-    );
-    const textureRow = UI.flexBox({
-      content: [imageThumb(imgPath), btn(onBtnClicked)],
-      alignItems: "center",
-      classList: "mb-2",
-    });
-    return uikit.createContainer({ content: [nameLabel, textureRow] });
+  const thumb = document.createElement("div");
+  thumb.classList.add("insp-material-thumb");
+  if (imgPath) {
+    const img = document.createElement("img");
+    img.src = ATON.Utils.resolveCollectionURL(imgPath);
+    img.alt = "";
+    img.onerror = () => img.remove(); // keep the empty placeholder box
+    thumb.append(img);
   }
+  row.append(thumb);
 
-  return UI.flexBox({
-    content: [imageThumb(imgPath), btn(onBtnClicked)],
-    alignItems: "center",
-    classList: "mb-4",
-  });
+  const info = document.createElement("div");
+  info.classList.add("insp-material-info");
+  const name = document.createElement("div");
+  name.classList.add("insp-material-name");
+  name.textContent = materialName || "Texture";
+  name.title = materialName || "";
+  info.append(name);
+
+  const btns = document.createElement("div");
+  btns.classList.add("insp-material-btns");
+  btns.append(uikit.createButton({ text: "Change", compact: true, onClick: onBtnClicked }));
+  if (onRestore) {
+    btns.append(
+      uikit.createButton({ text: "Restore", compact: true, variant: "outline-warning", onClick: onRestore })
+    );
+  }
+  info.append(btns);
+  row.append(info);
+
+  return row;
 };
 
 uikit.setLoadingCursor = (isLoading) => {

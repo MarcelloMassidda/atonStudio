@@ -144,25 +144,17 @@ export class OverrideBehaviour extends Behaviour {
       const rawTexture = currentData?.materials?.[matName]?.texturePath;
       const currentTexture = typeof rawTexture === 'string' && rawTexture ? rawTexture : null;
       
-      // Create texture selector block
+      // One row per material; "Restore" only if the material has an override
       const textureBlock = widgetInstance.app.uikit.TextureSelectorBlock(
         currentTexture || this.getMaterialTexture(material),
         () => this.openTextureSelectorForMaterial(targetItemId, matName, mode, actionId, onSave),
-        matName
+        matName,
+        currentTexture
+          ? () => this.restoreOriginalTexture(targetItemId, matName, mode, actionId, onSave)
+          : null
       );
-      
+
       container.appendChild(textureBlock);
-      
-      // If material has override, add undo button
-      if (currentTexture) {
-        const undoBtn = widgetInstance.app.uikit.createButton({
-          text: "Restore Original",
-          icon: "undo",
-          classList: ['btn-sm', 'btn-warning', 'mt-1', 'mb-3'],
-          onClick: () => this.restoreOriginalTexture(targetItemId, matName, mode, actionId, onSave)
-        });
-        container.appendChild(undoBtn);
-      }
     });
     
     return container;
@@ -393,19 +385,19 @@ export class OverrideBehaviour extends Behaviour {
     
     const itemId = freshArgs.itemId;
 
-    const container = widgetInstance.app.uikit.createContainer({
-      classList: ["inspector_Block"],
-      content: [],
-    });
+    const uikit = widgetInstance.app.uikit;
+    const container = uikit.createContainer({ classList: ["inspector_Block"] });
 
-    // Item selector button
-    const itemBtn = widgetInstance.app.uikit.createButton({
-      text: itemId || "Select Item",
+    // Item selector (picker button showing the current model)
+    const itemBtn = uikit.createButton({
+      text: itemId || "Select model…",
       icon: "collection-item",
-      classList: ["btn-light", "mb-2"],
+      compact: true,
+      block: true,
       onClick: () => this.openItemSelectionModal(node, actionId, widgetInstance),
     });
-    container.appendChild(itemBtn);
+    itemBtn.classList.add("insp-picker");
+    container.appendChild(uikit.field({ label: "Model", control: itemBtn }));
 
     // If item is selected, show material configuration using authoring UI
     if (itemId) {
@@ -422,7 +414,7 @@ export class OverrideBehaviour extends Behaviour {
       });
 
       if (configUI) {
-        container.appendChild(configUI);
+        container.appendChild(uikit.field({ label: "Materials", control: configUI }));
       }
     }
 
