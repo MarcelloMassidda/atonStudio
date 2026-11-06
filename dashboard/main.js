@@ -1,4 +1,4 @@
-import {UI} from '../../uitoolkit/js/uitoolkit.js';
+import {UI} from '../src/js/uitoolkit.js';
 import {dashboard} from './dashboard.js';
 
 let APP = ATON.App.realize();

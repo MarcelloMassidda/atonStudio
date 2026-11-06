@@ -1,4 +1,4 @@
-import { UI } from "../../../uitoolkit/js/uitoolkit.js";
+import { UI } from "./uitoolkit.js";
 
 let uikit = {};
 

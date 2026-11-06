@@ -1,4 +1,4 @@
-import { UI } from "../../uitoolkit/js/uitoolkit.js";
+import { UI } from "../src/js/uitoolkit.js";
 import { utils } from "../src/js/utility.js";
 import { uikit } from "../src/js/uikit.js";
 
