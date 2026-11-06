@@ -510,10 +510,6 @@ export class ModernWidgetHub {
    * Stores result in semanticgraph.nodes[nid].events.onSelect
    */
   assignActionToNode(node, widget) {
-    // Get template filtering if available
-    const template = this.app.editor.activeTemplate;
-    const allowedActions = template?.allowedActions || {};
-
     // Collect all available actions from all widgets
     const actionsByWidget = {};
 
@@ -522,17 +518,7 @@ export class ModernWidgetHub {
       const actions = w.getActions();
       if (!actions || actions.length === 0) continue;
 
-      // Apply template filtering if configured
-      let filteredActions = actions;
-      if (allowedActions[widgetId]) {
-        filteredActions = actions.filter((action) =>
-          allowedActions[widgetId].includes(action.id)
-        );
-      }
-
-      if (filteredActions.length > 0) {
-        actionsByWidget[widgetId] = filteredActions;
-      }
+      actionsByWidget[widgetId] = actions;
     }
 
     if (Object.keys(actionsByWidget).length === 0) {

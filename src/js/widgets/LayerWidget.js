@@ -1,5 +1,4 @@
 import { Widget } from "./base/Widget.js";
-import { OverrideBehaviour } from "../behaviours/OverrideBehaviour.js";
 
 /**
  * Widget for managing 3D model layers in the scene
@@ -53,9 +52,6 @@ constructor(app) {
 
     super(app, options);
     this.gizmoManager = app.gizmoManager;
-
-    // Register behaviours
-    this.registerBehaviour(new OverrideBehaviour());
 
     // bind create button handler after super (can't use `this` before super)
     if (this.options && this.options.createBtnOptions) {

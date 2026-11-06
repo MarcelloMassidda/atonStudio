@@ -15,12 +15,6 @@ export const createFreeTemplate = (app) => {
   const template = new Template({
     id: "free",
     name: "Free Prototyping",
-    allowedActions: {
-      layers: ["toggleVisible"],
-      annotations: ["editDescription"],
-      viewpoints: ["goToPov"],
-      measurements: [],
-    },
   });
 
   // Create layer widget with full override behaviour
@@ -51,12 +45,6 @@ export const createExhibitionTemplate = (app) => {
   const template = new Template({
     id: "exhibition",
     name: "Exhibition Design",
-    allowedActions: {
-      layers: ["toggleVisible"],
-      annotations: ["editDescription"],
-      viewpoints: ["goToPov"],
-      measurements: [],
-    },
   });
 
   // Create library widget with screen override behaviour
