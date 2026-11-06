@@ -151,6 +151,19 @@ export class ModernWidgetHub {
 
 // ============================================================
 //#region Authoring UI
+
+  /**
+   * Actions every widget offers on files of the media library
+   * (widget.getLibraryActions(), e.g. LayerWidget "Import as layer").
+   * Used when the library is opened on the whole collection.
+   */
+  getLibraryActions() {
+    const actions = [];
+    for (const widget of this.widgets.values()) {
+      if (widget.getLibraryActions) actions.push(...widget.getLibraryActions());
+    }
+    return actions;
+  }
 // (Widgets and Inspector)=====================================
   /**
    * Create a base button for widgets

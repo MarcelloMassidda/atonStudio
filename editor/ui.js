@@ -249,7 +249,20 @@ ui.editor_sideMenu = () => {
       }),
     },
   ];
-  let sideMenuContent = uikit.createTabsGroup({ items, justified: true });
+  // Media library: whole collections, actions offered by the widgets
+  const libraryBtn = uikit.createButton({
+    text: "Library",
+    icon: "collection",
+    variant: "secondary",
+    block: true,
+    onClick: () => APP.library.open({ actions: APP.widgetsHub.getLibraryActions() }),
+  });
+  libraryBtn.classList.add("sidemenu-library-btn");
+  libraryBtn.title = "Browse and upload files of your collection";
+
+  let sideMenuContent = UI.createEl({
+    content: [libraryBtn, uikit.createTabsGroup({ items, justified: true })],
+  });
   sideMenuContent.id = ui.ID_MainSideMenu;
   let sideMenu = uikit.createOffCanvas({
     content: sideMenuContent,

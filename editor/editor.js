@@ -3,6 +3,7 @@ import { uikit } from "../src/js/uikit.js";
 import { utils } from "../src/js/utility.js";
 import { gizmoManager } from "../src/js/gizmo.js";
 import { db } from "../src/js/db.js";
+import { mediaLibrary } from "../src/js/mediaLibrary.js";
 import { ModernWidgetHub } from "../src/js/ModernWidgetHub.js";
 import { createExhibitionTemplate } from "../src/js/templates/templates.js";
 import { createFreeTemplate } from "../src/js/templates/templates.js";
@@ -22,6 +23,7 @@ editor.initialize = () => {
   APP.ui = ui;
   APP.uikit = uikit;
   APP.UI = UI;
+  APP.library = mediaLibrary;
   APP.editor = editor;
   APP.widgetsHub = new ModernWidgetHub(APP);
   editor.widgetsHub = APP.widgetsHub;
@@ -31,7 +33,6 @@ editor.initialize = () => {
   if (!params) throw new Error("No params found");
   const sid = params.get("s");
   db.data.currSID = sid;
-  db.initWebDavUser();
 
   //Load Scene:
   utils.loadScene(sid, async () => {

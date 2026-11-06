@@ -62,87 +62,73 @@ constructor(app) {
   // No texturizable features in base LayerWidget
 
   /**
-   * Open collection-based model selector and create a new layer when selected
-   * Uses ATON DB API to get models from user's collection
+   * "Add new model": open the media library on the 3D models of the user's collection
    */
   createBtnClicked() {
-    console.log("Create new Layer");
-
-    const onModelItemClicked = async (e) => {
-      const url = e.target.parentNode.dataset.path;
-
-      // Prompt node Name
-      const promptResponse = await this.app.UI.promptDialog({
-        header: "Layer Name",
-        inputs: [{ name: "newNodeName", labelText: "Node Name", type: "text" }],
-      });
-
-      if (!promptResponse) {
-        ATON.UI.hideModal();
-        console.log("NO PROMPT");
-        return;
-      }
-
-      console.log(promptResponse);
-      const nodeName = promptResponse.newNodeName;
-
-      const updateEditorOnModelAdded = () => {
-        // Focus on currentNode
-        this.app.widgetsHub.focusOnItem({ id: nodeName, wid: this.id });
-
-        // Update scenegraph
-        const newSceneGraphNode = { urls: [url] };
-        const scene = this.getCurrentScene();
-        scene.scenegraph.nodes[nodeName] = newSceneGraphNode;
-
-        // Update edges
-        let _edges = scene.scenegraph.edges;
-        if (!_edges) {
-          _edges = { ".": [nodeName] };
-        } else {
-          _edges["."].push(nodeName);
-        }
-        scene.scenegraph.edges = _edges;
-
-        // Compose patch for the addition
-        this.composePatch({
-          scenegraph: {
-            nodes: {
-              [nodeName]: newSceneGraphNode,
-            },
-            edges: _edges,
-          },
-        });
-
-        this.app.ui.editor_updateHierarchy();
-        this.app.ui.editor_updateWidgetMainPanel();
-      };
-
-      // Add in scene
-      ATON.createSceneNode(nodeName)
-        .setCloneOnLoadHit(true)
-        .load(url, () => {
-          ATON.getRootScene().assignLightProbesByProximity();
-          ATON.updateLightProbes();
-          updateEditorOnModelAdded();
-        })
-        .setPosition(0, 0, 0)
-        .attachToRoot();
-    };
-
-    // Get models from ATON DB and create summary dialog
-    this.app.db.getModels((models) => {
-      this.models = models;
-      // Create summary dialog with folder structure
-      const summary = this.app.UI.summarize(
-        this.app.UI.parseInFolders(models, onModelItemClicked)
-      );
-      summary.cssText += "text-align:left";
-      ATON.UI.showModal({
-        header: "Select a model",
-        body: summary,
-      });
+    this.app.library.open({
+      title: "Add a 3D model",
+      start: `${this.app.library.user()}/models/`,
+      filter: "model",
+      actions: this.getLibraryActions(),
     });
+  }
+
+  /**
+   * Actions this widget offers in the media library (see ModernWidgetHub.getLibraryActions)
+   */
+  getLibraryActions() {
+    return [
+      {
+        id: "importAsLayer",
+        label: "Import as layer",
+        icon: "add",
+        primary: true,
+        accepts: "model",
+        run: (item) => this.importModel(item.path),
+      },
+    ];
+  }
+
+  /**
+   * Ask for the layer name, load the model and add it to the scene
+   * @param {string} url - collection path of the model (e.g. "bastet/models/room.glb")
+   */
+  async importModel(url) {
+    const promptResponse = await this.app.UI.promptDialog({
+      title: "Import as layer",
+      inputs: [{ name: "newNodeName", legendText: "Layer name", type: "text", value: this.suggestLayerName(url), required: true }],
+      confirmText: "Import",
+    });
+    if (!promptResponse) return;
+
+    const nodeName = this.uniqueLayerName(promptResponse.newNodeName.trim());
+
+    ATON.createSceneNode(nodeName)
+      .setCloneOnLoadHit(true)
+      .load(url, () => {
+        ATON.getRootScene().assignLightProbesByProximity();
+        ATON.updateLightProbes();
+        this.updateEditorOnModelAdded(nodeName, url);
+      })
+      .setPosition(0, 0, 0)
+      .attachToRoot();
+  }
+
+  /** "models/room.glb" → "room"; "models/Room/scene.gltf" → "Room" */
+  suggestLayerName(url) {
+    const parts = url.split("/");
+    let name = parts.pop().replace(/\.[^.]+$/, "");
+    if (["scene", "model", "tileset", "index"].includes(name.toLowerCase()) && parts.length) name = parts.pop();
+    return this.uniqueLayerName(name.replace(/[^\w.-]+/g, "_"));
+  }
+
+  /** Layer ids must be unique in the scenegraph */
+  uniqueLayerName(name) {
+    const nodes = this.getCurrentScene().scenegraph?.nodes || {};
+    if (!nodes[name] && !ATON.getSceneNode(name)) return name;
+    let i = 2;
+    while (nodes[`${name}-${i}`] || ATON.getSceneNode(`${name}-${i}`)) i++;
+    return `${name}-${i}`;
   }
 
   /**

@@ -212,56 +212,17 @@ export class OverrideBehaviour extends Behaviour {
   // ============================================================
 
   /**
-   * Open texture selector for a specific material
+   * Open the media library to pick (or upload) a texture for a material.
+   * An image uploaded from here is used right away (pickOnUpload).
    */
   openTextureSelectorForMaterial(itemId, materialName, mode, actionId, onSave) {
-    // Open media gallery using uikit
-    this._widget.app.uikit.createMediaGallery({
-      title: `Select Texture for ${materialName}`,
-      onMediaItemClicked: ({ url }) => {
-        // Close modal first
-        ATON.UI.hideModal();
-        
-        this.saveTexture(
-          itemId,
-          materialName,
-          url,
-          mode,
-          actionId,
-          onSave
-        );
-      },
-      onAddFileBtnClicked: () => {
-        this._widget.app.db.openFileDialog({
-          callback: (result) => {
-            if (!result?.success) {
-              this._widget.app.uikit.setLoadingCursor(false);
-              return;
-            }
-
-            // Poll until the uploaded file appears in media, then reopen gallery
-            const uploadedName = result.fileName;
-            const maxAttempts = 10;
-            const intervalMs = 800;
-            let attempts = 0;
-
-            const poll = () => {
-              attempts++;
-              this._widget.app.db.getOnlyUserMedia((mediaList) => {
-                const found = mediaList.some(m => m.endsWith(uploadedName));
-                if (found || attempts >= maxAttempts) {
-                  this._widget.app.uikit.setLoadingCursor(false);
-                  this.openTextureSelectorForMaterial(itemId, materialName, mode, actionId, onSave);
-                } else {
-                  setTimeout(poll, intervalMs);
-                }
-              });
-            };
-
-            poll();
-          },
-        });
-      },
+    const app = this._widget.app;
+    app.library.pick({
+      title: `Texture for “${materialName}”`,
+      start: `${app.library.user()}/media/`,
+      filter: "image",
+      pickOnUpload: true,
+      onPick: (item) => this.saveTexture(itemId, materialName, item.path, mode, actionId, onSave),
     });
   }
 
@@ -309,9 +270,6 @@ export class OverrideBehaviour extends Behaviour {
           texturePath: texturePath
         });
       }
-
-      // Refresh UI
-      ATON.UI.showModal();
     }
   }
 
@@ -360,9 +318,6 @@ export class OverrideBehaviour extends Behaviour {
           texturePath: null
         });
       }
-
-      // Refresh UI
-      ATON.UI.showModal();
     }
   }
 

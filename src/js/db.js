@@ -1,4 +1,3 @@
-import {webdavManager} from './webdav.js';
 
 let db ={};
 
@@ -9,7 +8,6 @@ db.data = {};
 db.getScenes =(callback=null)=>db.get("scenes/own",callback);
 db.getSceneDetail=(sid,callback=null)=>db.get("scene/"+sid, callback);
 db.getKeywords=(callback=null)=>db.get("keywords",callback);
-db.getModels=(callback=null)=>db.get("c/models",callback);
 
 //get User media including samples
 db.getMedia=(callback=null)=>{
@@ -20,24 +18,7 @@ db.getMedia=(callback=null)=>{
 }
 
 //get User media excluding samples
-db.getOnlyUserMedia=(callback=null)=>{
-  db.getMedia((media)=>{
-    if(!media) throw("NO MEDIA"); //To implement Error handling
-    let _media = media.filter(item =>{
-     
-      if (item.startsWith("samples/")) {
-        return item.startsWith("samples/media/prototyper/textures");
-      }
-      else return true;
-    }
-    );
-    
-    callback(_media);
-  });
-}
 
-
-//db.getUser=(callback=null)=>{ ATON.Utils.checkAuth((_user) => { callback(_user)});}
 /*db.getUser = () => {
   return new Promise((resolve) => {
     ATON.Utils.checkAuth((user) => resolve(user));
@@ -51,23 +32,6 @@ db.getUser = (callback = null) => {
     });
   });
 };
-
-db.initWebDavUser = async ()=>{
-  
-  const user = await db.getUser();
-  db.user = user;
-  let _baseUrl ="https://" + window.location.hostname + ":8082" + "/";
-  if(!user) throw("NO USER LOGGED"); //To implement Error handling
-  webdavManager.setConfig({
-
-    baseURL: _baseUrl, //https://172.16.150.97:8082/", //My alternative WebDAV server
-    username: db.user.username,
-    password: "",
-    APP
-  });
-
-  console.log("WebDAV initialized for:", user.username);
-}
 
 db.get = (endpoint,onReceive) => {
 
@@ -145,28 +109,6 @@ db.setSceneVisibility=(sid,vis,callback=null)=>{
             if (res) if(callback) callback(res);
         });
     }    
-}
-
-
-db.webdav = webdavManager; //WebDAV manager
-
-db.openFileDialog = async (o=null)=>{
-  /*
-  Format/Size limit validation? TODO
-  o.tagetPath = "media" // "pano" // "models"
-  */
-
-  if(db.user === undefined) {
-    await db.initWebDavUser(); //Initialize user if not done yet.
-  }
-
-  if(!o) o = {};
-  let p = o.targetPath || "media"; //Default path
-  let targetPath = db.user.username + "-collection/" + p + "/";
-
-  let _callback = o.callback || (()=>{});
-
-  webdavManager.openFileDialog( targetPath, _callback );
 }
 
 
