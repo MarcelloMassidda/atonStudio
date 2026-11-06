@@ -491,25 +491,51 @@ export class OverrideBehaviour extends Behaviour {
       return;
     }
 
-    // Save itemId
     if (!actions[actionId].args) actions[actionId].args = {};
-    actions[actionId].args.itemId = itemId;
+    const args = actions[actionId].args;
 
-    // Patch to save itemId
-    const patch = {
-      semanticgraph: {
-        nodes: {
-          [nid]: {
-            events: scene.semanticgraph.nodes[nid].events,
+    // Materials belong to the previously selected item: drop them if the item changes
+    const prevItemId = args.itemId;
+    const itemChanged = prevItemId !== undefined && prevItemId !== itemId;
+    const hadMaterials = args.materials && Object.keys(args.materials).length > 0;
+    if (itemChanged) delete args.materials;
+
+    // Save itemId
+    args.itemId = itemId;
+
+    // Patch to save itemId (ADD merges on the server, so it can't remove old materials)
+    const sendAddPatch = () => {
+      widget.editor.patch = {
+        semanticgraph: {
+          nodes: {
+            [nid]: {
+              events: scene.semanticgraph.nodes[nid].events,
+            },
           },
+          edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
         },
-        edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
-      },
+      };
+      widget.editor.modePatch = ATON.SceneHub.MODE_ADD;
+      widget.editor.OnPatchChanged();
     };
 
-    widget.editor.patch = patch;
-    widget.editor.modePatch = ATON.SceneHub.MODE_ADD;
-    widget.editor.OnPatchChanged();
+    if (itemChanged && hadMaterials) {
+      // First DEL args.materials on the server, then ADD the new itemId
+      widget.editor.patch = {
+        semanticgraph: {
+          nodes: {
+            [nid]: {
+              events: { onSelect: { [actionId]: { args: { materials: {} } } } },
+            },
+          },
+        },
+      };
+      widget.editor.modePatch = ATON.SceneHub.MODE_DEL;
+      widget.editor.sendGlobalScenePatch(sendAddPatch);
+      console.log(`🧹 Cleared materials of previous item ${prevItemId} for override action ${actionId}`);
+    } else {
+      sendAddPatch();
+    }
 
     console.log(`✅ Item ${itemId} selected for override action ${actionId}`);
 
