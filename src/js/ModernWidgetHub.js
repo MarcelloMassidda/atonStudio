@@ -181,7 +181,7 @@ export class ModernWidgetHub {
    * Create an item button
    */
   createItemButton(options) {
-    return this.createBaseButton(options);
+    return this.app.uikit.asSideItem(this.createBaseButton(options), "item");
   }
 
   /**

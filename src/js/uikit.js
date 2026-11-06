@@ -47,6 +47,28 @@ uikit.deleteButton = (options) => {
   return uikit.createButton(options);
 };
 
+/**
+ * Turn a toolkit button into a compact sidebar row (same look as the media
+ * library tree). Styles: atonstudio.css, "Sidebar lists".
+ * @param {HTMLElement} btn - button made with createButton (keeps its data-* and onclick)
+ * @param {"item"|"nav"|"add"} kind - item row, row that opens a panel (chevron), "Add new…" row
+ */
+uikit.asSideItem = (btn, kind = "item") => {
+  btn.classList.remove("p-2", "btn-dark", "btn-primary", "btn-sm", "leftOriented");
+  btn.classList.add("side-item", "side-item-" + kind);
+  // label = the text element created by UI.button (a div), ellipsis via CSS
+  const label = [...btn.children].find((c) => c.tagName === "DIV");
+  label?.classList.add("side-item-label");
+  if (kind === "nav") {
+    btn.insertAdjacentHTML(
+      "beforeend",
+      '<svg class="side-item-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>'
+    );
+  }
+  if (!btn.title && label) btn.title = label.textContent.trim();
+  return btn;
+};
+
 // ============================================================
 // Authoring forms (inspector). Styles: atonstudio.css, "Authoring forms".
 // ============================================================

@@ -238,6 +238,124 @@
   /*color: black;*/
 }
 
+/*Sidebar lists (uikit.asSideItem): Scene items, widget list, widget items
+  Same look as the media library tree rows (.mlib-tree-row).
+---------------------------------------------------------------*/
+
+.side-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.side-list .side-item.aton-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 30px;
+  margin: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--bs-body-color);
+  font-size: 0.88rem;
+  line-height: 1.25;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.side-list .side-item.aton-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.side-list .side-item.aton-btn:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: -2px;
+}
+
+.side-list .side-item.aton-btn img {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+
+.side-item-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* badges (⚡ actions, 🖼️ overrides) aligned right, compact */
+.side-list .side-item .badge {
+  flex: 0 0 auto;
+  margin-left: 0 !important;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* selected item */
+.side-list .side-item.currentlyActive_ItemBtn,
+.side-list .side-item.is-open {
+  background: rgba(var(--bs-primary-rgb), 0.2);
+  color: var(--bs-emphasis-color);
+}
+
+.side-list .side-item.currentlyActive_ItemBtn img,
+.side-list .side-item.is-open img {
+  opacity: 1;
+}
+
+/* row that opens a panel (widget list) */
+.side-item-chevron {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--bs-secondary-color);
+}
+
+/* "Add new …" row */
+.side-list .side-item-add.aton-btn {
+  margin-top: 4px;
+  color: var(--bs-secondary-color);
+  border: 1px dashed var(--bs-border-color-translucent);
+}
+
+.side-list .side-item-add.aton-btn:hover {
+  color: var(--bs-body-color);
+  border-color: var(--bs-secondary-color);
+}
+
+.side-list .side-item-add.aton-btn img {
+  width: 12px;
+  height: 12px;
+}
+
+/* widget panel (second side menu): title as a section label, like the tree titles */
+.secondSideMenu {
+  min-width: 220px;
+}
+
+.secondSideMenu #mainTitle {
+  padding: 4px 8px 8px;
+}
+
+.secondSideMenu #mainTitle .offcanvas-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+
 /*Media library (src/js/mediaLibrary.js), opened in the ATON modal (size xl)
 ---------------------------------------------------------------*/
 

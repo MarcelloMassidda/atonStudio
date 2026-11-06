@@ -421,7 +421,8 @@ export class Widget {
         ...this.options.mainBtnOptions,
         attr: { "data-id": this.id },
       };
-      return this.app.widgetsHub.createBaseButton(options);
+      // opens the widget panel: sidebar row with chevron
+      return this.app.uikit.asSideItem(this.app.widgetsHub.createBaseButton(options), "nav");
     }
   }
 
@@ -435,6 +436,7 @@ export class Widget {
     let btnOptions = {
       id,
       text: id,
+      icon: this.options.itemBtnOptions?.icon,
       attr: { "data-id": id, "data-wid": this.id },
       onClick: (event) => {
         // Use the proper this context and pass the event target
@@ -476,7 +478,7 @@ export class Widget {
         ...this.options.createBtnOptions,
         attr: { "data-id": this.id },
       };
-      return this.app.widgetsHub.createBaseButton(options);
+      return this.app.uikit.asSideItem(this.app.widgetsHub.createBaseButton(options), "add");
     }
   }
 

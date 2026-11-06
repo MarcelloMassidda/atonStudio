@@ -244,7 +244,7 @@ ui.editor_sideMenu = () => {
       title: "Widgets",
       onClick: () => onClickTab(ui.ID_editorSideMenu_Widget),
       content: UI.createEl({
-        classList: ["d-grid", "gap-2"],
+        classList: ["side-list"],
         content: ui.editor_widgetsListPanel(),
       }),
     },
@@ -527,7 +527,7 @@ ui.editor_widgetMainPanel = (w) => {
   const createBtn = resolveCreateBtn(w);
   if (createBtn) mainPanelItemList.push(createBtn);
   let _panel = UI.createEl({
-    classList: ["WidgetMainPanel_Container", "d-grid", "gap-2"],
+    classList: ["WidgetMainPanel_Container", "side-list"],
     content: mainPanelItemList,
   });
   console.log();
@@ -577,6 +577,11 @@ ui.editor_widgetsListPanel = () => {
     //Compose widget Panel:
     let widgetMainPanel = ui.editor_widgetMainPanel(w);
     ui.openSecondSideMenu(widgetMainPanel);
+
+    // Highlight the widget whose panel is open (cleared by closeSecondSideMenu)
+    document
+      .querySelectorAll(".side-item-nav")
+      .forEach((b) => b.classList.toggle("is-open", b === target));
   };
 
   // Iterate over widgets whether Map or plain object
@@ -629,12 +634,12 @@ ui.closeSecondSideMenu = (id = null) => {
   if (!_id) return;
   var secondSidePanel = document.getElementById(_id);
   if (secondSidePanel) secondSidePanel.remove();
+  document.querySelectorAll(".side-item-nav.is-open").forEach((b) => b.classList.remove("is-open"));
 };
 
 ui.openSecondSideMenu = (content) => {
-  //Close existing panel
-  console.log(content);
-  ui.closeSecondSideMenu();
+  // Replace the existing panel (keeps the "open widget" highlight, unlike closeSecondSideMenu)
+  document.getElementById(ui.ID_SecondSideMenuCurrentlyActive)?.remove();
 
   const panel = UI.createEl({
     id: ui.ID_SecondSideMenuCurrentlyActive,

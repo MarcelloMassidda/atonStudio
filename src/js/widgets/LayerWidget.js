@@ -13,6 +13,9 @@ constructor(app) {
         text: "Models",
         icon: "collection-item",
       },
+      itemBtnOptions: {
+        icon: "collection-item",
+      },
       mainPanelOptions: {
         title: "Models",
       },
