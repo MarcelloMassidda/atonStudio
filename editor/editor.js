@@ -39,77 +39,10 @@ editor.initialize = () => {
     db.data.currScene = ATON.SceneHub.currData;
 
     await editor.setupFromScene(db.data.currScene);
-    editor.TestCustomEventsSetup();
+    // A click in the 3D view selects the item under the pointer
+    APP.widgetsHub.enableClickSelection();
     editor.showWelcomeModal();
   });
-};
-
-editor.TestCustomEventsSetup = () => {
-  ATON.on("KeyPress", function (k) {
-    console.log("KeyPress event detected: " + k);
-    if (k === "x") ATON.fireEvent("myEvent", ATON._queryDataScene);
-  });
-
-  // ...and here we handle our event!
-  ATON.on("myEvent", function (p) {
-    console.log(p);
-
-    editor.focusOnItemByQueryDataScene(p.o);
-
-    window.p = p;
-    return;
-    if (p === undefined) return; // no picked point, nothing to do
-
-    p.y += 0.5; // add a little height offset
-
-    ATON.createSceneNode()
-      .load("samples/models/atoncube.glb")
-      .setPosition(p)
-      .attachToRoot();
-  });
-};
-
-editor.focusOnItemByQueryDataScene = (o) => {
-  const rootUUID = ATON.getRootScene().uuid;
-
-  // Recursive function to get the last parent before root
-  const getLastParent = (object) => {
-    if (!object.parent || object.parent.uuid === rootUUID) {
-      return object; // This is the last parent before root
-    }
-    return getLastParent(object.parent); // Keep going up
-  };
-
-  const lastParent = getLastParent(o);
-
-  if (!lastParent.name) {
-    console.log("no name!");
-    return;
-  }
-
-  console.log("Last Parent Name is: " + lastParent.name);
-  let { widgetKey, item } = editor.findIteminWidgets(lastParent.name);
-  if (!widgetKey) {
-    console.log("no widget!");
-    return;
-  }
-
-  APP.widgetsHub.focusOnItem({ id: lastParent.name, wid: widgetKey });
-};
-
-editor.findIteminWidgets = (name) => {
-  for (const [key, widget] of APP.widgetsHub.widgets.entries()) {
-    const items = widget.getItems();
-    if (items && items[name] !== undefined) {
-      return {
-        widgetKey: key,
-        item: items[name],
-      };
-    }
-  }
-
-  console.log("Widget not found");
-  return null;
 };
 
 editor.showWelcomeModal = () => {

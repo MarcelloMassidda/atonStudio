@@ -249,9 +249,12 @@ export class ModernWidgetHub {
  // ============================================================
 
   /**
-   * Focus on a specific item in a widget
+   * Focus on a specific item in a widget: helpers, gizmo, inspector, and the
+   * item shown in the side menu (tab, widget panel, highlighted button).
+   * @param {Object} [opts]
+   * @param {boolean} [opts.frame=true] - move the camera to the item (false for clicks in the 3D view)
    */
-  focusOnItem({ id, wid }) {
+  focusOnItem({ id, wid }, { frame = true } = {}) {
     const widget = this.getWidget(wid);
     if (!widget) {
       throw new Error(`Widget ${wid} not found`);
@@ -287,7 +290,7 @@ export class ModernWidgetHub {
     this.app.editor.activeWidget = widget;
 
     // Set focus (zoom)
-    if (widget.focusItem) {
+    if (frame && widget.focusItem) {
       widget.focusItem(item);
     }
 
@@ -298,6 +301,9 @@ export class ModernWidgetHub {
 
     // Setup Inspector
     this.setupInspector(widget, item, id);
+
+    // Side menu: tab + widget panel + active item button
+    this.app.ui.revealItem(wid, id);
   }
 
   /**
@@ -325,6 +331,123 @@ export class ModernWidgetHub {
 
     this.focusOnItem({ id, wid });
     this.app.ui.setStyleOfActiveBtn(button);
+  }
+
+// #endregion
+
+// ============================================================
+// #region Click selection (3D view)
+// ============================================================
+  /**
+   * A click in the 3D view selects the item under the pointer, without moving
+   * the camera. Not a drag, not on the gizmo, not while a widget uses clicks
+   * (isBusy), not in XR. A double click does not select: ATON uses it to retarget.
+   */
+  enableClickSelection() {
+    const el = ATON._renderer.domElement;
+    const DOUBLE_CLICK_MS = 300;
+    let down = null;
+    let pending = null;
+
+    const blocked = () => {
+      const control = this.app.gizmoManager.control;
+      return (control?.object && control.axis) || this.isBusy() || ATON.XR.isPresenting();
+    };
+
+    el.addEventListener("pointerdown", (e) => {
+      down = e.button === 0 && !blocked() ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
+    });
+
+    el.addEventListener("pointerup", (e) => {
+      const d = down;
+      down = null;
+      if (!d || e.button !== 0 || blocked()) return;
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 500) return;
+
+      // Second click of a double click: cancel the selection
+      if (pending) {
+        clearTimeout(pending);
+        pending = null;
+        return;
+      }
+
+      // Pick now (the camera may move before the delay ends), select after it
+      const rect = el.getBoundingClientRect();
+      const ref = this.pickAt(new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      ));
+      pending = setTimeout(() => {
+        pending = null;
+        this.select(ref);
+      }, DOUBLE_CLICK_MS);
+    });
+  }
+
+  /** True if some widget is using scene clicks itself */
+  isBusy() {
+    for (const widget of this.widgets.values()) if (widget.isBusy?.()) return true;
+    return false;
+  }
+
+  /** Select (focus without framing) a picked item { wid, id }, if any */
+  select(ref) {
+    if (!ref) return;
+    const { activeWidget, activeNode } = this.app.editor;
+    if (activeWidget?.id === ref.wid && activeNode?.nid === ref.id) return;
+    this.focusOnItem({ id: ref.id, wid: ref.wid }, { frame: false });
+  }
+
+  /**
+   * Item under the pointer: { wid, id } or null.
+   * Candidates are the objects of the widgets' components (getPickables) and the
+   * editor helpers (UI nodes tagged with userData.editorItem). Helpers win, even
+   * behind geometry (they are drawn in x-ray); otherwise the nearest item.
+   * @param {THREE.Vector2} ndc - pointer in normalized device coordinates
+   */
+  pickAt(ndc) {
+    if (!this._pickRaycaster) {
+      const rc = new THREE.Raycaster();
+      rc.layers.enableAll(); // ATON pick layers are not needed: only candidates are tested
+      rc.params.Line.threshold = 0.02;
+      rc.params.Points.threshold = 0.02;
+      this._pickRaycaster = rc;
+    }
+    const rc = this._pickRaycaster;
+    ATON._mainRoot.updateMatrixWorld(); // objects moved since the last frame
+    rc.setFromCamera(ndc, ATON.Nav._camera);
+
+    const owners = new Map(); // object3D -> { wid, id, helper }
+    for (const widget of this.widgets.values()) {
+      for (const { object, id } of widget.getPickables?.() || []) {
+        if (object) owners.set(object, { wid: widget.id, id });
+      }
+    }
+    for (const node of ATON._rootUI.children) {
+      const ref = node.userData?.editorItem;
+      if (ref && this.widgets.has(ref.wid)) owners.set(node, { ...ref, helper: true });
+    }
+    if (owners.size === 0) return null;
+
+    const ownerOf = (o) => {
+      for (; o; o = o.parent) if (owners.has(o)) return owners.get(o);
+      return null;
+    };
+    // hidden objects (hidden layers, invisible pickers) are not selectable
+    const isShown = (o) => {
+      for (; o; o = o.parent) if (!o.visible) return false;
+      return true;
+    };
+
+    let nearest = null;
+    for (const hit of rc.intersectObjects([...owners.keys()], true)) {
+      if (!isShown(hit.object)) continue;
+      const ref = ownerOf(hit.object);
+      if (!ref) continue;
+      if (ref.helper) return ref;
+      nearest ??= ref;
+    }
+    return nearest;
   }
 
 // #endregion

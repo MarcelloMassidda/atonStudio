@@ -5,7 +5,7 @@ import { toArray3 } from "../components/Component.js";
 /**
  * Measurements Widget
  * Component: MeasurementComponent (points + its objects in ATON's measurement group).
- * Editor helper: while a measurement is selected, a scene node named after it
+ * Editor helper: while a measurement is selected, a helper (UI) node named after it
  * holds two draggable spheres (A, B), created in activeItem and removed on lose focus.
  */
 export class MeasurementsWidget extends Widget {
@@ -35,7 +35,7 @@ export class MeasurementsWidget extends Widget {
         return scene.measurements || null;
       },
       // The selected item is the editor helper node (see activeItem)
-      returnItem: (nid) => ATON.getSceneNode(nid),
+      returnItem: (nid) => this.getHelperNode(nid),
       props: {
         PointA: { inspectorBlock: (node) => this.createPointInspector(node, "A") },
         PointB: { inspectorBlock: (node) => this.createPointInspector(node, "B") },
@@ -72,6 +72,11 @@ export class MeasurementsWidget extends Widget {
       if (!this.bMeasuring) return;
       this.addMeasurePoint();
     });
+  }
+
+  /** Placing measurement points: scene clicks are not selections */
+  isBusy() {
+    return this.bMeasuring;
   }
 
   /**
@@ -158,17 +163,14 @@ export class MeasurementsWidget extends Widget {
     if (!component) throw new Error("no measure found for: " + meas_id);
 
     const p = component.data.points;
-    const helper = ATON.createSceneNode(meas_id);
-    helper.add(this.app.uikit.MEASURE_3Dicon([p[0], p[1], p[2]], [p[3], p[4], p[5]]));
-    helper.attachToRoot();
+    this.createHelperNode(meas_id, this.app.uikit.MEASURE_3Dicon([p[0], p[1], p[2]], [p[3], p[4], p[5]]));
   }
 
   /**
    * Remove the editor helper of a measurement
    */
   deactiveItem(id) {
-    const node = ATON.getSceneNode(id);
-    if (node) node.delete();
+    this.getHelperNode(id)?.delete();
   }
 
   /**
@@ -182,7 +184,7 @@ export class MeasurementsWidget extends Widget {
 
   /** Helper spheres [A, B] of the selected measurement */
   getHandles(id) {
-    const group = ATON.getSceneNode(id)?.children[0];
+    const group = this.getHelperNode(id)?.children[0];
     return group ? { A: group.children[0], B: group.children[1] } : null;
   }
 

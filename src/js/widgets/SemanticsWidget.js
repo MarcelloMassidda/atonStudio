@@ -76,6 +76,11 @@ export class SemanticsWidget extends Widget {
     });
   }
 
+  /** Placing convex shape points: scene clicks are not selections */
+  isBusy() {
+    return !!this.convexShapeManager.bConvexBuilding;
+  }
+
   /**
    * Get custom item button based on semantic type
    */

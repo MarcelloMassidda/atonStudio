@@ -113,6 +113,10 @@ export class MeasurementComponent extends Component {
     super.dispose();
   }
 
+  getObjects() {
+    return this.parts || [];
+  }
+
   /** Remove measurement objects (and their labels) from ATON's shared group */
   static removeObjects(objects) {
     const SUI = ATON.SUI;

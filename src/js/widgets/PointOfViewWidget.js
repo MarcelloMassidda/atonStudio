@@ -4,7 +4,7 @@ import { toArray3 } from "../components/Component.js";
 
 /**
  * Widget for managing viewpoints (Points of View) in the scene.
- * Component: ViewpointComponent (the data). The 3D icon — a scene node named
+ * Component: ViewpointComponent (the data). The 3D icon — a helper (UI) node named
  * after the viewpoint, holding [sphere, line, cone] — is an editor helper.
  */
 export class PointOfViewWidget extends Widget {
@@ -34,7 +34,7 @@ export class PointOfViewWidget extends Widget {
         return scene.viewpoints || null;
       },
       // Define how to get a specific item
-      returnItem: (nid) => ATON.getSceneNode(nid),
+      returnItem: (nid) => this.getHelperNode(nid),
       props: {
         position: { inspectorBlock: (node) => this.createPointInspector("position", node) },
         target: { inspectorBlock: (node) => this.createPointInspector("target", node) },
@@ -184,18 +184,19 @@ export class PointOfViewWidget extends Widget {
   }
 
   /**
-   * Create the editor icon of a viewpoint (scene node named after it)
+   * Create the editor icon of a viewpoint (helper node named after it).
+   * The line is not hittable: three.js picks lines within 1 unit, so it would
+   * catch clicks around it; sphere and cone select the viewpoint.
    */
   addItemToScene(vId) {
     const { position, target } = this.getComponent(vId).data;
-    const POV_Icon_Node = ATON.createSceneNode(vId);
-    POV_Icon_Node.attachToRoot();
-    POV_Icon_Node.add(this.app.uikit.POV_3Dicon(position, target));
+    this.createHelperNode(vId, this.app.uikit.POV_3Dicon(position, target));
+    this.getIconParts(vId).line.raycast = ATON.Utils.VOID_CAST;
   }
 
   /** Icon parts: [sphere (position), line, cone (target)] */
   getIconParts(vId) {
-    const icon = ATON.getSceneNode(vId)?.children[0];
+    const icon = this.getHelperNode(vId)?.children[0];
     if (!icon) return null;
     const [sphere, line, cone] = icon.children;
     return { sphere, line, cone };
@@ -375,7 +376,7 @@ export class PointOfViewWidget extends Widget {
     this.removeComponent(nid);
 
     // Delete the editor icon
-    const viewpointNode = ATON.getSceneNode(nid);
+    const viewpointNode = this.getHelperNode(nid);
     if (!viewpointNode) {
       console.error(`Viewpoint node ${nid} not found`);
       return;

@@ -260,8 +260,16 @@ ui.editor_sideMenu = () => {
   libraryBtn.classList.add("sidemenu-library-btn");
   libraryBtn.title = "Browse and upload files of your collection";
 
+  const tabsGroup = uikit.createTabsGroup({ items, justified: true });
+  // Tab buttons by side-menu id, to switch tab from code (ui.selectSideTab)
+  const [sceneTabBtn, widgetsTabBtn] = tabsGroup.querySelectorAll(".nav-link");
+  ui._sideTabBtns = {
+    [ui.ID_editorSideMenu_Scene]: sceneTabBtn,
+    [ui.ID_editorSideMenu_Widget]: widgetsTabBtn,
+  };
+
   let sideMenuContent = UI.createEl({
-    content: [libraryBtn, uikit.createTabsGroup({ items, justified: true })],
+    content: [libraryBtn, tabsGroup],
   });
   sideMenuContent.id = ui.ID_MainSideMenu;
   let sideMenu = uikit.createOffCanvas({
@@ -538,9 +546,8 @@ ui.editor_updateWidgetMainPanel = () => {
   //Update widgetMainPanel:
   var w = APP.editor.activeWidget;
   if (!w) return;
-  let widgetMainPanel = APP.ui.editor_widgetMainPanel(w);
   if (APP.editor.activeTab == APP.ui.ID_editorSideMenu_Widget)
-    APP.ui.openSecondSideMenu(widgetMainPanel);
+    APP.ui.openWidgetPanel(w);
 
   //Set style to active ItemBtn by activeNode:
   var a = APP.editor.activeNode;
@@ -572,16 +579,7 @@ ui.editor_widgetsListPanel = () => {
 
     if (!target.dataset || !target.dataset.id) throw "Issues with: " + target;
     const w = resolveWidgetById(target.dataset.id);
-    console.log("Im properly wrapping: " + (w?.id || w?.options?.id));
-
-    //Compose widget Panel:
-    let widgetMainPanel = ui.editor_widgetMainPanel(w);
-    ui.openSecondSideMenu(widgetMainPanel);
-
-    // Highlight the widget whose panel is open (cleared by closeSecondSideMenu)
-    document
-      .querySelectorAll(".side-item-nav")
-      .forEach((b) => b.classList.toggle("is-open", b === target));
+    ui.openWidgetPanel(w);
   };
 
   // Iterate over widgets whether Map or plain object
@@ -635,6 +633,54 @@ ui.closeSecondSideMenu = (id = null) => {
   var secondSidePanel = document.getElementById(_id);
   if (secondSidePanel) secondSidePanel.remove();
   document.querySelectorAll(".side-item-nav.is-open").forEach((b) => b.classList.remove("is-open"));
+  ui._openPanelWid = null;
+};
+
+/**
+ * Open (or rebuild) the panel of a widget next to the side menu and
+ * highlight its button in the Widgets tab (cleared by closeSecondSideMenu)
+ */
+ui.openWidgetPanel = (w) => {
+  if (!w) return;
+  ui.openSecondSideMenu(ui.editor_widgetMainPanel(w));
+  ui._openPanelWid = w.id;
+  document
+    .querySelectorAll(".side-item-nav")
+    .forEach((b) => b.classList.toggle("is-open", b.dataset.id === w.id));
+};
+
+/** Switch the side menu to a tab (ui.ID_editorSideMenu_Scene | ui.ID_editorSideMenu_Widget) */
+ui.selectSideTab = (tabId) => {
+  if (editor.activeTab === tabId) return;
+  // the tab's own click: Bootstrap shows it, onClickTab closes the panel and sets editor.activeTab
+  ui._sideTabBtns?.[tabId]?.click();
+};
+
+/** The widget listed in the Scene tab (the others are in the Widgets tab) */
+ui.SCENE_TAB_WIDGET = "layers";
+
+/**
+ * Show an item in the side menu: open the menu, select its tab, open its
+ * widget panel (Widgets tab) and highlight its button. Called by hub.focusOnItem.
+ */
+ui.revealItem = (wid, id) => {
+  if (!APP?.uikit?.offcanvas_start) return;
+  ui.toggle_sideMenus(true);
+
+  if (wid === ui.SCENE_TAB_WIDGET) {
+    ui.selectSideTab(ui.ID_editorSideMenu_Scene);
+  } else {
+    ui.selectSideTab(ui.ID_editorSideMenu_Widget);
+    if (ui._openPanelWid !== wid) ui.openWidgetPanel(APP.widgetsHub.getWidget(wid));
+  }
+
+  const btn = document.querySelector(
+    `[data-id="${CSS.escape(id)}"][data-wid="${CSS.escape(wid)}"]`
+  );
+  if (btn) {
+    ui.setStyleOfActiveBtn(btn);
+    btn.scrollIntoView({ block: "nearest" });
+  }
 };
 
 ui.openSecondSideMenu = (content) => {

@@ -10,6 +10,7 @@
  *   apply(changes)   update data + runtime object (partial, idempotent)
  *   serialize()      current state as scene-description JSON
  *   dispose()        remove the runtime object
+ *   getObjects()     the 3D objects it owns (default [object3D])
  *
  * Components that must also run in Hathor keep their 3D logic in the
  * prototyper flare (like behaviours); ATON-backed ones (see components.js)
@@ -54,6 +55,11 @@ export class Component {
 
   dispose() {
     this.object3D = null;
+  }
+
+  /** The runtime 3D objects this component owns (the editor selects the item when one is clicked) */
+  getObjects() {
+    return this.object3D ? [this.object3D] : [];
   }
 }
 

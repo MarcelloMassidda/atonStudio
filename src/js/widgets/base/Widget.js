@@ -228,7 +228,7 @@ export class Widget {
     return ATON.getSceneNode(id);
   }
 
-  /* Focus on a specific item */
+  /* Frame a specific item with the camera (hub.focusOnItem, unless {frame:false}) */
   focusItem(node) {
     if (!node) {
       console.error("ATON NODE NOT FOUND");
@@ -257,6 +257,48 @@ export class Widget {
    */
   deleteItem(id) {
     console.warn(`⚠️ ${this.id}: deleteItem not implemented`);
+  }
+  // #endregion
+
+// ============================================================
+// #region Editor helpers & click selection
+// ============================================================
+  /**
+   * Create an editor-only 3D helper (icon, handles) for an item.
+   * It is an ATON UI node, not a scene node: outside the scene raycast
+   * (no pointer snapping, double-tap, bounds, light probes, shadows),
+   * excluded from ATON's UI picking too, and tagged so a click selects the item.
+   * @param {string} id - item id (also the UI node id)
+   * @param {THREE.Object3D} [content]
+   */
+  createHelperNode(id, content) {
+    const node = ATON.createUINode(id);
+    node.userData.editorItem = { wid: this.id, id };
+    if (content) node.add(content);
+    node.attachToRoot();
+    node.disablePicking();
+    return node;
+  }
+
+  getHelperNode(id) {
+    return ATON.getUINode(id);
+  }
+
+  /**
+   * 3D objects that select an item when clicked (helpers are found by their tag)
+   * @returns {{object: THREE.Object3D, id: string}[]}
+   */
+  getPickables() {
+    const list = [];
+    for (const [id, component] of this.components) {
+      for (const object of component.getObjects()) list.push({ object, id });
+    }
+    return list;
+  }
+
+  /** True while the widget uses scene clicks itself (e.g. placing points): no click selection */
+  isBusy() {
+    return false;
   }
   // #endregion
 
