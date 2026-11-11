@@ -345,9 +345,13 @@ export class ModernWidgetHub {
    */
   enableClickSelection() {
     const el = ATON._renderer.domElement;
-    const DOUBLE_CLICK_MS = 300;
+    // ATON's double tap (Hammer defaults): 2nd pointerup < 300 ms after the 1st,
+    // within 10 px. The 2nd click is cancelled at its pointerdown, which comes
+    // ~60-120 ms (press time) before its pointerup: 200 ms covers real double clicks.
+    const SELECT_DELAY_MS = 200;
+    const DOUBLE_CLICK_PX = 10;
     let down = null;
-    let pending = null;
+    let pending = null; // { timer, x, y } of a click waiting to select
 
     const blocked = () => {
       const control = this.app.gizmoManager.control;
@@ -355,6 +359,13 @@ export class ModernWidgetHub {
     };
 
     el.addEventListener("pointerdown", (e) => {
+      // Second click of a double click (near the first): cancel the selection, ignore this click
+      if (pending && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) < DOUBLE_CLICK_PX) {
+        clearTimeout(pending.timer);
+        pending = null;
+        down = null;
+        return;
+      }
       down = e.button === 0 && !blocked() ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
     });
 
@@ -364,23 +375,18 @@ export class ModernWidgetHub {
       if (!d || e.button !== 0 || blocked()) return;
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 500) return;
 
-      // Second click of a double click: cancel the selection
-      if (pending) {
-        clearTimeout(pending);
-        pending = null;
-        return;
-      }
-
       // Pick now (the camera may move before the delay ends), select after it
       const rect = el.getBoundingClientRect();
       const ref = this.pickAt(new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
         -((e.clientY - rect.top) / rect.height) * 2 + 1
       ));
-      pending = setTimeout(() => {
+      if (pending) clearTimeout(pending.timer); // a far, quick click replaces the previous one
+      const timer = setTimeout(() => {
         pending = null;
         this.select(ref);
-      }, DOUBLE_CLICK_MS);
+      }, SELECT_DELAY_MS);
+      pending = { timer, x: e.clientX, y: e.clientY };
     });
   }
 
