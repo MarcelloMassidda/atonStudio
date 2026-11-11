@@ -152,7 +152,21 @@ export class Widget {
       cursor[key] = i === path.length - 1 ? data : {};
       cursor = cursor[key];
     });
+
+    const extras = this.getPatchExtras(id);
+    if (extras) {
+      deepMerge(this.getCurrentScene(), extras);
+      deepMerge(patch, extras);
+    }
     this.composePatch(patch, ATON.SceneHub.MODE_ADD);
+  }
+
+  /**
+   * Hook: extra data saved together with an item (e.g. semantic graph edges)
+   * @returns {Object|null} merged into the local scene and the patch
+   */
+  getPatchExtras(id) {
+    return null;
   }
 
   /** Fill a vector3 inspector field (built with hub parsers.vector3) from [x,y,z] */
@@ -604,13 +618,25 @@ export class Widget {
 // #region Actions
 // ============================================================
   /**
-   * Get actions for this widget (the catalog shown when assigning an action
-   * to a semantic node). Includes ALL behaviours supporting action mode,
-   * not just equipped ones. Subclasses extend it with widget-native actions.
-   * @returns {Array} Array of action objects
+   * Actions this widget offers to semantic nodes ("Add Action" catalog):
+   * the actions of its component type (Component.actions) completed with the
+   * widget's authoring parts, plus ALL behaviours supporting action mode.
+   * @returns {Array} [{id, name, widgetId, getProperties, onDelete, onReferencedItemDeleted}]
    */
   getActions() {
-    return this.getActionModeBehaviours();
+    const componentActions = Object.entries(this.options.component?.actions || {}).map(
+      ([id, meta]) => ({ id, name: meta.name, widgetId: this.id, ...this.getActionAuthoring(id) })
+    );
+    return componentActions.concat(this.getActionModeBehaviours());
+  }
+
+  /**
+   * Hook: authoring parts of a component action — getProperties(context) for its
+   * inspector card, onReferencedItemDeleted(deletedId, actionInstance) for cleanup
+   * @returns {Object}
+   */
+  getActionAuthoring(actionId) {
+    return {};
   }
   // #endregion
 

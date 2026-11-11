@@ -267,55 +267,21 @@ constructor(app) {
   }
 
   /**
-   * Get actions for this widget
-   * Provides widget-native actions like toggleVisible
+   * Authoring of the LayerComponent actions (runtime: flare "toggleVisible")
    */
-  getActions() {
-    // Get behaviour actions from the base widget
-    const baseActions = super.getActions();
-
-    // Add widget-specific actions
-    const widgetActions = [
-      {
-        id: "toggleVisible",
-        name: "Toggle Layer Visibility",
-        widgetId: this.id,
-        getProperties: (context) => {
-          const { node, actionId, args } = context;
-          return {
-            visibility: {
-              inspectorBlock: () => this.createLayerSelectionBlock(node, actionId, args),
-            },
-          };
+  getActionAuthoring(actionId) {
+    if (actionId !== "toggleVisible") return {};
+    return {
+      getProperties: ({ node, actionId, args }) => ({
+        visibility: {
+          inspectorBlock: () => this.createLayerSelectionBlock(node, actionId, args),
         },
-        execute: (context) => {
-          // Runtime execution handled by hathor.js
-          // Context: {item: {nid, wid}, args: {...}, app, widget}
-        },
-        onDelete: (context) => {
-          // Clean up targetLayerId when action is removed
-          const { node, widget, scene, actionId } = context;
-          const nid = node.nid;
-
-          console.log(`🧹 Cleaning up toggleVisible action for semantic node ${nid}`);
-
-          // With dictionary structure, the action will be deleted by the caller
-          // No additional cleanup needed here as args are part of the action being deleted
-        },
-        onReferencedItemDeleted: (deletedItemId, actionInstance) => {
-          // Check if this action references the deleted layer
-          if (actionInstance.args?.targetLayerId === deletedItemId) {
-            return { 
-              shouldRemove: true, 
-              reason: `Layer "${deletedItemId}" was deleted` 
-            };
-          }
-          return { shouldRemove: false };
-        },
-      },
-    ];
-
-    return baseActions.concat(widgetActions);
+      }),
+      onReferencedItemDeleted: (deletedItemId, actionInstance) =>
+        actionInstance.args?.targetLayerId === deletedItemId
+          ? { shouldRemove: true, reason: `Layer "${deletedItemId}" was deleted` }
+          : { shouldRemove: false },
+    };
   }
 
   /**

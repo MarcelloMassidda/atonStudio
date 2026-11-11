@@ -18,10 +18,24 @@
 export class Component {
   static type = "component";
   static defaults = {};
+  /**
+   * Keys of the scene entry this component owns (null = all). Others stay
+   * untouched in the scene, e.g. a semantic node's `events` belong to the
+   * action system, not to the component.
+   */
+  static keys = null;
+  /**
+   * Actions this component type can perform at runtime (Hathor), id → { name }.
+   * The runtime of each id is registered in the prototyper flare (F.registerRuntime);
+   * the widget adds the authoring parts (Widget.getActionAuthoring).
+   */
+  static actions = {};
 
   constructor(id, data = {}) {
     this.id = id;
-    this.data = deepMerge(deepMerge({}, this.constructor.defaults), data || {});
+    const keys = this.constructor.keys;
+    const owned = keys ? Object.fromEntries(Object.entries(data || {}).filter(([k]) => keys.includes(k))) : data;
+    this.data = deepMerge(deepMerge({}, this.constructor.defaults), owned || {});
     this.object3D = null;
   }
 

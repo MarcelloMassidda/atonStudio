@@ -200,39 +200,8 @@ editor.setGizmoByNID = (nid, mode = null) => {
   gizmoManager.attachGizmoByNID(nid, mode);
 };
 
-// (gizmo "drag finished" callbacks: gizmoManager.onChangeEnd(cb))
-
-// Used by Measurements/Semantics until they move to widget.update()
-editor.gizmoToInspectorMapper = (o) => {
-  //example for viewpoints position:
-  const _o = {
-    translate: {
-      idVector3UIContainer: "viepoints_position_V3",
-      getProperty: (n) => {
-        return n.position;
-      },
-    },
-    rotate: null,
-    scale: null,
-  };
-
-  const gizmoHandler = (evt) => {
-    const gizmoOptions = o;
-    console.log(gizmoOptions);
-
-    //get current gizmo mode
-    let _mode = evt.mode;
-    console.log(_mode);
-
-    //get relevant property of ATON Node according with gizmoMode
-    let _v = gizmoOptions[_mode].getProperty(gizmoManager.control.object);
-
-    //Update Inspector
-    ui.updateVector3UI(gizmoOptions[_mode].idVector3UIContainer, _v);
-  };
-
-  return gizmoHandler;
-};
+// Gizmo "drag finished" callbacks: gizmoManager.onChangeEnd(cb), set by the widgets.
+// Inspector fields are refreshed by widget.onItemUpdated after widget.update().
 
 //INSPECTOR HANDLERS:
 editor.onCloseInspectorBtnClicked = () => {

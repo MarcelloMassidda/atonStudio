@@ -1,13 +1,19 @@
 import { Widget } from "./base/Widget.js";
+import { SemanticNodeComponent } from "../components/components.js";
+import { toArray3 } from "../components/Component.js";
 
 /**
  * Widget for managing semantic annotations (spheres and convex shapes)
- * This is the backbone for all interactable semantic nodes
+ * This is the backbone for all interactable semantic nodes.
+ * Component: SemanticNodeComponent (geometry only). The node's `events`
+ * (actions) are authored here but stored by the hub's action system.
  */
 export class SemanticsWidget extends Widget {
   constructor(app) {
     const options = {
       id: "annotations",
+      component: SemanticNodeComponent,
+      itemPath: (id) => ["semanticgraph", "nodes", id],
       mainBtnOptions: {
         id: "Annotations_mainBtn",
         text: "Annotations",
@@ -28,14 +34,8 @@ export class SemanticsWidget extends Widget {
       // Define how to get a specific item
       returnItem: (nid) => ATON.getSemanticNode(nid),
       props: {
-        position: {
-          inspectorBlock: (node) => this.createPositionInspector(node),
-          get: () => this.getPositionFromNode(),
-        },
-        radius: {
-          inspectorBlock: (node) => this.createRadiusInspector(node),
-          get: () => this.getRadiusFromNode(),
-        },
+        position: { inspectorBlock: (node) => this.createPositionInspector(node) },
+        radius: { inspectorBlock: (node) => this.createRadiusInspector(node) },
         events: {
           inspectorBlock: (node) => this.createEventsInspector(node),
         },
@@ -127,25 +127,46 @@ export class SemanticsWidget extends Widget {
       return;
     }
 
-    // Setup gizmo for sphere (first child)
+    // Gizmo on the sphere mesh (first child); the component reads it back when saving
     const node = ATON.getSemanticNode(id);
     if (!node) return;
 
     this.editor.setGizmoByNode(node.children[0], "translate");
-    this.gizmoManager.onChangeEnd((evt) => this.onGizmoChange(evt));
+    this.gizmoManager.onChangeEnd(() => this.update(id, {}, { source: "gizmo" }));
   }
 
   /**
    * Get semantic type (sphere or convex)
    */
   getSemanticsType(nid) {
-    const scene = this.getCurrentScene();
-    const semNode = scene.semanticgraph?.nodes?.[nid];
-    if (!semNode) return null;
+    return this.getComponent(nid)?.shape || null;
+  }
 
-    if (semNode.spheres) return "sphere";
-    if (semNode.convexshapes) return "convex";
-    return null;
+  /**
+   * Semantic nodes are created by ATON from the graph edges: save them with the item
+   */
+  getPatchExtras() {
+    return { semanticgraph: { edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM) } };
+  }
+
+  /**
+   * After update(): refresh position / radius fields
+   */
+  onItemUpdated(id, component, source) {
+    if (source === "inspector") return;
+    const s = component.serialize().spheres?.[0];
+    if (!s) return;
+    this.setVectorField("semantics_position_V3", s.slice(0, 3));
+    const r = document.getElementById("semantics_radius_float");
+    if (r) r.value = s[3];
+  }
+
+  /** spheres with the first sphere's position and/or radius replaced */
+  withSphere(id, { position, radius }) {
+    const spheres = this.getComponent(id).serialize().spheres.map((s) => [...s]);
+    if (position) spheres[0].splice(0, 3, ...position);
+    if (radius !== undefined) spheres[0][3] = radius;
+    return spheres;
   }
 
   /**
@@ -229,13 +250,10 @@ export class SemanticsWidget extends Widget {
         : ATON.SUI.getSelectorRadius();
       semNode = ATON.SemFactory.createSphere(id, p, r);
 
-      // Add to scene immediately
+      // Add to scene immediately, then component + save (local scene + patch)
       ATON.getRootSemantics().add(semNode);
-      semNode_info = { spheres: ATON.SceneHub.getJSONsemanticSpheresList(id) };
-
-      // Update local graph and patch
-      this.updateSceneGraph(id, semNode_info);
-      this.composePatchForCreation(id, semNode_info);
+      this.addComponent(id, { spheres: ATON.SceneHub.getJSONsemanticSpheresList(id) });
+      this.saveItem(id);
 
       // Focus on created item
       this.app.widgetsHub.focusOnItem({ id, wid: this.id });
@@ -318,18 +336,11 @@ export class SemanticsWidget extends Widget {
     const S = ATON.SemFactory.completeConvexShape(id);
     if (!S) return;
 
-    // Add to scene
+    // Add to scene, then component + save (local scene + patch)
     ATON.getRootSemantics().add(S);
     this.convexShapeManager.bConvexBuilding = false;
-
-    // Update local graph
-    const semNode_info = {
-      convexshapes: ATON.SceneHub.getJSONsemanticConvexShapes(S.nid),
-    };
-    this.updateSceneGraph(S.nid, semNode_info);
-
-    // Update patch
-    this.composePatchForCreation(S.nid, semNode_info);
+    this.addComponent(S.nid, { convexshapes: ATON.SceneHub.getJSONsemanticConvexShapes(S.nid) });
+    this.saveItem(S.nid);
 
     // Update UI
     this.app.ui.editor_removeCentralHelperPanel();
@@ -360,166 +371,26 @@ export class SemanticsWidget extends Widget {
     this.app.ui.editor_removeCentralHelperPanel();
   }
 
-  /**
-   * Update scene graph with new semantic node
-   */
-  updateSceneGraph(id, semNode_info) {
-    const scene = this.getCurrentScene();
-
-    const E = {
-      semanticgraph: {
-        nodes: { [id]: semNode_info },
-        edges: ATON.SceneHub.getJSONgraphEdges(ATON.NTYPES.SEM),
-      },
-    };
-
-    if (!scene.semanticgraph) {
-      scene.semanticgraph = E.semanticgraph;
-    } else {
-      scene.semanticgraph.nodes[id] = semNode_info;
-      scene.semanticgraph.edges = E.semanticgraph.edges;
-    }
-  }
-
-  /**
-   * Compose patch for semantic creation (when activeNode is not yet set)
-   */
-  composePatchForCreation(nid, semNode_info) {
-    let _patch = this.editor.patch || {};
-
-    if (!_patch.semanticgraph) {
-      _patch.semanticgraph = { nodes: {}, edges: {} };
-    }
-
-    // Add node info
-    _patch.semanticgraph.nodes[nid] = semNode_info;
-
-    // Add edges - required for ATON to create the node
-    _patch.semanticgraph.edges = ATON.SceneHub.getJSONgraphEdges(
-      ATON.NTYPES.SEM
-    );
-
-    this.editor.patch = _patch;
-    this.editor.modePatch = ATON.SceneHub.MODE_ADD;
-    this.editor.OnPatchChanged();
-  }
-
-  /**
-   * Gizmo change handler
-   */
-  onGizmoChange(evt) {
-    const node = this.editor.activeNode;
-    if (!node) return;
-
-    const semanticType = this.getSemanticsType(node.nid);
-    if (semanticType !== "sphere") return;
-
-    const gizmoOptions = {
-      translate: {
-        propertyName: "position",
-        idVector3UIContainer: "semantics_position_V3",
-        getProperty: (n) => n.position,
-      },
-    };
-
-    // Update inspector
-    const inspectorUpdater = this.editor.gizmoToInspectorMapper(gizmoOptions);
-    inspectorUpdater(evt);
-
-    // Compose patch
-    const propName = gizmoOptions[this.gizmoManager.control.mode].propertyName;
-    if (!propName) return;
-
-    const v = gizmoOptions[this.gizmoManager.control.mode].getProperty(
-      node.children[0]
-    );
-    this.composePatchTransform(propName, v);
-  }
-
-  /**
-   * Compose patch for transform changes
-   */
-  composePatchTransform(propName, v) {
-    const node = this.editor.activeNode;
-    if (!node) return;
-
-    const semanticType = this.getSemanticsType(node.nid);
-    if (semanticType !== "sphere") return;
-
-    const nid = node.nid;
-    let _patch = this.editor.patch || {};
-
-    if (!_patch.semanticgraph) {
-      _patch.semanticgraph = { nodes: {}, edges: {} };
-    }
-    if (!_patch.semanticgraph.nodes[nid]) {
-      _patch.semanticgraph.nodes[nid] = { spheres: [[0, 0, 0, 1]] };
-    }
-
-    const _spheres = _patch.semanticgraph.nodes[nid].spheres;
-
-    // Update position
-    const p = this.getPositionFromNode();
-    _spheres[0][0] = p.x;
-    _spheres[0][1] = p.y;
-    _spheres[0][2] = p.z;
-
-    // Update radius
-    const r = this.getRadiusFromNode();
-    _spheres[0][3] = r;
-
-    _patch.semanticgraph.nodes[nid].spheres = _spheres;
-
-    // Add edges - required for ATON to update the node
-    _patch.semanticgraph.edges = ATON.SceneHub.getJSONgraphEdges(
-      ATON.NTYPES.SEM
-    );
-
-    this.editor.patch = _patch;
-    this.editor.modePatch = ATON.SceneHub.MODE_ADD;
-    this.editor.OnPatchChanged();
-  }
-
-  /**
-   * Property change handler from inspector
-   */
-  onPropertyChange(evt) {
-    if (!evt.target) return;
-
-    const propName = evt.target.dataset.property;
-
-    // Handle radius special case
-    if (propName === "radius") {
-      const _val = parseFloat(evt.target.value.replaceAll(",", "."));
-      const _target = this.editor.activeNode.children[0];
-      _target.scale.x = _val;
-      _target.scale.y = _val;
-      _target.scale.z = _val;
-    }
-
-    const propHandler = this.options.props[propName];
-    if (!propHandler) return;
-
-    const v = propHandler.get();
-    this.composePatchTransform(propName, v);
-  }
-
   // ========== INSPECTOR BLOCKS ==========
 
   /**
    * Create position inspector (only for spheres)
    */
   createPositionInspector(node) {
-    const semanticType = this.getSemanticsType(node.nid);
-    if (semanticType !== "sphere") return null;
+    const id = node.nid;
+    const sphere = this.getComponent(id)?.sphere;
+    if (!sphere) return null;
+    const [x, y, z] = sphere.position;
 
     return this.app.widgetsHub.parsers.vector3({
       id: "semantics_position_V3",
       title: "Position",
       property: "position",
-      v: node.children[0].position,
-      target: node.children[0],
-      onChange: (evt) => this.onPropertyChange(evt),
+      v: { x, y, z },
+      onChange: (evt) => {
+        const nv = this.vectorFromInput(evt, this.getComponent(id).sphere.position);
+        if (nv) this.update(id, { spheres: this.withSphere(id, { position: nv }) }, { source: "inspector" });
+      },
     });
   }
 
@@ -527,15 +398,20 @@ export class SemanticsWidget extends Widget {
    * Create radius inspector (only for spheres)
    */
   createRadiusInspector(node) {
-    const semanticType = this.getSemanticsType(node.nid);
-    if (semanticType !== "sphere") return null;
+    const id = node.nid;
+    const sphere = this.getComponent(id)?.sphere;
+    if (!sphere) return null;
 
     return this.app.widgetsHub.parsers.float({
       id: "semantics_radius_float",
       title: "Radius",
       property: "radius",
-      v: node.children[0].scale.x,
-      onChange: (evt) => this.onPropertyChange(evt),
+      v: sphere.radius,
+      step: 0.01,
+      onChange: (evt) => {
+        const radius = parseFloat(String(evt.target.value).replaceAll(",", "."));
+        if (radius > 0) this.update(id, { spheres: this.withSphere(id, { radius }) }, { source: "inspector" });
+      },
     });
   }
 
@@ -623,36 +499,6 @@ export class SemanticsWidget extends Widget {
   }
 
 
-  // ========== GETTERS ==========
-
-  /**
-   * Get position from active node
-   */
-  getPositionFromNode() {
-    const node = this.editor.activeNode;
-    if (!node) return null;
-
-    const semanticType = this.getSemanticsType(node.nid);
-    if (semanticType === "sphere") {
-      return node.children[0].position;
-    }
-    return node.position;
-  }
-
-  /**
-   * Get radius from active node
-   */
-  getRadiusFromNode() {
-    const node = this.editor.activeNode;
-    if (!node) return null;
-
-    const semanticType = this.getSemanticsType(node.nid);
-    if (semanticType === "sphere") {
-      return node.children[0].scale.x;
-    }
-    return null;
-  }
-
   // ========== DELETE ==========
 
   /**
@@ -663,7 +509,8 @@ export class SemanticsWidget extends Widget {
 
     // Live changes
     this.gizmoManager.detachGizmo();
-    this.editor.activeNode.delete();
+    if (this.getComponent(nid)) this.removeComponent(nid); // deletes the ATON semantic node
+    else ATON.getSemanticNode(nid)?.delete();
 
     // Update local graph
     const scene = this.getCurrentScene();

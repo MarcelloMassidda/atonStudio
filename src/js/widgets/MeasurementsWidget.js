@@ -1,13 +1,19 @@
 import { Widget } from "./base/Widget.js";
+import { MeasurementComponent } from "../components/components.js";
+import { toArray3 } from "../components/Component.js";
 
 /**
  * Measurements Widget
- * Allows users to create and manage measurement lines in the scene
+ * Component: MeasurementComponent (points + its objects in ATON's measurement group).
+ * Editor helper: while a measurement is selected, a scene node named after it
+ * holds two draggable spheres (A, B), created in activeItem and removed on lose focus.
  */
 export class MeasurementsWidget extends Widget {
   constructor(app) {
     const options = {
       id: "measurements",
+      component: MeasurementComponent,
+      deletable: true,
       mainPanelOptions: {
         title: "Measurements",
       },
@@ -28,19 +34,12 @@ export class MeasurementsWidget extends Widget {
         const scene = this.getCurrentScene();
         return scene.measurements || null;
       },
-      // Define how to get a specific item
+      // The selected item is the editor helper node (see activeItem)
       returnItem: (nid) => ATON.getSceneNode(nid),
       props: {
-        PointA: {
-          inspectorBlock: (node) => this.createPointAInspector(node),
-          get: () => this.getPointA(),
-        },
-        PointB: {
-          inspectorBlock: (node) => this.createPointBInspector(node),
-          get: () => this.getPointB(),
-        },
+        PointA: { inspectorBlock: (node) => this.createPointInspector(node, "A") },
+        PointB: { inspectorBlock: (node) => this.createPointInspector(node, "B") },
       },
-      deletable: true,
     };
 
     super(app, options);
@@ -57,11 +56,19 @@ export class MeasurementsWidget extends Widget {
   }
 
   /**
+   * ATON already drew the scene's measurements when it parsed the scene:
+   * clear them and let each component draw (and own) its own.
+   */
+  init() {
+    ATON.SUI.clearMeasurements();
+    return super.init();
+  }
+
+  /**
    * Setup ATON events for measurement workflow
    */
   setupMeasurementEvents() {
-    ATON.on("Tap", (e) => {
-      console.log("Tap event detected in MeasurementsWidget");
+    ATON.on("Tap", () => {
       if (!this.bMeasuring) return;
       this.addMeasurePoint();
     });
@@ -110,33 +117,22 @@ export class MeasurementsWidget extends Widget {
   }
 
   /**
-   * Add measurement point (called on tap when measuring)
+   * Add measurement point (called on tap when measuring).
+   * ATON draws the measurement on the 2nd point: those objects are replaced
+   * by the component's own, so it can update and remove them later.
    */
   addMeasurePoint() {
-    console.log("create new measurement");
     const P = ATON.getSceneQueriedPoint();
+    const from = ATON.SUI.gMeasures.children.length;
     const M = ATON.SUI.addMeasurementPoint(P);
-
     if (M === undefined) return;
     this.bMeasuring = false;
+    MeasurementComponent.removeObjects(ATON.SUI.gMeasures.children.slice(from));
 
-    // Create new measure info object
+    const prec = (v) => parseFloat(v.toPrecision(ATON.SceneHub.FLOAT_PREC));
     const mid = ATON.Utils.generateID("meas");
-    const measurementData = {
-      points: [
-        parseFloat(M.A.x.toPrecision(ATON.SceneHub.FLOAT_PREC)),
-        parseFloat(M.A.y.toPrecision(ATON.SceneHub.FLOAT_PREC)),
-        parseFloat(M.A.z.toPrecision(ATON.SceneHub.FLOAT_PREC)),
-        parseFloat(M.B.x.toPrecision(ATON.SceneHub.FLOAT_PREC)),
-        parseFloat(M.B.y.toPrecision(ATON.SceneHub.FLOAT_PREC)),
-        parseFloat(M.B.z.toPrecision(ATON.SceneHub.FLOAT_PREC)),
-      ],
-    };
-
-    // Update local graph
-    const scene = this.getCurrentScene();
-    if (!scene.measurements) scene.measurements = {};
-    scene.measurements[mid] = measurementData;
+    this.addComponent(mid, { points: [...toArray3(M.A), ...toArray3(M.B)].map(prec) });
+    this.saveItem(mid);
 
     // Focus on item - this will call activeItem internally via widgetsHub
     this.app.widgetsHub.focusOnItem({ id: mid, wid: this.id });
@@ -145,49 +141,30 @@ export class MeasurementsWidget extends Widget {
     this.app.ui.toggle_sideMenus(true);
     this.app.ui.editor_updateWidgetMainPanel();
     this.app.ui.editor_removeCentralHelperPanel();
-
-    // Send patch
-    this.composePatch({
-      measurements: {
-        [mid]: measurementData,
-      },
-    });
   }
 
   /**
-   * Active item - create 3D icon for measurement
+   * Called by the hub before getItem: create the editor helper (spheres A, B)
    */
   activeItem(meas_id) {
     if (!meas_id) return;
 
-    console.log("active item: " + meas_id);
-
-    // Deactivate previous if exists
-    if (
-      this.editor.activeNode &&
-      this.editor.activeWidget.id === "measurements"
-    ) {
+    // Remove the helper of the previously selected measurement
+    if (this.editor.activeNode && this.editor.activeWidget?.id === this.id) {
       this.deactiveItem(this.editor.activeNode.nid);
     }
 
-    // Get measurement info from scene
-    const scene = this.getCurrentScene();
-    const measure = scene.measurements?.[meas_id];
-    if (!measure) throw new Error("no measure found for: " + meas_id);
+    const component = this.getComponent(meas_id);
+    if (!component) throw new Error("no measure found for: " + meas_id);
 
-    // Create 3D icon
-    const p = measure.points;
-    const tmpMeasurementIcon = ATON.createSceneNode(meas_id);
-    const icon = this.app.uikit.MEASURE_3Dicon(
-      [p[0], p[1], p[2]],
-      [p[3], p[4], p[5]]
-    );
-    tmpMeasurementIcon.add(icon);
-    tmpMeasurementIcon.attachToRoot();
+    const p = component.data.points;
+    const helper = ATON.createSceneNode(meas_id);
+    helper.add(this.app.uikit.MEASURE_3Dicon([p[0], p[1], p[2]], [p[3], p[4], p[5]]));
+    helper.attachToRoot();
   }
 
   /**
-   * Deactivate measurement item - remove 3D icon
+   * Remove the editor helper of a measurement
    */
   deactiveItem(id) {
     const node = ATON.getSceneNode(id);
@@ -195,7 +172,7 @@ export class MeasurementsWidget extends Widget {
   }
 
   /**
-   * Called when losing focus to another widget - cleanup 3D icon
+   * Called when losing focus to another widget - cleanup the helper
    */
   onLoseFocus(item) {
     if (item && item.nid) {
@@ -203,149 +180,52 @@ export class MeasurementsWidget extends Widget {
     }
   }
 
-  /**
-   * Focus item - navigate to measurement line
-   */
-  _focusItem(item) {
-    if (!item) {
-      console.error("ATON NODE NOT FOUND");
-      return;
-    }
-    console.log(item);
-    const line = item.children[1];
-    if (line) {
-      ATON.Nav.requestPOVbyNode(line, 0.3);
-    } else {
-      console.error("Measurement line not found");
-    }
+  /** Helper spheres [A, B] of the selected measurement */
+  getHandles(id) {
+    const group = ATON.getSceneNode(id)?.children[0];
+    return group ? { A: group.children[0], B: group.children[1] } : null;
   }
 
   /**
-   * Remove all measurements from UI root
+   * After update(): move the helper spheres and refresh the fields
    */
-  removeAllMeasurements() {
-    if (ATON._rootUI && ATON._rootUI.children[3]) {
-      ATON._rootUI.children[3].removeChildren();
+  onItemUpdated(id, component, source) {
+    const p = component.data.points;
+    const handles = this.getHandles(id);
+    if (handles) {
+      handles.A.position.set(p[0], p[1], p[2]);
+      handles.B.position.set(p[3], p[4], p[5]);
     }
+    if (source === "inspector") return;
+    this.setVectorField("measure_pointA_v3", p.slice(0, 3));
+    this.setVectorField("measure_pointB_v3", p.slice(3, 6));
+  }
+
+  /** points with point A or B replaced by v */
+  withPoint(id, which, v) {
+    const p = [...this.getComponent(id).data.points];
+    p.splice(which === "A" ? 0 : 3, 3, ...v);
+    return p;
   }
 
   /**
-   * Update all measurements in the scene
-   */
-  updateMeasurements(measurements) {
-    this.removeAllMeasurements();
-
-    for (const m in measurements) {
-      const measure = measurements[m];
-
-      if (measure.points && measure.points.length === 6) {
-        const A = new THREE.Vector3(
-          parseFloat(measure.points[0]),
-          parseFloat(measure.points[1]),
-          parseFloat(measure.points[2])
-        );
-        const B = new THREE.Vector3(
-          parseFloat(measure.points[3]),
-          parseFloat(measure.points[4]),
-          parseFloat(measure.points[5])
-        );
-        ATON.SUI.addMeasurementPoint(A);
-        ATON.SUI.addMeasurementPoint(B);
-      }
-    }
-  }
-
-  /**
-   * Setup gizmo for measurement
+   * Gizmo on point A when the measurement is focused
    */
   setupGizmo(id) {
-    const node = ATON.getSceneNode(id);
-    if (!node) return;
+    this.attachGizmoTo(id, "A");
+  }
 
-    const A = node.children[0].children[0];
-    this.editor.setGizmoByNode(A, "translate");
-    this.gizmoManager.onChangeEnd((evt) =>
-      this.onPointAGizmoChange(evt)
+  /**
+   * Attach the gizmo to sphere A or B; at the end of a drag that point is updated
+   * @param {"A"|"B"} which
+   */
+  attachGizmoTo(id, which) {
+    const handle = this.getHandles(id)?.[which];
+    if (!handle) return;
+    this.editor.setGizmoByNode(handle, "translate");
+    this.gizmoManager.onChangeEnd(() =>
+      this.update(id, { points: this.withPoint(id, which, toArray3(handle.position)) }, { source: "gizmo" })
     );
-  }
-
-  /**
-   * Handle Point A gizmo change
-   */
-  onPointAGizmoChange(evt) {
-    // Adjust measurement 3D icon in realtime
-    this.onMeasurementPropertyChange(evt);
-
-    // Update inspector
-    const inspectorUpdater = this.editor.gizmoToInspectorMapper({
-      translate: {
-        idVector3UIContainer: "measure_pointA_v3",
-        getProperty: (n) => n.position,
-      },
-    });
-    inspectorUpdater(evt);
-  }
-
-  /**
-   * Handle Point B gizmo change
-   */
-  onPointBGizmoChange(evt) {
-    // Adjust measurement 3D icon in realtime
-    this.onMeasurementPropertyChange(evt);
-
-    // Update inspector
-    const inspectorUpdater = this.editor.gizmoToInspectorMapper({
-      translate: {
-        idVector3UIContainer: "measure_pointB_v3",
-        getProperty: (n) => n.position,
-      },
-    });
-    inspectorUpdater(evt);
-  }
-
-  /**
-   * Handle measurement property change
-   */
-  onMeasurementPropertyChange(evt) {
-    console.log("measure update");
-
-    // Update line
-    const node = this.editor.activeNode;
-    const nid = node.nid;
-    const a = node.children[0].children[0];
-    const b = node.children[0].children[1];
-    const aPos = a.position;
-    const bPos = b.position;
-
-    // Recreate measurements from currScene
-    const scene = this.getCurrentScene();
-    scene.measurements[nid] = {
-      points: [aPos.x, aPos.y, aPos.z, bPos.x, bPos.y, bPos.z],
-    };
-    this.updateMeasurements(scene.measurements);
-
-    // Compose patch
-    this.composePatchForActiveNode();
-  }
-
-  /**
-   * Compose patch for active node
-   */
-  composePatchForActiveNode() {
-    const node = this.editor.activeNode;
-    if (!node) throw new Error("no node");
-
-    const nid = node.nid;
-    const a = this.getPointA();
-    const b = this.getPointB();
-
-    this.composePatch({
-      measurements: {
-        [nid]: {
-          points: [a.x, a.y, a.z, b.x, b.y, b.z],
-        },
-      },
-    });
   }
 
   /**
@@ -353,45 +233,33 @@ export class MeasurementsWidget extends Widget {
    * @param {'A'|'B'} activePointType - Which point button is active
    */
   setActivePointButton(activePointType) {
-    const btnPointA = document.getElementById("measure_inspector_btn_point_a");
-    const btnPointB = document.getElementById("measure_inspector_btn_point_b");
-
-    if (!btnPointA || !btnPointB) return;
-
-    if (activePointType === "A") {
-      btnPointA.classList.add("Inspector_activeBtn");
-      btnPointB.classList.remove("Inspector_activeBtn");
-    } else {
-      btnPointB.classList.add("Inspector_activeBtn");
-      btnPointA.classList.remove("Inspector_activeBtn");
+    for (const t of ["A", "B"]) {
+      document
+        .getElementById(`measure_inspector_btn_point_${t.toLowerCase()}`)
+        ?.classList.toggle("Inspector_activeBtn", t === activePointType);
     }
   }
 
   /**
-   * Create inspector for a measurement point
-   * @param {THREE.Object3D} node - The measurement node
-   * @param {'A'|'B'} pointType - Which point to create inspector for
-   * @returns {HTMLElement} Inspector block element
+   * Field of point A or B, with its "Move" (gizmo) button
+   * @param {'A'|'B'} pointType
    */
   createPointInspector(node, pointType) {
-    const pointIndex = pointType === "A" ? 0 : 1;
-    const point = node.children[0].children[pointIndex];
-    const gizmoHandler =
-      pointType === "A"
-        ? (evt) => this.onPointAGizmoChange(evt)
-        : (evt) => this.onPointBGizmoChange(evt);
+    const id = node.nid;
+    const component = this.getComponent(id);
+    if (!component) return null;
+    const offset = pointType === "A" ? 0 : 3;
+    const v = component.data.points.slice(offset, offset + 3);
 
-    const btnId = `measure_inspector_btn_point_${pointType.toLowerCase()}`;
     const btn = this.app.uikit.createButton({
-      id: btnId,
+      id: `measure_inspector_btn_point_${pointType.toLowerCase()}`,
       text: "Move",
       icon: this.app.ui.baseIcons + "translate.svg",
       compact: true,
       classList: pointType === "A" ? ["Inspector_activeBtn"] : [],
       onClick: () => {
         this.setActivePointButton(pointType);
-        this.editor.setGizmoByNode(point);
-        this.gizmoManager.onChangeEnd(gizmoHandler);
+        this.attachGizmoTo(id, pointType);
       },
     });
     btn.title = `Move point ${pointType} with the gizmo`;
@@ -399,45 +267,15 @@ export class MeasurementsWidget extends Widget {
     return this.app.widgetsHub.parsers.vector3({
       id: `measure_point${pointType}_v3`,
       title: `Point ${pointType}`,
-      property: "position",
-      v: point.position,
-      target: point,
-      onChange: (evt) => this.onMeasurementPropertyChange(evt),
+      property: `point${pointType}`,
+      v: { x: v[0], y: v[1], z: v[2] },
+      onChange: (evt) => {
+        const current = this.getComponent(id).data.points.slice(offset, offset + 3);
+        const nv = this.vectorFromInput(evt, current);
+        if (nv) this.update(id, { points: this.withPoint(id, pointType, nv) }, { source: "inspector" });
+      },
       actions: [btn],
     });
-  }
-
-  /**
-   * Create Point A inspector
-   */
-  createPointAInspector(node) {
-    return this.createPointInspector(node, "A");
-  }
-
-  /**
-   * Create Point B inspector
-   */
-  createPointBInspector(node) {
-    return this.createPointInspector(node, "B");
-  }
-
-
-  /**
-   * Get Point A from active node
-   */
-  getPointA() {
-    const node = this.editor.activeNode;
-    if (!node) return null;
-    return node.children[0].children[0].position;
-  }
-
-  /**
-   * Get Point B from active node
-   */
-  getPointB() {
-    const node = this.editor.activeNode;
-    if (!node) return null;
-    return node.children[0].children[1].position;
   }
 
   /**
@@ -449,6 +287,7 @@ export class MeasurementsWidget extends Widget {
     // Live changes
     this.gizmoManager.detachGizmo();
     this.deactiveItem(nid);
+    this.removeComponent(nid);
     this.editor.activeNode = null;
 
     // Update local graph
@@ -457,15 +296,9 @@ export class MeasurementsWidget extends Widget {
       delete scene.measurements[nid];
     }
 
-    // Recreate all measurements from scene graph
-    this.updateMeasurements(scene.measurements);
-
     // Update UI editor
     this.app.ui.editor_updateWidgetMainPanel();
     this.editor.onCloseInspectorBtnClicked();
-
-    // Compose and send delete patch
-    if (!nid) throw new Error("error deleting measurement");
 
     this.composePatch(
       {
@@ -475,7 +308,5 @@ export class MeasurementsWidget extends Widget {
       },
       ATON.SceneHub.MODE_DEL
     );
-
-    console.log(`🗑️ Deleted measurement: ${nid}`);
   }
 }

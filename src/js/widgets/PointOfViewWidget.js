@@ -52,57 +52,21 @@ export class PointOfViewWidget extends Widget {
   }
 
   /**
-   * Get actions for this widget
-   * @returns {Array} Array of action definitions
+   * Authoring of the ViewpointComponent actions (runtime: flare "goToPov")
    */
-  getActions() {
-    const actions = super.getActions();
-
-    actions.push({
-      id: "goToPov",
-      name: "Go to Point of View",
-      widgetId: this.id,
-      getProperties: (context) => {
-        const { node, actionId, args } = context;
-        return {
-          pov: {
-            inspectorBlock: () => this.createPOVSelectionBlock(node, actionId, args),
-          },
-        };
-      },
-      execute: (context) => {
-        // This will be handled by the flare
-      },
-      onDelete: (context) => {
-        const { node, actionId } = context;
-        const scene = ATON.SceneHub.currData;
-        if (!scene) return;
-
-        const nodeData = scene.semanticgraph?.nodes?.[node.nid];
-        if (!nodeData?.events?.onSelect) return;
-
-        const actions = nodeData.events.onSelect;
-        if (typeof actions !== 'object' || Array.isArray(actions)) return;
-
-        // Find the action in dictionary and clean up its args
-        const action = actions[actionId];
-        if (action && action.args) {
-          delete action.args.targetPOVId;
-        }
-      },
-      onReferencedItemDeleted: (deletedItemId, actionInstance) => {
-        // Check if this action references the deleted POV
-        if (actionInstance.args?.targetPOVId === deletedItemId) {
-          return { 
-            shouldRemove: true, 
-            reason: `Viewpoint "${deletedItemId}" was deleted` 
-          };
-        }
-        return { shouldRemove: false };
-      },
-    });
-
-    return actions;
+  getActionAuthoring(actionId) {
+    if (actionId !== "goToPov") return {};
+    return {
+      getProperties: ({ node, actionId, args }) => ({
+        pov: {
+          inspectorBlock: () => this.createPOVSelectionBlock(node, actionId, args),
+        },
+      }),
+      onReferencedItemDeleted: (deletedItemId, actionInstance) =>
+        actionInstance.args?.targetPOVId === deletedItemId
+          ? { shouldRemove: true, reason: `Viewpoint "${deletedItemId}" was deleted` }
+          : { shouldRemove: false },
+    };
   }
 
   /**
