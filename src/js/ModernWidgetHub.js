@@ -215,28 +215,13 @@ export class ModernWidgetHub {
 
     const blocks = [];
 
-    // Get both base and item-specific properties
-    const baseProps = widget.getProperties(); // Get base widget properties
-    const itemProps = item ? widget.getProperties(item) : {}; // Get item-specific properties
-    const allProps = { ...baseProps, ...itemProps }; // Merge with item properties taking precedence
-
-    console.log("Widget Inspector Setup - Widget:", widget.id);
-    console.log("Base properties:", baseProps);
-    console.log("Item-specific properties:", itemProps);
-    console.log("Item being inspected:", item);
-
-    if (allProps) {
-      for (const [propId, prop] of Object.entries(allProps)) {
-        console.log(`Processing property ${propId}:`, prop);
-        if (prop.inspectorBlock) {
-          const block = prop.inspectorBlock(item);
-          console.log(`Inspector block for ${propId}:`, block);
-          if (block) blocks.push(block);
-        }
-      }
+    // Widget properties + direct-mode UI of the behaviours shown on this item
+    for (const prop of Object.values(widget.getProperties(item))) {
+      const block = prop.inspectorBlock?.(item);
+      if (block) blocks.push(block);
     }
 
-    // Add "Add Behaviour" button before components if there are available behaviours
+    // "Add Behaviour" dropdown, if any behaviour can still be added
     if (item && widget.getAddBehaviourButton) {
       const addBehaviourButton = widget.getAddBehaviourButton(item);
       if (addBehaviourButton) {
@@ -245,17 +230,11 @@ export class ModernWidgetHub {
       }
     }
 
-    // Add separator before components
-    blocks.push(this.app.uikit.inspectorSeparator());
-
-    // Add component blocks
-    const components = widget.getComponents();
-    if (components) {
-      for (const [cId, component] of Object.entries(components)) {
-        if (component.inspectorBlock) {
-          blocks.push(component.inspectorBlock(item));
-        }
-      }
+    // "Remove" (options.deletable)
+    const deleteBlock = widget.getDeleteBlock?.(item);
+    if (deleteBlock) {
+      blocks.push(this.app.uikit.inspectorSeparator());
+      blocks.push(deleteBlock);
     }
 
     inspectorOptions.blocks = blocks;
@@ -306,11 +285,6 @@ export class ModernWidgetHub {
     // Set as currently active
     this.app.editor.activeNode = item;
     this.app.editor.activeWidget = widget;
-
-    // Check for auto-equip behaviours
-    if (widget.checkAutoEquipBehaviours) {
-      widget.checkAutoEquipBehaviours(item);
-    }
 
     // Set focus (zoom)
     if (widget.focusItem) {

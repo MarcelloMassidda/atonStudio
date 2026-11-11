@@ -1,12 +1,16 @@
 import { Widget } from "./base/Widget.js";
+import { LayerComponent } from "../components/components.js";
 
 /**
- * Widget for managing 3D model layers in the scene
+ * Widget for managing 3D model layers in the scene (component: LayerComponent)
  */
 export class LayerWidget extends Widget {
 constructor(app) {
     const options = {
       id: "layers",
+      component: LayerComponent,
+      itemPath: (id) => ["scenegraph", "nodes", id],
+      deletable: true,
       hierarchy: true,
       mainBtnOptions: {
         id: "layers_mainBtn",
@@ -33,23 +37,9 @@ constructor(app) {
       // Define how to get a specific item
       returnItem: (nid) => ATON.getSceneNode(nid),
       props: {
-        position: {
-          inspectorBlock: (node) => this.createPositionInspector(node),
-          get: () => this.getActiveNodeProperty("position"),
-        },
-        rotation: {
-          inspectorBlock: (node) => this.createRotationInspector(node),
-          get: () => this.getActiveNodeProperty("rotation"),
-        },
-        scale: {
-          inspectorBlock: (node) => this.createScaleInspector(node),
-          get: () => this.getActiveNodeProperty("scale"),
-        },
-      },
-      components: {
-        delete: {
-          inspectorBlock: (node) => this.createDeleteButton(node),
-        },
+        position: { inspectorBlock: (node) => this.createTransformInspector("position", node) },
+        rotation: { inspectorBlock: (node) => this.createTransformInspector("rotation", node) },
+        scale: { inspectorBlock: (node) => this.createTransformInspector("scale", node) },
       },
     };
 
@@ -145,6 +135,7 @@ constructor(app) {
     const newSceneGraphNode = { urls: [url] };
     if (!scene.scenegraph) scene.scenegraph = { nodes: {}, edges: { ".": [] } };
     scene.scenegraph.nodes[nodeName] = newSceneGraphNode;
+    this.addComponent(nodeName, newSceneGraphNode);
 
     // Update edges
     if (!scene.scenegraph.edges) {
@@ -174,77 +165,42 @@ constructor(app) {
   }
 
   /**
-   * Create transform inspector blocks
+   * Transform field (position / rotation / scale): edits go through update()
    */
-  createPositionInspector(node) {
-    return this.createTransformInspector("position", node);
-  }
-
-  createRotationInspector(node) {
-    return this.createTransformInspector("rotation", node);
-  }
-
-  createScaleInspector(node) {
-    return this.createTransformInspector("scale", node);
-  }
-
   createTransformInspector(property, node) {
     return this.app.widgetsHub.parsers.vector3({
       id: `layer_${property}_V3`,
       title: property.charAt(0).toUpperCase() + property.slice(1),
       property: property,
       v: node[property],
-      target: node,
-      onChange: (evt) => this.onTransformChange(evt),
+      onChange: (evt) => {
+        const id = node.nid;
+        const current = this.getComponent(id)?.serialize().transform?.[property];
+        const v = this.vectorFromInput(evt, current);
+        if (v) this.update(id, { transform: { [property]: v } }, { source: "inspector" });
+      },
     });
   }
 
   /**
-   * Handle transform changes
+   * After update(): the gizmo moved the node, refresh the transform fields
    */
-  onTransformChange(evt) {
-    if (!evt.target) throw new Error("no evt.target to manage");
-    const propName = evt.target.dataset.property;
-    // Prefer new API (getProperties) but fall back to legacy props
-    let propHandler = null;
-    if (this.getProperties && typeof this.getProperties === "function") {
-      const props = this.getProperties();
-      propHandler = props ? props[propName] : null;
-    }
-    if (!propHandler && this.editor && this.editor.activeWidget) {
-      const aw = this.editor.activeWidget;
-      if (aw.getProperties && typeof aw.getProperties === "function") {
-        const props = aw.getProperties();
-        propHandler = props ? props[propName] : null;
-      } else if (aw.props) {
-        propHandler = aw.props[propName];
-      }
-    }
-    if (!propHandler) throw new Error("no propHandler to manage");
-    const value = propHandler.get();
-    this.composePatchTransform(propName, value);
-  }
-
-  /**
-   * Create delete button
-   */
-  createDeleteButton(node) {
-    return this.app.uikit.deleteButton({
-      icon: "trash",
-      text: "Remove",
-      onClick: () => this.deleteLayer(node.nid),
-    });
+  onItemUpdated(id, component, source) {
+    if (source === "inspector") return;
+    const t = component.serialize().transform || {};
+    for (const p of ["position", "rotation", "scale"]) this.setVectorField(`layer_${p}_V3`, t[p]);
   }
 
   /**
    * Delete a layer
    */
-  deleteLayer(nid) {
+  deleteItem(nid) {
     if (!this.editor.checkPendingPatch()) return;
 
     // Live changes
     this.gizmoManager.detachGizmo();
-    this.editor.activeNode.delete();
+    if (this.getComponent(nid)) this.removeComponent(nid); // deletes the ATON node
+    else ATON.getSceneNode(nid)?.delete();
 
     // Update local graph
     const scene = this.getCurrentScene();
@@ -299,35 +255,6 @@ constructor(app) {
   }
 
   /**
-   * Compose transform patch
-   */
-  composePatchTransform(propName, value) {
-    const node = this.editor.activeNode;
-    if (!node) throw new Error("no node");
-
-    const transformProps = ["position", "rotation", "scale"];
-    const nid = node.nid;
-
-    let patch = {
-      scenegraph: {
-        nodes: {
-          [nid]: {},
-        },
-      },
-    };
-
-    if (transformProps.includes(propName)) {
-      patch.scenegraph.nodes[nid].transform = {
-        [propName]: [value.x, value.y, value.z],
-      };
-    } else {
-      patch.scenegraph.nodes[nid][propName] = value;
-    }
-
-    this.composePatch(patch);
-  }
-
-  /**
    * Compose and send patch
    */
   composePatch(patch, mode = ATON.SceneHub.MODE_ADD) {
@@ -337,13 +264,6 @@ constructor(app) {
     };
     this.editor.modePatch = mode;
     this.editor.OnPatchChanged();
-  }
-
-  /**
-   * Get property of active node
-   */
-  getActiveNodeProperty(prop) {
-    return this.editor.activeNode?.[prop];
   }
 
   /**
@@ -544,42 +464,7 @@ constructor(app) {
     const node = ATON.getSceneNode(id);
     this.editor.setGizmoByNode(node);
     this.app.ui.editor_setGizmoToolbox();
-    this.editor.udpateGizmoOnMouseUpListener((evt) => this.handleGizmo(evt));
-  }
-
-  /**
-   * Handle gizmo interactions
-   */
-  handleGizmo(evt) {
-    const gizmoOptions = {
-      translate: {
-        propertyName: "position",
-        idVector3UIContainer: "layer_position_V3",
-        getProperty: (n) => n.position,
-      },
-      rotate: {
-        propertyName: "rotation",
-        idVector3UIContainer: "layer_rotation_V3",
-        getProperty: (n) => n.rotation,
-      },
-      scale: {
-        propertyName: "scale",
-        idVector3UIContainer: "layer_scale_V3",
-        getProperty: (n) => n.scale,
-      },
-    };
-
-    // Update inspector
-    const inspectorUpdater = this.editor.gizmoToInspectorMapper(gizmoOptions);
-    inspectorUpdater(evt);
-
-    // Compose patch
-    const mode = this.gizmoManager.control.mode;
-    const propName = gizmoOptions[mode].propertyName;
-    if (!propName) throw new Error("no property name in gizmo handler");
-
-    const activeNode = this.editor.activeNode;
-    const value = gizmoOptions[mode].getProperty(activeNode);
-    this.composePatchTransform(propName, value);
+    // The gizmo moves the node itself: the component reads the transform back when saving
+    this.gizmoManager.onChangeEnd(() => this.update(id, {}, { source: "gizmo" }));
   }
 }

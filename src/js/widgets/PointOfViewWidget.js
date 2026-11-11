@@ -1,12 +1,18 @@
 import { Widget } from "./base/Widget.js";
+import { ViewpointComponent } from "../components/components.js";
+import { toArray3 } from "../components/Component.js";
 
 /**
- * Widget for managing viewpoints (Points of View) in the scene
+ * Widget for managing viewpoints (Points of View) in the scene.
+ * Component: ViewpointComponent (the data). The 3D icon — a scene node named
+ * after the viewpoint, holding [sphere, line, cone] — is an editor helper.
  */
 export class PointOfViewWidget extends Widget {
   constructor(app) {
     const options = {
       id: "viewpoints",
+      component: ViewpointComponent,
+      deletable: true,
       mainBtnOptions: {
         id: "viewpoints_mainBtn",
         text: "View Points",
@@ -30,23 +36,9 @@ export class PointOfViewWidget extends Widget {
       // Define how to get a specific item
       returnItem: (nid) => ATON.getSceneNode(nid),
       props: {
-        position: {
-          inspectorBlock: (node) => this.createPositionInspector(node),
-          get: () => this.getPositionFromNode(),
-        },
-        target: {
-          inspectorBlock: (node) => this.createTargetInspector(node),
-          get: () => this.getTargetFromNode(),
-        },
-        fov: {
-          inspectorBlock: (node) => this.createFovInspector(node),
-          get: () => this.getFovFromInput(),
-        },
-      },
-      components: {
-        delete: {
-          inspectorBlock: (node) => this.createDeleteButton(node),
-        },
+        position: { inspectorBlock: (node) => this.createPointInspector("position", node) },
+        target: { inspectorBlock: (node) => this.createPointInspector("target", node) },
+        fov: { inspectorBlock: (node) => this.createFovInspector(node) },
       },
     };
 
@@ -228,13 +220,48 @@ export class PointOfViewWidget extends Widget {
   }
 
   /**
-   * Add a POV item to the 3D scene with visual representation
+   * Create the editor icon of a viewpoint (scene node named after it)
    */
-  addItemToScene(vId, vp) {
+  addItemToScene(vId) {
+    const { position, target } = this.getComponent(vId).data;
     const POV_Icon_Node = ATON.createSceneNode(vId);
     POV_Icon_Node.attachToRoot();
-    const IconPOV = this.app.uikit.POV_3Dicon(vp.position, vp.target);
-    POV_Icon_Node.add(IconPOV);
+    POV_Icon_Node.add(this.app.uikit.POV_3Dicon(position, target));
+  }
+
+  /** Icon parts: [sphere (position), line, cone (target)] */
+  getIconParts(vId) {
+    const icon = ATON.getSceneNode(vId)?.children[0];
+    if (!icon) return null;
+    const [sphere, line, cone] = icon.children;
+    return { sphere, line, cone };
+  }
+
+  /**
+   * Move the icon to the component's data (in place: the gizmo stays attached)
+   */
+  updateIcon(vId) {
+    const parts = this.getIconParts(vId);
+    const component = this.getComponent(vId);
+    if (!parts || !component) return;
+
+    const p = new THREE.Vector3(...component.data.position);
+    const t = new THREE.Vector3(...component.data.target);
+    parts.sphere.position.copy(p);
+    parts.cone.position.copy(t);
+    parts.cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), t.clone().sub(p).normalize());
+    parts.line.geometry.dispose();
+    parts.line.geometry = new THREE.BufferGeometry().setFromPoints([p, t]);
+  }
+
+  /**
+   * After update(): move the icon and refresh the fields
+   */
+  onItemUpdated(id, component, source) {
+    this.updateIcon(id);
+    if (source === "inspector") return;
+    this.setVectorField("viewpoints_position_V3", component.data.position);
+    this.setVectorField("viewpoints_target_V3", component.data.target);
   }
 
   /**
@@ -277,80 +304,67 @@ export class PointOfViewWidget extends Widget {
       : [0, 0, 1];
     const bodyPov = { fov: currPOV.fov, position: p, target: t };
 
-    console.log(bodyPov);
-
-    // Realtime Add to Scene
-    this.addItemToScene(dataPOV.id, bodyPov);
-
-    // Edit local graph scene
-    const scene = this.getCurrentScene();
-    if (!scene.viewpoints) scene.viewpoints = {};
-    scene.viewpoints[dataPOV.id] = bodyPov;
+    // Component + editor icon, then save (local scene + patch)
+    this.addComponent(dataPOV.id, bodyPov);
+    this.addItemToScene(dataPOV.id);
+    this.saveItem(dataPOV.id);
 
     // Focus on new viewpoint
     this.app.widgetsHub.focusOnItem({ id: dataPOV.id, wid: this.id });
-
-    // Compose and send patch
-    this.composePatch({
-      viewpoints: {
-        [dataPOV.id]: bodyPov,
-      },
-    });
 
     // Update UI
     this.app.ui.editor_updateWidgetMainPanel();
   }
 
   /**
-   * Setup gizmo for viewpoint
+   * Gizmo on the position sphere when the viewpoint is focused
    */
   setupGizmo(id) {
-    console.log("SEARCHING: " + id);
-    const node = ATON.getSceneNode(id);
-    const pos = node.children[0].children[0];
-    this.editor.setGizmoByNode(pos, "translate");
-    this.editor.udpateGizmoOnMouseUpListener((evt) =>
-      this.onPositionGizmoChange(evt)
+    this.attachGizmoTo(id, "position");
+  }
+
+  /**
+   * Attach the gizmo to one part of the icon; at the end of a drag the new
+   * position of that part becomes position/target of the viewpoint
+   * @param {"position"|"target"} part
+   */
+  attachGizmoTo(id, part) {
+    const parts = this.getIconParts(id);
+    if (!parts) return;
+    const handle = part === "position" ? parts.sphere : parts.cone;
+    this.editor.setGizmoByNode(handle, "translate");
+    this.gizmoManager.onChangeEnd(() =>
+      this.update(id, { [part]: toArray3(handle.position) }, { source: "gizmo" })
     );
   }
 
   /**
-   * Create position inspector
+   * Position / target field with its "Move" (gizmo) button
+   * @param {"position"|"target"} part
    */
-  createPositionInspector(node) {
-    const pos = node.children[0].children[0];
+  createPointInspector(part, node) {
+    const id = node.nid;
+    const data = this.getComponent(id)?.data;
+    if (!data) return null;
+    const v = data[part];
     return this.app.widgetsHub.parsers.vector3({
-      id: "viewpoints_position_V3",
-      title: "Position",
-      property: "position",
-      v: pos.position,
-      target: pos,
-      onChange: (evt) => this.onPropertyChange(evt),
+      id: `viewpoints_${part}_V3`,
+      title: part === "position" ? "Position" : "Target",
+      property: part,
+      v: { x: v[0], y: v[1], z: v[2] },
+      onChange: (evt) => {
+        const nv = this.vectorFromInput(evt, this.getComponent(id).data[part]);
+        if (nv) this.update(id, { [part]: nv }, { source: "inspector" });
+      },
       // setupGizmo attaches the gizmo to the position when the POV is focused
-      actions: [this.createGizmoButton("position", pos, true, (evt) => this.onPositionGizmoChange(evt))],
-    });
-  }
-
-  /**
-   * Create target inspector
-   */
-  createTargetInspector(node) {
-    const povTarget = node.children[0].children[2];
-    return this.app.widgetsHub.parsers.vector3({
-      id: "viewpoints_target_V3",
-      title: "Target",
-      property: "position",
-      target: povTarget,
-      v: povTarget.position,
-      onChange: (evt) => this.onPropertyChange(evt),
-      actions: [this.createGizmoButton("target", povTarget, false, (evt) => this.onTargetGizmoChange(evt))],
+      actions: [this.createGizmoButton(id, part, part === "position")],
     });
   }
 
   /**
    * "Move" button next to a vector field: attaches the gizmo to that part of the POV
    */
-  createGizmoButton(part, gizmoNode, active, onGizmoChange) {
+  createGizmoButton(id, part, active) {
     const btn = this.app.uikit.createButton({
       id: `viewpoints_btn_${part}`,
       text: "Move",
@@ -360,8 +374,7 @@ export class PointOfViewWidget extends Widget {
         for (const p of ["position", "target"]) {
           document.getElementById(`viewpoints_btn_${p}`)?.classList.toggle("Inspector_activeBtn", p === part);
         }
-        this.editor.setGizmoByNode(gizmoNode);
-        this.editor.udpateGizmoOnMouseUpListener(onGizmoChange);
+        this.attachGizmoTo(id, part);
       },
     });
     btn.title = `Move the ${part} with the gizmo`;
@@ -373,129 +386,16 @@ export class PointOfViewWidget extends Widget {
    * Create FOV inspector
    */
   createFovInspector(node) {
-    const scene = this.getCurrentScene();
-    const vp = scene.viewpoints[node.nid];
+    const id = node.nid;
     return this.app.widgetsHub.parsers.float({
       id: "viewpoints_fov",
       title: "Field of view (°)",
       name: "fov",
-      v: vp.fov,
+      v: this.getComponent(id)?.data.fov,
       step: 1,
-      onChange: (evt) => this.onPropertyChange(evt),
-    });
-  }
-
-  /**
-   * Create delete button
-   */
-  createDeleteButton(node) {
-    return this.app.uikit.deleteButton({
-      icon: "trash",
-      text: "Remove",
-      onClick: () => this.deleteViewpoint(node.nid),
-    });
-  }
-
-  /**
-   * Get position from active node
-   */
-  getPositionFromNode() {
-    const node = this.editor.activeNode;
-    const pos = node.children[0].children[0];
-    const p_pos = pos.position;
-    return [p_pos.x, p_pos.y, p_pos.z];
-  }
-
-  /**
-   * Get target from active node
-   */
-  getTargetFromNode() {
-    const node = this.editor.activeNode;
-    const target = node.children[0].children[2];
-    const p_target = target.position;
-    return [p_target.x, p_target.y, p_target.z];
-  }
-
-  /**
-   * Get FOV from input
-   */
-  getFovFromInput() {
-    return parseFloat(document.getElementById("viewpoints_fov").value);
-  }
-
-  /**
-   * Handle property changes from inspector
-   */
-  onPropertyChange(evt) {
-    console.log(evt);
-    if (evt.target && evt.target.name === "fov") {
-      console.log("CHANGING FOV");
-    }
-
-    // Re-create viewpoint icon
-    const node = this.editor.activeNode;
-    const nid = node.nid;
-    const pos = node.children[0].children[0].position;
-    const target = node.children[0].children[2].position;
-    const p_pos = [pos.x, pos.y, pos.z];
-    const p_target = [target.x, target.y, target.z];
-
-    ATON.getSceneNode(nid).delete();
-    this.addItemToScene(nid, { position: p_pos, target: p_target });
-
-    this.composePatchForActiveNode();
-  }
-
-  /**
-   * Handle position gizmo change
-   */
-  onPositionGizmoChange(evt) {
-    // Adjust viewpoint 3D icon in realtime
-    this.onPropertyChange(evt);
-
-    // Update inspector
-    const inspectorUpdater = this.editor.gizmoToInspectorMapper({
-      translate: {
-        idVector3UIContainer: "viewpoints_position_V3",
-        getProperty: (n) => n.position,
-      },
-    });
-    inspectorUpdater(evt);
-  }
-
-  /**
-   * Handle target gizmo change
-   */
-  onTargetGizmoChange(evt) {
-    // Adjust viewpoint 3D icon in realtime
-    this.onPropertyChange(evt);
-
-    // Update inspector
-    const inspectorUpdater = this.editor.gizmoToInspectorMapper({
-      translate: {
-        idVector3UIContainer: "viewpoints_target_V3",
-        getProperty: (n) => n.position,
-      },
-    });
-    inspectorUpdater(evt);
-  }
-
-  /**
-   * Compose patch for active node
-   */
-  composePatchForActiveNode() {
-    const node = this.editor.activeNode;
-    if (!node) throw new Error("no node");
-
-    const nid = node.nid;
-
-    this.composePatch({
-      viewpoints: {
-        [nid]: {
-          position: this.getPositionFromNode(),
-          target: this.getTargetFromNode(),
-          fov: this.getFovFromInput(),
-        },
+      onChange: (evt) => {
+        const fov = parseFloat(String(evt.target.value).replaceAll(",", "."));
+        if (!Number.isNaN(fov)) this.update(id, { fov }, { source: "inspector" });
       },
     });
   }
@@ -503,20 +403,19 @@ export class PointOfViewWidget extends Widget {
   /**
    * Delete viewpoint
    */
-  deleteViewpoint(nid) {
+  deleteItem(nid) {
     if (!this.editor.checkPendingPatch()) return;
 
     // Detach gizmo first
     this.gizmoManager.detachGizmo();
+    this.removeComponent(nid);
 
-    // Get the actual viewpoint node (not the child gizmo target)
+    // Delete the editor icon
     const viewpointNode = ATON.getSceneNode(nid);
     if (!viewpointNode) {
       console.error(`Viewpoint node ${nid} not found`);
       return;
     }
-
-    // Delete the viewpoint node
     viewpointNode.delete();
 
     // Update local graph

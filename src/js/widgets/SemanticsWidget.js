@@ -40,11 +40,7 @@ export class SemanticsWidget extends Widget {
           inspectorBlock: (node) => this.createEventsInspector(node),
         },
       },
-      components: {
-        delete: {
-          inspectorBlock: (node) => this.createDeleteButton(node),
-        },
-      },
+      deletable: true,
     };
 
     super(app, options);
@@ -136,7 +132,7 @@ export class SemanticsWidget extends Widget {
     if (!node) return;
 
     this.editor.setGizmoByNode(node.children[0], "translate");
-    this.editor.udpateGizmoOnMouseUpListener((evt) => this.onGizmoChange(evt));
+    this.gizmoManager.onChangeEnd((evt) => this.onGizmoChange(evt));
   }
 
   /**
@@ -626,16 +622,6 @@ export class SemanticsWidget extends Widget {
     return this.app.uikit.inspectorSection("Actions", actionsContent, addBtn);
   }
 
-  /**
-   * Create delete button
-   */
-  createDeleteButton(node) {
-    return this.app.uikit.deleteButton({
-      icon: "trash",
-      text: "Remove",
-      onClick: () => this.deleteItem(node.nid),
-    });
-  }
 
   // ========== GETTERS ==========
 

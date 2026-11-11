@@ -3,6 +3,7 @@ let control;
 let gizmo;
 let bGizmo = false;
 let currentMode;
+let onChangeEndCb = null; // single "drag finished" callback, set by the focused widget
 
 gizmoManager.setupGizmo=()=>{
     if(bGizmo) return;
@@ -20,8 +21,12 @@ gizmoManager.setupGizmo=()=>{
         if (!bDrag){
             ATON.recomputeSceneBounds();
             ATON.updateLightProbes();
-            console.log(gizmo.object)
         }
+    });
+
+    // One listener for the whole session: widgets swap the callback with onChangeEnd()
+    control.addEventListener('mouseUp', (evt) => {
+        if (onChangeEndCb) onChangeEndCb(evt);
     });
 
     bGizmo = true;
@@ -56,6 +61,15 @@ gizmoManager.setMode=(mode)=>{
     control.setMode(mode);
     currentMode = mode;
     gizmoManager._currentMode = currentMode;
+}
+
+/**
+ * Set what happens when a gizmo drag ends (replaces the previous callback).
+ * Widgets use it to call widget.update(id, changes, {source:"gizmo"}).
+ */
+gizmoManager.onChangeEnd=(cb)=>{
+    if(!control) gizmoManager.setupGizmo();
+    onChangeEndCb = cb;
 }
 
 gizmoManager.detachGizmo=()=>{

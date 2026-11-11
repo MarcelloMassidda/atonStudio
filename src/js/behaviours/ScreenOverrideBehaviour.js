@@ -12,7 +12,7 @@ export class ScreenOverrideBehaviour extends OverrideBehaviour {
             name: 'Screen Texture Override',
             modes: ['direct', 'action'], // Supports both modes
             isVisible: false, // Not shown in Add Behaviour dropdown
-            autoEquip: true // Automatically equip when conditions are met
+            autoEquip: true // UI shown on every item with a "screen" material; data written on the first texture pick
         });
         
         // Override the ID after super() for internal identification
@@ -73,36 +73,9 @@ export class ScreenOverrideBehaviour extends OverrideBehaviour {
     }
 
     /**
-     * Get initial data when behaviour is equipped
-     */
-    getInitialData(item) {
-        return {
-            materials: {
-                screen: {
-                    texturePath: null
-                }
-            }
-        };
-    }
-
-    /**
      * Only expose the "screen" material in the authoring UI
      */
     getFilteredMaterials(materials) {
         return materials.filter(mat => mat.name === 'screen');
-    }
-
-    /**
-     * Equip the behaviour on an item (called when auto-equipping)
-     */
-    onEquip(itemId) {
-        console.log(`🎨 ScreenOverride behaviour equipped on ${itemId}`);
-    }
-
-    /**
-     * Unequip the behaviour from an item
-     */
-    onUnequip(itemId) {
-        console.log(`🎨 ScreenOverride behaviour unequipped from ${itemId}`);
     }
 }

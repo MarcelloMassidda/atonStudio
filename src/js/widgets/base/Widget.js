@@ -1,5 +1,11 @@
+import { deepMerge } from "../../components/Component.js";
+
 /**
- * Base Widget class that defines the common interface and functionality for all widgets
+ * Base Widget class that defines the common interface and functionality for all widgets.
+ *
+ * A widget is the authoring side of a component type (options.component):
+ * list, creation, inspector, gizmo, editor-only helpers and persistence.
+ * Every change to an item goes through update(id, changes, {source}).
  */
 export class Widget {
 
@@ -17,6 +23,7 @@ export class Widget {
     this.options = options;
     this.items = new Map();
     this.behaviours = new Map();
+    this.components = new Map(); // id -> Component (only if options.component)
   }
   // #endregion
 
@@ -33,40 +40,134 @@ export class Widget {
       }
 
       for (const [id, item] of Object.entries(items)) {
+        if (this.options.component) this.addComponent(id, item);
         this.addItemToScene(id, item);
       }
     }
   }
   /**
-   * Get properties including behaviour-provided properties
+   * Inspector properties of the widget, plus the direct-mode UI of the
+   * behaviours shown on this item: the equipped ones and the autoEquip ones
+   * the item is compatible with (their data is written on the first real change).
    * @param {Object} item - The item to get properties for. If null, returns base widget properties.
    * @returns {Object} Combined properties from widget and behaviours
    */
   getProperties(item = null) {
-    // Start with base widget properties
     let props = { ...this.options.props };
-
-    // If no item provided, return base properties only
     if (!item) return props;
 
-    // Get properties from behaviours (direct mode)
-    const itemBehaviours = this.getItemBehaviours(item.nid, item);
-    console.log(
-      "Getting properties via behaviours for item:",
-      item.nid,
-      item,
-      itemBehaviours
-    );
-    itemBehaviours.forEach((behaviourId) => {
-      const behaviour = this.behaviours.get(behaviourId);
-      if (behaviour?.supportsMode('direct') && behaviour.getProperties) {
-        const behaviourProps = behaviour.getProperties(item.nid, this);
-        console.log(`Properties from behaviour ${behaviourId}:`, behaviourProps);
-        props = { ...props, ...behaviourProps };
+    for (const behaviour of this.getShownBehaviours(item)) {
+      if (behaviour.supportsMode('direct') && behaviour.getProperties) {
+        props = { ...props, ...behaviour.getProperties(item.nid, this) };
       }
-    });
-
+    }
     return props;
+  }
+
+  /**
+   * Behaviours whose direct-mode UI appears on the item
+   */
+  getShownBehaviours(item) {
+    const equipped = this.getItemBehaviours(item.nid, item);
+    const shown = [];
+    for (const [id, behaviour] of this.behaviours.entries()) {
+      if (equipped.includes(id)) shown.push(behaviour);
+      else if (behaviour.autoEquip && behaviour.supportsMode('direct') && behaviour.canEquip(item.nid)) shown.push(behaviour);
+    }
+    return shown;
+  }
+  // #endregion
+
+// ============================================================
+// #region Components & update
+// ============================================================
+  /** Create the component of an item from its scene data and mount it */
+  addComponent(id, data) {
+    const component = new this.options.component(id, data).mount();
+    this.components.set(id, component);
+    return component;
+  }
+
+  getComponent(id) {
+    return this.components.get(id);
+  }
+
+  /** Dispose the component of an item (removes its runtime object) */
+  removeComponent(id) {
+    this.components.get(id)?.dispose();
+    this.components.delete(id);
+  }
+
+  /**
+   * The ONE way to change an item: inspector, gizmo, behaviours and future
+   * APIs all call it. Applies the changes to the component, refreshes the
+   * editor (onItemUpdated) and saves the item.
+   * @param {string} id
+   * @param {Object} changes - partial component data
+   * @param {Object} [opts]
+   * @param {string} [opts.source] - "inspector" | "gizmo" | … (the inspector does not
+   *                                 refresh the field the user is typing in)
+   */
+  update(id, changes = {}, { source } = {}) {
+    const component = this.getComponent(id);
+    if (!component) {
+      console.warn(`⚠️ ${this.id}: no component for ${id}`);
+      return;
+    }
+    component.apply(changes);
+    this.onItemUpdated(id, component, source);
+    this.saveItem(id);
+  }
+
+  /**
+   * Hook: refresh editor-only things (helpers, inspector fields) after update()
+   */
+  onItemUpdated(id, component, source) {}
+
+  /**
+   * Where the item lives in the scene JSON (default: scene[widgetId][id])
+   * @returns {string[]}
+   */
+  getItemPath(id) {
+    return this.options.itemPath ? this.options.itemPath(id) : [this.id, id];
+  }
+
+  /**
+   * Write the component's serialized data into the local scene and send it as an ADD patch
+   */
+  saveItem(id) {
+    const data = this.getComponent(id).serialize();
+    const path = this.getItemPath(id);
+
+    let local = this.getCurrentScene();
+    for (const key of path) {
+      if (!local[key] || typeof local[key] !== "object") local[key] = {};
+      local = local[key];
+    }
+    deepMerge(local, data);
+
+    const patch = {};
+    let cursor = patch;
+    path.forEach((key, i) => {
+      cursor[key] = i === path.length - 1 ? data : {};
+      cursor = cursor[key];
+    });
+    this.composePatch(patch, ATON.SceneHub.MODE_ADD);
+  }
+
+  /** Fill a vector3 inspector field (built with hub parsers.vector3) from [x,y,z] */
+  setVectorField(fieldId, v) {
+    if (!v || !document.getElementById(fieldId)) return;
+    this.app.ui.updateVector3UI(fieldId, { x: v[0], y: v[1], z: v[2] });
+  }
+
+  /** Read a [x,y,z] value edited in a vector3 field: `current` with one axis replaced */
+  vectorFromInput(evt, current) {
+    const value = parseFloat(String(evt.target.value).replaceAll(",", "."));
+    if (Number.isNaN(value)) return null;
+    const v = [...(current || [0, 0, 0])];
+    v["xyz".indexOf(evt.target.name)] = value;
+    return v;
   }
 
   /**
@@ -138,12 +239,10 @@ export class Widget {
 
   
   /**
-   * Delete an item
+   * Delete an item (widgets with options.deletable implement it)
    */
   deleteItem(id) {
-    if (this.options.deleteItem) {
-      return this.options.deleteItem(id);
-    }
+    console.warn(`⚠️ ${this.id}: deleteItem not implemented`);
   }
   // #endregion
 
@@ -227,8 +326,6 @@ export class Widget {
 
     // Check registered behaviours using their detection logic
     for (const [registeredBehaviourId, behaviour] of this.behaviours.entries()) {
-      console.log(`Checking behaviour ${registeredBehaviourId} for item ${itemId}`);
-      
       // If behaviour has custom detection method, use it
       if (behaviour.canEquip) {
         const canEquip = behaviour.canEquip(itemId);
@@ -245,44 +342,7 @@ export class Widget {
       }
     }
 
-    console.log(
-      `✅ Item ${itemId} has ${itemBehaviours.length} behaviours:`,
-      itemBehaviours
-    );
     return itemBehaviours;
-  }
-
-   /**
-   * Check and auto-equip behaviours that should be automatically equipped
-   * @param {Object} item - The item to check
-   */
-  checkAutoEquipBehaviours(item) {
-    if (!item) return;
-
-    // Get all behaviours that support direct mode
-    const directBehaviours = this.getDirectModeBehaviours();
-    
-    for (const behaviour of directBehaviours) {
-      // Skip if not auto-equip
-      if (!behaviour.autoEquip) continue;
-      
-      // Skip if not visible (optional, but good practice)
-      // if (!behaviour.visible) continue;
-      
-      // Check if behaviour can be equipped
-      if (!behaviour.canEquip(item.nid)) continue;
-      
-      // Check if already equipped
-      const equipped = this.getItemBehaviours(item.nid, item);
-      if (equipped.includes(behaviour.id)) {
-        console.log(`✅ Behaviour ${behaviour.id} already equipped on ${item.nid}`);
-        continue;
-      }
-      
-      // Auto-equip this behaviour
-      console.log(`🔧 Auto-equipping behaviour ${behaviour.id} on ${item.nid}`);
-      this.addBehaviourToItem(item, behaviour.id);
-    }
   }
 
   /**
@@ -347,7 +407,8 @@ export class Widget {
     // Check all registered behaviours
     for (const [behaviourId, behaviour] of this.behaviours.entries()) {
       // Only include visible behaviours not already attached
-      if (behaviour.isVisible && !itemBehaviours.includes(behaviourId)) {
+      // (autoEquip ones are already shown on compatible items)
+      if (behaviour.isVisible && !behaviour.autoEquip && !itemBehaviours.includes(behaviourId)) {
         // Check if behaviour is compatible with this item
         const canEquip = behaviour.canEquip
           ? behaviour.canEquip(item.nid)
@@ -527,10 +588,15 @@ export class Widget {
   }
 
   /**
-   * Method to be overridden by widgets that need to handle component features
+   * "Remove" button at the bottom of the inspector (options.deletable)
    */
-  getComponents() {
-    return this.options.components || {};
+  getDeleteBlock(item) {
+    if (!this.options.deletable || !item) return null;
+    return this.app.uikit.deleteButton({
+      icon: "trash",
+      text: "Remove",
+      onClick: () => this.deleteItem(item.nid),
+    });
   }
   // #endregion
 

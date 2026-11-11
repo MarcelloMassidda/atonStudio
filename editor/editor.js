@@ -200,16 +200,9 @@ editor.setGizmoByNID = (nid, mode = null) => {
   gizmoManager.attachGizmoByNID(nid, mode);
 };
 
-editor.udpateGizmoOnMouseUpListener = (handler) => {
-  if (!gizmoManager.control) {
-    console.log("NO GIZMO CONTROL");
-    return;
-  }
+// (gizmo "drag finished" callbacks: gizmoManager.onChangeEnd(cb))
 
-  gizmoManager.control._listeners.mouseUp = undefined;
-  gizmoManager.control.addEventListener("mouseUp", handler);
-};
-
+// Used by Measurements/Semantics until they move to widget.update()
 editor.gizmoToInspectorMapper = (o) => {
   //example for viewpoints position:
   const _o = {

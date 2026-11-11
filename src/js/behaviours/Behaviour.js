@@ -17,7 +17,9 @@ class Behaviour {
      * @param {string} config.name - Display name
      * @param {Array<string>} config.modes - Supported execution modes ['direct', 'action']
      * @param {boolean} config.isVisible - Whether visible in UI (default: true)
-     * @param {boolean} config.autoEquip - Whether to auto-equip on items (default: false)
+     * @param {boolean} config.autoEquip - Show the direct-mode UI on every item where canEquip()
+     *        is true, without "Add Behaviour"; data is written only on the first real change
+     *        (nothing is patched when an item is just selected). Default: false
      * @param {string} config.actionLabel - Label for action mode UI (default: name)
      * @param {Array<string>} config.eventTypes - Supported event types (default: ['onSelect'])
      */

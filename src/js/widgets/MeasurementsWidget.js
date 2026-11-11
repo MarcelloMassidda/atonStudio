@@ -40,11 +40,7 @@ export class MeasurementsWidget extends Widget {
           get: () => this.getPointB(),
         },
       },
-      components: {
-        delete: {
-          inspectorBlock: (node) => this.createDeleteButton(node),
-        },
-      },
+      deletable: true,
     };
 
     super(app, options);
@@ -268,7 +264,7 @@ export class MeasurementsWidget extends Widget {
 
     const A = node.children[0].children[0];
     this.editor.setGizmoByNode(A, "translate");
-    this.editor.udpateGizmoOnMouseUpListener((evt) =>
+    this.gizmoManager.onChangeEnd((evt) =>
       this.onPointAGizmoChange(evt)
     );
   }
@@ -395,7 +391,7 @@ export class MeasurementsWidget extends Widget {
       onClick: () => {
         this.setActivePointButton(pointType);
         this.editor.setGizmoByNode(point);
-        this.editor.udpateGizmoOnMouseUpListener(gizmoHandler);
+        this.gizmoManager.onChangeEnd(gizmoHandler);
       },
     });
     btn.title = `Move point ${pointType} with the gizmo`;
@@ -425,16 +421,6 @@ export class MeasurementsWidget extends Widget {
     return this.createPointInspector(node, "B");
   }
 
-  /**
-   * Create delete button
-   */
-  createDeleteButton(node) {
-    return this.app.uikit.deleteButton({
-      icon: "trash",
-      text: "Remove",
-      onClick: () => this.deleteMeasurement(node.nid),
-    });
-  }
 
   /**
    * Get Point A from active node
@@ -457,7 +443,7 @@ export class MeasurementsWidget extends Widget {
   /**
    * Delete a measurement
    */
-  deleteMeasurement(nid) {
+  deleteItem(nid) {
     if (!this.editor.checkPendingPatch()) return;
 
     // Live changes
