@@ -27,7 +27,7 @@
 	<link rel="manifest" href="app.webmanifest">
 
 	<!-- Web-app ID -->
-	<meta name="aton:appid" content="atonStudio">
+	<meta name="aton:appid" content="atonstudio">
 
 	<meta name="title" content="__APPTITLE__">
 	<meta name="description" content="__APPDESC__">
@@ -39,7 +39,7 @@
     
     <script>
         let url = window.location.href;
-        window.location.replace(url+"dashboard");
+        window.location.replace(new URL("dashboard/", url.endsWith("/") ? url : url + "/").href);
     </script>
 
 </head>

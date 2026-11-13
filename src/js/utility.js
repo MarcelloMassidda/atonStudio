@@ -149,7 +149,7 @@ utils.createNewScene=async()=>{
             });
             */
             
-            //or open in atonStudio:
+            //or open in atonstudio:
             utils.openSceneIn3DEditor(_sid);
         })
 
