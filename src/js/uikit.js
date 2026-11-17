@@ -49,7 +49,7 @@ uikit.deleteButton = (options) => {
 
 /**
  * Turn a toolkit button into a compact sidebar row (same look as the media
- * library tree). Styles: atonstudio.css, "Sidebar lists".
+ * library tree). Styles: prototyper.css, "Sidebar lists".
  * @param {HTMLElement} btn - button made with createButton (keeps its data-* and onclick)
  * @param {"item"|"nav"|"add"} kind - item row, row that opens a panel (chevron), "Add new…" row
  */
@@ -70,7 +70,7 @@ uikit.asSideItem = (btn, kind = "item") => {
 };
 
 // ============================================================
-// Authoring forms (inspector). Styles: atonstudio.css, "Authoring forms".
+// Authoring forms (inspector). Styles: prototyper.css, "Authoring forms".
 // ============================================================
 
 /** Append an element, an array of elements, or nothing. */

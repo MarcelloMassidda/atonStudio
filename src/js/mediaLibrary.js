@@ -17,7 +17,7 @@
 
   Roots: the user's collection (read + write) and "samples" (read only),
   the same folders as data/collections/ on the server.
-  Styles: "Media library" section of atonstudio.css.
+  Styles: "Media library" section of prototyper.css.
 */
 
 import { webdavManager as dav } from "./webdav.js";

@@ -1,6 +1,6 @@
 import { gizmoManager } from "./gizmo.js";
 
-// UI toolkit, versioned inside AtonStudio (copied from wapps/uitoolkit on 2026-11-06).
+// UI toolkit, versioned inside Prototyper (copied from wapps/uitoolkit on 2026-11-06).
 // Own icons live in src/icons, resolved from this module (not from the page URL).
 const ICONS_URL = new URL("../icons/", import.meta.url).href;
 
@@ -550,7 +550,7 @@ UI.promptDialog = (o)=>{ // create an async form wrapped in a popup, using optio
     //header: custom element, or a string (header or title) rendered by showModal with the close button
     let _header = o.header ? o.header : (o.title ? o.title : null);
 
-    //body: styled by .promptForm (atonstudio.css, "Prompt dialogs")
+    //body: styled by .promptForm (prototyper.css, "Prompt dialogs")
     let _form = UI.form(o);
     _form.classList.add("promptForm");
     _form.addEventListener("submit", onSubmittedPromptForm);

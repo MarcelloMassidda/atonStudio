@@ -3,7 +3,7 @@ import {dashboard} from './dashboard.js';
 
 let APP = ATON.App.realize();
 
-APP.url_base = window.location.origin + "/a/atonstudio/";
+APP.url_base = window.location.origin + "/a/prototyper/";
 APP.url_dashboard = APP.url_base+"dashboard/";
 APP.url_editor = APP.url_base+"editor/";
 

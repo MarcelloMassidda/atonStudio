@@ -19,7 +19,7 @@ KEY GOALS:
 - Export/import scenes as JSON with WebDAV synchronization
 
 ARCHITECTURE:
-- Frontend: ATON Studio (wapps/atonStudio/) - Visual editor with widget system
+- Frontend: ATON Studio (wapps/prototyper/) - Visual editor with widget system
 - Backend: Node.js server (config/flares/prototyper/proto_server.js)
 - Runtime: Prototyper Flare (config/flares/prototyper/public/prototyper.js)
 - Data: Scene JSON files (data/scenes/) with WebDAV sync
@@ -250,7 +250,7 @@ onItemDeleted(deletedItemId, scene) {
 -----------------------
 Widgets are modular UI components that manage specific types of scene entities.
 
-Base Class: Widget (wapps/atonStudio/src/js/widgets/base/Widget.js)
+Base Class: Widget (wapps/prototyper/src/js/widgets/base/Widget.js)
 - Provides common functionality: item management, gizmos, patching
 - Registers capabilities
 - Defines actions
@@ -378,10 +378,10 @@ CHANGES:
 
 FILES MODIFIED:
 - config/flares/prototyper/public/prototyper.js
-- wapps/atonStudio/src/js/ModernWidgetHub.js
-- wapps/atonStudio/src/js/widgets/PointOfViewWidget.js
-- wapps/atonStudio/src/js/widgets/LayerWidget.js
-- wapps/atonStudio/src/js/widgets/SemanticsWidget.js
+- wapps/prototyper/src/js/ModernWidgetHub.js
+- wapps/prototyper/src/js/widgets/PointOfViewWidget.js
+- wapps/prototyper/src/js/widgets/LayerWidget.js
+- wapps/prototyper/src/js/widgets/SemanticsWidget.js
 
 7.2 ACTION CLEANUP SYSTEM
 --------------------------
@@ -563,7 +563,7 @@ User taps 3D object →
 
 10.1 KEY DIRECTORIES
 --------------------
-wapps/atonStudio/
+wapps/prototyper/
   src/js/
     widgets/          - Widget implementations
       base/Widget.js  - Base widget class

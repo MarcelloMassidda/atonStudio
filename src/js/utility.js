@@ -149,7 +149,7 @@ utils.createNewScene=async()=>{
             });
             */
             
-            //or open in atonstudio:
+            //or open in prototyper:
             utils.openSceneIn3DEditor(_sid);
         })
 
