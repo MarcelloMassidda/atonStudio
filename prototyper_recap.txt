@@ -19,7 +19,7 @@ KEY GOALS:
 - Export/import scenes as JSON with WebDAV synchronization
 
 ARCHITECTURE:
-- Frontend: ATON Studio (wapps/prototyper/) - Visual editor with widget system
+- Frontend: Prototyper (wapps/prototyper/) - Visual editor with widget system
 - Backend: Node.js server (config/flares/prototyper/proto_server.js)
 - Runtime: Prototyper Flare (config/flares/prototyper/public/prototyper.js)
 - Data: Scene JSON files (data/scenes/) with WebDAV sync

@@ -281,11 +281,11 @@ ui.editor_sideMenu = () => {
 };
 
 ui.editor_topBar = (s = null) => {
-  let titleTopBar = "ATON STUDIO";
+  let titleTopBar = "Virtual Prototyper";
   let _sid;
   if (s) {
     _sid = APP.db.data.currSID;
-    titleTopBar += s.title ? `${s.title} / ${_sid}` : _sid;
+    titleTopBar += " | " + (s.title ? `${s.title} / ${_sid}` : _sid);
   }
 
   let backBtn = uikit.createButton({

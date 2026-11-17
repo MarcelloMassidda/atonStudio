@@ -2,7 +2,7 @@
 BEHAVIOURS SYSTEM - UNIFIED ARCHITECTURE REPORT
 ================================================================================
 Date: December 13, 2025
-System: ATON Studio - Scene Authoring Framework
+System: Prototyper - Scene Authoring Framework
 
 ================================================================================
 PART 1: DESCRIPTIVE AND METHODOLOGICAL OVERVIEW
