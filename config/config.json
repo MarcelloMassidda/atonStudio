@@ -1,7 +1,7 @@
 {
     "welcomeHeroImagePath": "welcome_hero.png",
     "welcomeText": "<div><p>Welcome to <b>PERCEIVE Prototyper Tool</b></p><p>You are now seeing one of the exhibition rooms of the Archaeological Museum in Naples: a collection of Greco-Roman artworks and basic elements of the museum set-up is at your disposal.</p><p>Envision your exhibition idea using the features of our tool and visit your prototype via desktop or VR.</p></div>",
-    "baseMediaPath": "samples/prototyper/media/",
+    "baseMediaPath": "samples/media/prototyper/",
     "baseArtworksThumbPath": "samples/prototyper/media/m_thumbs/",
     "baseUtilitiesThumbPath": "samples/prototyper/media/u_thumbs/",
     "baseCustomizablesThumbPath": "samples/prototyper/media/c_thumbs/",
@@ -327,7 +327,7 @@
                 "id": "8_room",
                 "nodeId": "Room",
                 "oldpath": "Room/baked/room.gltf",
-                "path": "MannRooms/baked/bakedRooms.gltf",
+                "path": "/samples/models/prototyper/room/bakedRooms.gltf",
                 "title": "Room",
                 "thumb": "room.jpg"
             },

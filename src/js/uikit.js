@@ -390,7 +390,8 @@ uikit.createModelGallery = (options) => {
       let thumb = getThumb(m, thumbBasePath);
       let id = m.nodeId;
       let title = m.title;
-      let path = modelBasePath + m.path;
+      // a path starting with "/" is a full collection path (e.g. "/samples/models/..."), otherwise relative to modelBasePath
+      let path = m.path.startsWith("/") ? m.path.slice(1) : modelBasePath + m.path;
       let onClick = options.onModelItemClicked;
       let card = createCard({ type, id, path, thumb, title, onClick });
       container.append(card);

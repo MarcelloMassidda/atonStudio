@@ -103,7 +103,7 @@ utils.createNewScene=async()=>{
     //BRUTAL SITEM SETTINGS:
 
     //old const urlRoom = "samples/prototyper/models/proto_collection/utilities/Room/baked/room.gltf";
-    const urlRoom = "samples/prototyper/models/proto_collection/utilities/MannRooms/baked/bakedRooms.gltf";
+    const urlRoom = "samples/models/prototyper/room/bakedRooms.gltf";
 
     o.data.environment = {
         mainpano:{url:"samples/pano/defsky-sand.jpg"},
